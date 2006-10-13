@@ -23,4 +23,4 @@ plain = GPGME::Data.new_from_mem('test test test')
 
 signed = ctx.sign(plain, GPGME::GPGME_SIG_MODE_CLEAR)
 signed.rewind
-puts("#{signed.read}")
+puts(signed.read)
