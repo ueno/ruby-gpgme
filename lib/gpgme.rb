@@ -1,4 +1,4 @@
-# gpgme.rb
+# gpgme.rb -- OO interface to GPGME
 # Copyright (C) 2003,2006 Daiki Ueno
 
 # This file is a part of Ruby-GPGME.
@@ -18,8 +18,6 @@
 # Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
  
-# This module provides OO interface to the GPGME library.
-
 require 'gpgme_n'
 
 module GPGME

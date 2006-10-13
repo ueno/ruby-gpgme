@@ -1,4 +1,4 @@
-/* gpgme_n.c
+/* gpgme_n.c -- low level interface to GPGME
    Copyright (C) 2003,2006 Daiki Ueno
 
 This file is a part of Ruby-GPGME.
