@@ -47,7 +47,7 @@ module GPGME
   module_function :check_error
 
   def engine_info
-    info = []
+    info = Array.new
     GPGME::gpgme_get_engine_info(info)
     info
   end
@@ -59,14 +59,14 @@ module GPGME
 
     # Create a new GpgmeData instance.
     def self.new
-      dh = []
+      dh = Array.new
       GPGME::check_error(:gpgme_data_new, dh)
       dh[0]
     end
 
     # Create a new GpgmeData instance with internal buffer.
     def self.new_from_mem(buf, copy = false)
-      dh = []
+      dh = Array.new
       GPGME::check_error(:gpgme_data_new_from_mem, dh, buf, buf.length,
                          copy ? 1 : 0)
       dh[0]
@@ -102,9 +102,14 @@ module GPGME
       end
     end
 
-    # Reset the read pointer.
+    # Reset the data pointer.
     def rewind
-      GPGME::check_error(:gpgme_data_seek, self, 0, IO::SEEK_SET)
+      seek(0, IO::SEEK_SET)
+    end
+
+    # Seek the data pointer.
+    def seek(offset, whence = IO::SEEK_SET)
+      GPGME::gpgme_data_seek(self, offset, IO::SEEK_SET)
     end
 
     # Write bytes into this object.  If len is supplied, it causes
@@ -142,7 +147,7 @@ module GPGME
   class GpgmeCtx
     # Create a new GpgmeCtx object.
     def self.new
-      ctx = []
+      ctx = Array.new
       GPGME::check_error(:gpgme_new, ctx)
       ctx[0]
     end
@@ -221,7 +226,7 @@ module GPGME
     # Returns the next key in the list created by a previous
     # keylist_start operation.
     def keylist_next
-      key = []
+      key = Array.new
       GPGME::check_error(:gpgme_op_keylist_next, self, key)
       key[0]
     end
@@ -247,7 +252,7 @@ module GPGME
 
     # Get the key with the fingerprint.
     def get_key(fpr, secret = false)
-      key = []
+      key = Array.new
       GPGME::check_error(:gpgme_get_key, self, fpr, key, secret ? 1 : 0)
       key[0]
     end
