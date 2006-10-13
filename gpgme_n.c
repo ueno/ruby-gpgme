@@ -18,12 +18,11 @@ along with GNU Emacs; see the file COPYING.  If not, write to the
 Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 Boston, MA 02110-1301, USA.  */
 
-/* This module provides low level interface to the GPGME library.
-   There is simple strategy for defining ruby API binding, though this
-   module was written entirely by hand.
+/* This file is (semi) automatically generated, though it was written
+   by hand :-) There are simple rules.
 
 1. Each symbol exported from this module is one of a class, a module
-   function, and a constant.  No instance methods are defined.
+   function, and a constant.  No instance methods are defined here.
 2. Each symbol exported from this module follows the same naming
    convention of the library API.  That is, symbol names are followed
    by `gpgme_' for functions and are followed by `GPGME_' for
@@ -309,15 +308,15 @@ rb_s_gpgme_data_read (dummy, vdh, rbuffer, vlength)
 }
 
 static VALUE
-rb_s_gpgme_data_rewind (dummy, vdh)
-     VALUE dummy, vdh;
+rb_s_gpgme_data_seek (dummy, vdh, voffset, vwhence)
+     VALUE dummy, vdh, voffset, vwhence;
 {
   gpgme_data_t dh;
-  gpgme_error_t err;
+  off_t offset;
 
   UNWRAP_GPGME_DATA(vdh, dh);
-  err = gpgme_data_rewind (dh);
-  return LONG2NUM(err);
+  offset = gpgme_data_seek (dh, NUM2LONG(voffset), NUM2INT(vwhence));
+  return LONG2NUM(offset);
 }
 
 static VALUE
@@ -1513,8 +1512,8 @@ void Init_gpgme_n ()
   /* Manipulating Data Buffers */
   rb_define_module_function (mGPGME, "gpgme_data_read",
 			     rb_s_gpgme_data_read, 3);
-  rb_define_module_function (mGPGME, "gpgme_data_rewind",
-			     rb_s_gpgme_data_rewind, 1);
+  rb_define_module_function (mGPGME, "gpgme_data_seek",
+			     rb_s_gpgme_data_seek, 3);
   rb_define_module_function (mGPGME, "gpgme_data_write",
 			     rb_s_gpgme_data_write, 3);
   rb_define_module_function (mGPGME, "gpgme_data_get_type",

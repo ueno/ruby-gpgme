@@ -104,7 +104,7 @@ module GPGME
 
     # Reset the read pointer.
     def rewind
-      GPGME::check_error(:gpgme_data_rewind, self)
+      GPGME::check_error(:gpgme_data_seek, self, 0, IO::SEEK_SET)
     end
 
     # Write bytes into this object.  If len is supplied, it causes
