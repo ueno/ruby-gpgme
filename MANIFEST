@@ -1,0 +1,8 @@
+lib/gpgme.rb
+COPYING
+extconf.rb
+gpgme_n.c
+examples/genkey.rb
+examples/keylist.rb
+examples/roundtrip.rb
+examples/sign.rb
