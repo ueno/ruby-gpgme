@@ -232,7 +232,6 @@ write_cb (handle, buffer, size)
      size_t size;
 {
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnwrite;
-  ssize_t nwrite;
 
   vcbs = RARRAY(vcb)->ptr[0];
   vhook_value = RARRAY(vcb)->ptr[1];
@@ -240,10 +239,7 @@ write_cb (handle, buffer, size)
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
 			vhook_value, vbuffer, LONG2NUM(size));
-  nwrite = NUM2LONG(vnwrite);
-  if (nwrite > 0)
-    memcpy (buffer, StringValuePtr(vbuffer), nwrite);
-  return nwrite;
+  return NUM2LONG(vnwrite);
 }
 
 static off_t
@@ -268,20 +264,6 @@ seek_cb (handle, offset, whence)
   return -1;
 }
 
-static void
-release_cb (handle)
-     void *handle;
-{
-  VALUE vcb = (VALUE)handle, vcbs, vhook_value;
-  ID id_release = rb_intern ("release");
-
-  vcbs = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
-
-  if (rb_respond_to (vcbs, id_release))
-    rb_funcall (vcbs, id_release, 1, vhook_value);
-}
-
 static VALUE
 rb_s_gpgme_data_new_from_cbs (dummy, rdh, vcbs, vhandle)
      VALUE dummy, rdh, vcbs, vhandle;
@@ -294,7 +276,7 @@ rb_s_gpgme_data_new_from_cbs (dummy, rdh, vcbs, vhandle)
   cbs.read = read_cb;
   cbs.write = write_cb;
   cbs.seek = seek_cb;
-  cbs.release = release_cb;
+  cbs.release = NULL;
 
   rb_ary_push (vcbs_handle, vcbs);
   rb_ary_push (vcbs_handle, vhandle);
