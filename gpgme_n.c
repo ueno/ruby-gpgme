@@ -690,10 +690,11 @@ rb_s_gpgme_op_keylist_ext_start (dummy, vctx, vpattern, vsecret_only)
 }
 
 static VALUE
-wrap_gpgme_key (key)
+save_gpgme_key_attrs (vkey, key)
+     VALUE vkey;
      gpgme_key_t key;
 {
-  VALUE vkey = WRAP_GPGME_KEY(key), vsubkeys, vuids;
+  VALUE vsubkeys, vuids;
   gpgme_subkey_t subkey;
   gpgme_user_id_t user_id;
 
@@ -782,7 +783,11 @@ rb_s_gpgme_op_keylist_next (dummy, vctx, rkey)
   UNWRAP_GPGME_CTX(vctx, ctx);
   err = gpgme_op_keylist_next (ctx, &key);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rkey, wrap_gpgme_key (key));
+    {
+      VALUE vkey = WRAP_GPGME_KEY(key);
+      save_gpgme_key_attrs (vkey, key);
+      rb_ary_push (rkey, vkey);
+    }
   return LONG2NUM(err);
 }
 
@@ -810,7 +815,11 @@ rb_s_gpgme_get_key (dummy, vctx, vfpr, rkey, vsecret)
   err = gpgme_get_key (ctx, StringValueCStr(vfpr), &key, NUM2INT(vsecret));
 
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rkey, wrap_gpgme_key (key));
+    {
+      VALUE vkey = WRAP_GPGME_KEY(key);
+      save_gpgme_key_attrs (vkey, key);
+      rb_ary_push (rkey, vkey);
+    }
   return LONG2NUM(err);
 }
 
