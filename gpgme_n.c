@@ -205,46 +205,97 @@ rb_s_gpgme_data_new_from_file (dummy, rdh, vfilename, vcopy)
   return LONG2NUM(err);
 }
 
-static int
-read_cb (hook, buffer, count, nread)
-     void *hook;
+static ssize_t
+read_cb (handle, buffer, size)
+     void *handle;
      char *buffer;
-     size_t count, *nread;
+     size_t size;
 {
-  VALUE vcb = (VALUE)hook, vreadfunc, vhook_value, vbuffer, rnread;
+  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnread;
+  ssize_t nread;
 
-  vreadfunc = RARRAY(vcb)->ptr[0];
+  vcbs = RARRAY(vcb)->ptr[0];
   vhook_value = RARRAY(vcb)->ptr[1];
-  vbuffer = rb_str_new (buffer, count);
-  rnread = rb_ary_new ();
+  vbuffer = rb_str_new (buffer, size);
 
-  rb_funcall (vreadfunc, rb_intern ("call"), 4,
-	      vhook_value, vbuffer, INT2NUM(count), rnread);
-  if (RARRAY(rnread)->len < 1)
-    rb_raise (rb_eRuntimeError,
-	      "can't determine the number of bytes actually read");
-  *nread = RARRAY(rnread)->ptr[0];
-  memcpy (buffer, StringValuePtr(vbuffer), *nread);
-  return *nread;
+  vnread = rb_funcall (vcbs, rb_intern ("read"), 3,
+		       vhook_value, vbuffer, LONG2NUM(size));
+  nread = NUM2LONG(vnread);
+  memcpy (buffer, StringValuePtr(vbuffer), nread);
+  return nread;
+}
+
+static ssize_t
+write_cb (handle, buffer, size)
+     void *handle;
+     char *buffer;
+     size_t size;
+{
+  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnwrite;
+  ssize_t nwrite;
+
+  vcbs = RARRAY(vcb)->ptr[0];
+  vhook_value = RARRAY(vcb)->ptr[1];
+  vbuffer = rb_str_new (buffer, size);
+
+  vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
+		       vhook_value, vbuffer, LONG2NUM(size));
+  nwrite = NUM2LONG(vnwrite);
+  memcpy (buffer, StringValuePtr(vbuffer), nwrite);
+  return nwrite;
+}
+
+static off_t
+seek_cb (handle, offset, whence)
+     void *handle;
+     off_t offset;
+     int whence;
+{
+  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vpos;
+
+  vcbs = RARRAY(vcb)->ptr[0];
+  vhook_value = RARRAY(vcb)->ptr[1];
+
+  vpos = rb_funcall (vcbs, rb_intern ("seek"), 3,
+		     vhook_value, LONG2NUM(offset), INT2FIX(whence));
+  return NUM2LONG(vpos);
+}
+
+static void
+release_cb (handle)
+     void *handle;
+{
+  VALUE vcb = (VALUE)handle, vcbs, vhook_value;
+
+  vcbs = RARRAY(vcb)->ptr[0];
+  vhook_value = RARRAY(vcb)->ptr[1];
+
+  rb_funcall (vcbs, rb_intern ("release"), 1, vhook_value);
 }
 
 static VALUE
-rb_s_gpgme_data_new_with_read_cb (dummy, rdh, vreadfunc, vhook_value)
-     VALUE dummy, rdh, vreadfunc, vhook_value;
+rb_s_gpgme_data_new_from_cbs (dummy, rdh, vcbs, vhandle)
+     VALUE dummy, rdh, vcbs, vhandle;
 {
   gpgme_data_t dh;
-  VALUE vdh, vcb = rb_ary_new ();
   gpgme_error_t err;
+  struct gpgme_data_cbs cbs;
+  VALUE vcbs_handle = rb_ary_new ();
 
-  rb_ary_push (vcb, vreadfunc);
-  rb_ary_push (vcb, vhook_value);
+  cbs.read = read_cb;
+  cbs.write = write_cb;
+  cbs.seek = seek_cb;
+  cbs.release = release_cb;
 
-  err = gpgme_data_new_with_read_cb (&dh, read_cb, (void*)vcb);
+  rb_ary_push (vcbs_handle, vcbs);
+  rb_ary_push (vcbs_handle, vhandle);
+
+  err = gpgme_data_new_from_cbs (&dh, &cbs, (void*)vcbs_handle);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
-      vdh = WRAP_GPGME_DATA(dh);
+      VALUE vdh = WRAP_GPGME_DATA(dh);
       /* Keep a references to avoid GC. */
-      rb_iv_set (vdh, "@read_cb", vcb);
+      rb_iv_set (vdh, "@cbs_handle", vcbs_handle);
       rb_ary_push (rdh, vdh);
     }
   return LONG2NUM(err);
@@ -328,18 +379,6 @@ rb_s_gpgme_data_write (dummy, vdh, vbuf, vlen)
 
   UNWRAP_GPGME_DATA(vdh, dh);
   err = gpgme_data_write (dh, StringValuePtr(vbuf), NUM2UINT(vlen));
-  return LONG2NUM(err);
-}
-
-static VALUE
-rb_s_gpgme_data_get_type (dummy, vdh)
-     VALUE dummy, vdh;
-{
-  gpgme_data_t dh;
-  gpgme_error_t err;
-
-  UNWRAP_GPGME_DATA(vdh, dh);
-  err = gpgme_data_get_type (dh);
   return LONG2NUM(err);
 }
 
@@ -1500,8 +1539,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_data_new_from_mem, 4);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_file",
 			     rb_s_gpgme_data_new_from_file, 3);
-  rb_define_module_function (mGPGME, "gpgme_data_new_with_read_cb",
-			     rb_s_gpgme_data_new_with_read_cb, 3);
+  rb_define_module_function (mGPGME, "gpgme_data_new_from_cbs",
+			     rb_s_gpgme_data_new_from_cbs, 3);
 
   /* Destroying Data Buffers */
   rb_define_module_function (mGPGME, "gpgme_data_release",
@@ -1516,8 +1555,6 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_data_seek, 3);
   rb_define_module_function (mGPGME, "gpgme_data_write",
 			     rb_s_gpgme_data_write, 3);
-  rb_define_module_function (mGPGME, "gpgme_data_get_type",
-			     rb_s_gpgme_data_get_type, 1);
   rb_define_module_function (mGPGME, "gpgme_data_get_encoding",
 			     rb_s_gpgme_data_get_encoding, 1);
   rb_define_module_function (mGPGME, "gpgme_data_set_encoding",
