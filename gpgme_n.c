@@ -206,6 +206,17 @@ rb_s_gpgme_data_new_from_file (dummy, rdh, vfilename, vcopy)
   return LONG2NUM(err);
 }
 
+static VALUE
+rb_s_gpgme_data_new_from_fd (dummy, rdh, vfd)
+     VALUE dummy, rdh, vfd;
+{
+  gpgme_data_t dh;
+  gpgme_error_t err = gpgme_data_new_from_fd (&dh, NUM2INT(vfd));
+  if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
+    rb_ary_push (rdh, WRAP_GPGME_DATA(dh));
+  return LONG2NUM(err);
+}
+
 static ssize_t
 read_cb (handle, buffer, size)
      void *handle;
@@ -1536,6 +1547,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_data_new_from_mem, 4);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_file",
 			     rb_s_gpgme_data_new_from_file, 3);
+  rb_define_module_function (mGPGME, "gpgme_data_new_from_fd",
+			     rb_s_gpgme_data_new_from_fd, 2);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_cbs",
 			     rb_s_gpgme_data_new_from_cbs, 3);
 
