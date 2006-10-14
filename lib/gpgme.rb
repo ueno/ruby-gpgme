@@ -77,6 +77,12 @@ module GPGME
       dh[0]
     end
 
+    def self.new_from_fd(fd)
+      dh = Array.new
+      GPGME::check_error(:gpgme_data_new_from_fd, dh, fd)
+      dh[0]
+    end
+
     def self.new_from_cbs(cbs, hook_value = nil)
       dh = Array.new
       GPGME::check_error(:gpgme_data_new_from_cbs, dh, cbs, hook_value)
