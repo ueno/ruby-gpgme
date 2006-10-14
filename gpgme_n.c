@@ -21,16 +21,16 @@ Boston, MA 02110-1301, USA.  */
 /* This file is (semi) automatically generated, though it was written
    by hand :-) There are simple rules.
 
-1. Each symbol exported from this module is one of a class, a module
-   function, and a constant.  No instance methods are defined here.
+1. Each symbol exported from this module is either a class, a module
+   function, or a constant.  No instance methods are defined here.
 2. Each symbol exported from this module follows the same naming
    convention of the library API.  That is, symbol names are followed
-   by `gpgme_' for functions and are followed by `GPGME_' for
+   by `gpgme_' for functions and are followed by `GPGME_' or `GPG_' for
    constants.
-3. Output arguments should have to be wrapped.  For example, the 4th
-   argument of `gpgme_data_read' has type `size_t *' to store the amount
-   read.  The corresponding ruby interface accepts an empty array for
-   this purpose.  */
+3. Output arguments are wrapped in arrays.  For example, the 1st
+   argument of `gpgme_data_new' has type `gpgme_data_t *' to store the
+   newly created gpgme_data_t object.  The corresponding ruby
+   interface uses an empty array to passing it to the caller.  */
 
 #include "ruby.h"
 #include "gpgme.h"
