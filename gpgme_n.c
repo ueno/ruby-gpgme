@@ -34,6 +34,7 @@ Boston, MA 02110-1301, USA.  */
 
 #include "ruby.h"
 #include "gpgme.h"
+#include <errno.h>
 
 /* StringValuePtr is not available in 1.6. */
 #ifndef StringValuePtr
@@ -252,13 +253,19 @@ seek_cb (handle, offset, whence)
      int whence;
 {
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vpos;
+  ID id_seek = rb_intern ("seek");
 
-  vcbs = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+  if (rb_respond_to (vcbs, id_seek))
+    {
+      vcbs = RARRAY(vcb)->ptr[0];
+      vhook_value = RARRAY(vcb)->ptr[1];
 
-  vpos = rb_funcall (vcbs, rb_intern ("seek"), 3,
-		     vhook_value, LONG2NUM(offset), INT2FIX(whence));
-  return NUM2LONG(vpos);
+      vpos = rb_funcall (vcbs, id_seek, 3,
+			 vhook_value, LONG2NUM(offset), INT2FIX(whence));
+      return NUM2LONG(vpos);
+    }
+  errno = ENOSYS;
+  return -1;
 }
 
 static void
@@ -266,11 +273,15 @@ release_cb (handle)
      void *handle;
 {
   VALUE vcb = (VALUE)handle, vcbs, vhook_value;
+  ID id_release = rb_intern ("release");
 
-  vcbs = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+  if (rb_respond_to (vcbs, id_release))
+    {
+      vcbs = RARRAY(vcb)->ptr[0];
+      vhook_value = RARRAY(vcb)->ptr[1];
 
-  rb_funcall (vcbs, rb_intern ("release"), 1, vhook_value);
+      rb_funcall (vcbs, id_release, 1, vhook_value);
+    }
 }
 
 static VALUE
