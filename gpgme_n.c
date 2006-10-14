@@ -24,7 +24,7 @@ Boston, MA 02110-1301, USA.  */
 1. Each symbol exported from this module is either a class, a module
    function, or a constant.  No instance methods are defined here.
 2. Each symbol exported from this module follows the same naming
-   convention of the library API.  That is, symbol names are followed
+   convention as the GPGME API.  That is, symbol names are followed
    by `gpgme_' for functions and are followed by `GPGME_' or `GPG_' for
    constants.
 3. Output arguments are wrapped in arrays.  For example, the 1st
