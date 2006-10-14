@@ -70,6 +70,19 @@ module GPGME
       dh[0]
     end
 
+    def self.new_from_file(filename, copy = false)
+      dh = Array.new
+      GPGME::check_error(:gpgme_data_new_from_file, dh, filename,
+                         copy ? 1 : 0)
+      dh[0]
+    end
+
+    def self.new_from_cbs(cbs, hook_value = nil)
+      dh = Array.new
+      GPGME::check_error(:gpgme_data_new_from_cbs, dh, cbs, hook_value)
+      dh[0]
+    end
+
     def _read(len)
       buf = "\x0" * len
       nread = GPGME::gpgme_data_read(self, buf, len)

@@ -212,20 +212,17 @@ read_cb (handle, buffer, size)
      char *buffer;
      size_t size;
 {
-  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnread;
-  ssize_t nread;
+  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer;
 
   vcbs = RARRAY(vcb)->ptr[0];
   vhook_value = RARRAY(vcb)->ptr[1];
-  vbuffer = rb_str_new (buffer, size);
 
-  vnread = rb_funcall (vcbs, rb_intern ("read"), 3,
-		       vhook_value, vbuffer, LONG2NUM(size));
-  nread = NUM2LONG(vnread);
-  if (nread < 0)
-    rb_sys_fail ("read_cb");
-  memcpy (buffer, StringValuePtr(vbuffer), nread);
-  return nread;
+  vbuffer = rb_funcall (vcbs, rb_intern ("read"), 2, vhook_value,
+			LONG2NUM(size));
+  if (NIL_P(vbuffer))
+    return -1;
+  memcpy (buffer, StringValuePtr(vbuffer), RSTRING(vbuffer)->len);
+  return RSTRING(vbuffer)->len;
 }
 
 static ssize_t
@@ -242,11 +239,10 @@ write_cb (handle, buffer, size)
   vbuffer = rb_str_new (buffer, size);
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
-		       vhook_value, vbuffer, LONG2NUM(size));
+			vhook_value, vbuffer, LONG2NUM(size));
   nwrite = NUM2LONG(vnwrite);
-  if (nwrite < 0)
-    rb_sys_fail ("write_cb");
-  memcpy (buffer, StringValuePtr(vbuffer), nwrite);
+  if (nwrite > 0)
+    memcpy (buffer, StringValuePtr(vbuffer), nwrite);
   return nwrite;
 }
 
@@ -269,7 +265,6 @@ seek_cb (handle, offset, whence)
       return NUM2LONG(vpos);
     }
   errno = ENOSYS;
-  rb_sys_fail ("seek_cb");
   return -1;
 }
 
