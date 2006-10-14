@@ -222,6 +222,8 @@ read_cb (handle, buffer, size)
   vnread = rb_funcall (vcbs, rb_intern ("read"), 3,
 		       vhook_value, vbuffer, LONG2NUM(size));
   nread = NUM2LONG(vnread);
+  if (nread < 0)
+    rb_sys_fail ("read_cb");
   memcpy (buffer, StringValuePtr(vbuffer), nread);
   return nread;
 }
@@ -242,6 +244,8 @@ write_cb (handle, buffer, size)
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
 		       vhook_value, vbuffer, LONG2NUM(size));
   nwrite = NUM2LONG(vnwrite);
+  if (nwrite < 0)
+    rb_sys_fail ("write_cb");
   memcpy (buffer, StringValuePtr(vbuffer), nwrite);
   return nwrite;
 }
@@ -255,16 +259,17 @@ seek_cb (handle, offset, whence)
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vpos;
   ID id_seek = rb_intern ("seek");
 
+  vcbs = RARRAY(vcb)->ptr[0];
+  vhook_value = RARRAY(vcb)->ptr[1];
+
   if (rb_respond_to (vcbs, id_seek))
     {
-      vcbs = RARRAY(vcb)->ptr[0];
-      vhook_value = RARRAY(vcb)->ptr[1];
-
       vpos = rb_funcall (vcbs, id_seek, 3,
 			 vhook_value, LONG2NUM(offset), INT2FIX(whence));
       return NUM2LONG(vpos);
     }
   errno = ENOSYS;
+  rb_sys_fail ("seek_cb");
   return -1;
 }
 
@@ -275,13 +280,11 @@ release_cb (handle)
   VALUE vcb = (VALUE)handle, vcbs, vhook_value;
   ID id_release = rb_intern ("release");
 
-  if (rb_respond_to (vcbs, id_release))
-    {
-      vcbs = RARRAY(vcb)->ptr[0];
-      vhook_value = RARRAY(vcb)->ptr[1];
+  vcbs = RARRAY(vcb)->ptr[0];
+  vhook_value = RARRAY(vcb)->ptr[1];
 
-      rb_funcall (vcbs, id_release, 1, vhook_value);
-    }
+  if (rb_respond_to (vcbs, id_release))
+    rb_funcall (vcbs, id_release, 1, vhook_value);
 }
 
 static VALUE
@@ -366,6 +369,8 @@ rb_s_gpgme_data_read (dummy, vdh, rbuffer, vlength)
   UNWRAP_GPGME_DATA(vdh, dh);
   nread = gpgme_data_read (dh, NIL_P(rbuffer) ? NULL : StringValuePtr(rbuffer),
 			   length);
+  if (nread < 0)
+    rb_sys_fail ("rb_s_gpgme_data_read");
   return LONG2NUM(nread);
 }
 
@@ -374,11 +379,13 @@ rb_s_gpgme_data_seek (dummy, vdh, voffset, vwhence)
      VALUE dummy, vdh, voffset, vwhence;
 {
   gpgme_data_t dh;
-  off_t offset;
+  off_t pos;
 
   UNWRAP_GPGME_DATA(vdh, dh);
-  offset = gpgme_data_seek (dh, NUM2LONG(voffset), NUM2INT(vwhence));
-  return LONG2NUM(offset);
+  pos = gpgme_data_seek (dh, NUM2LONG(voffset), NUM2INT(vwhence));
+  if (pos < 0)
+    rb_sys_fail ("rb_s_gpgme_data_seek");
+  return LONG2NUM(pos);
 }
 
 static VALUE
@@ -386,11 +393,13 @@ rb_s_gpgme_data_write (dummy, vdh, vbuf, vlen)
      VALUE dummy, vdh, vbuf, vlen;
 {
   gpgme_data_t dh;
-  gpgme_error_t err;
+  ssize_t nwrite;
 
   UNWRAP_GPGME_DATA(vdh, dh);
-  err = gpgme_data_write (dh, StringValuePtr(vbuf), NUM2UINT(vlen));
-  return LONG2NUM(err);
+  nwrite = gpgme_data_write (dh, StringValuePtr(vbuf), NUM2UINT(vlen));
+  if (nwrite < 0)
+    rb_sys_fail ("rb_s_gpgme_data_write");
+  return LONG2NUM(nwrite);
 }
 
 static VALUE
