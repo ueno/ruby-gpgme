@@ -19,7 +19,7 @@ Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 Boston, MA 02110-1301, USA.  */
 
 /* This file is (semi) automatically generated, though it was written
-   by hand :-) There are simple rules.
+   by hand.  There are simple rules to edit this file.
 
 1. Each symbol exported from this module is either a class, a module
    function, or a constant.  No instance methods are defined here.
@@ -462,7 +462,7 @@ rb_s_gpgme_get_protocol (dummy, vctx)
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   proto = gpgme_get_protocol (ctx);
-  return INT2NUM(proto);
+  return INT2FIX(proto);
 }
 
 static VALUE
@@ -486,7 +486,7 @@ rb_s_gpgme_get_armor (dummy, vctx)
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   yes = gpgme_get_armor (ctx);
-  return INT2NUM(yes);
+  return INT2FIX(yes);
 }
 
 static VALUE
@@ -509,7 +509,7 @@ rb_s_gpgme_get_textmode (dummy, vctx)
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   yes = gpgme_get_textmode (ctx);
-  return INT2NUM(yes);
+  return INT2FIX(yes);
 }     
 
 static VALUE
@@ -556,7 +556,7 @@ rb_s_gpgme_get_keylist_mode (dummy, vctx)
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   mode = gpgme_get_keylist_mode (ctx);
-  return INT2NUM(mode);
+  return INT2FIX(mode);
 }
 
 static gpgme_error_t
@@ -574,7 +574,7 @@ passphrase_cb (hook, uid_hint, passphrase_info, prev_was_bad, fd)
 		     vhook_value,
 		     uid_hint ? rb_str_new2 (uid_hint) : Qnil,
 		     passphrase_info ? rb_str_new2 (passphrase_info) : Qnil,
-		     INT2NUM(prev_was_bad),
+		     INT2FIX(prev_was_bad),
 		     INT2NUM(fd));
   return NUM2LONG(verr);
 }
