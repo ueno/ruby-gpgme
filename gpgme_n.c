@@ -275,19 +275,21 @@ seek_cb (handle, offset, whence)
   return -1;
 }
 
+static struct gpgme_data_cbs cbs =
+  {
+    .read = read_cb,
+    .write = write_cb,
+    .seek = seek_cb,
+    .release = NULL
+  };
+
 static VALUE
 rb_s_gpgme_data_new_from_cbs (dummy, rdh, vcbs, vhandle)
      VALUE dummy, rdh, vcbs, vhandle;
 {
   gpgme_data_t dh;
   gpgme_error_t err;
-  struct gpgme_data_cbs cbs;
   VALUE vcbs_handle = rb_ary_new ();
-
-  cbs.read = read_cb;
-  cbs.write = write_cb;
-  cbs.seek = seek_cb;
-  cbs.release = NULL;
 
   rb_ary_push (vcbs_handle, vcbs);
   rb_ary_push (vcbs_handle, vhandle);
