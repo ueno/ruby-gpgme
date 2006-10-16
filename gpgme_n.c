@@ -681,10 +681,10 @@ rb_s_gpgme_op_keylist_ext_start (dummy, vctx, vpattern, vsecret_only)
     {
       /* Convert RARRAY into `const char *' array. */
       pattern = (const char **)ALLOCA_N(const char *,
-					RARRAY(vpattern)->len + 1);
-      for (i = 0; i<RARRAY(vpattern)->len; i++)
-	pattern[i] = StringValueCStr(RARRAY(vpattern)->ptr[i]);
-      pattern[RARRAY(vpattern)->len] = NULL;
+					RARRAY_LEN(vpattern) + 1);
+      for (i = 0; i<RARRAY_LEN(vpattern); i++)
+	pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
+      pattern[RARRAY_LEN(vpattern)] = NULL;
     }
 
   err = gpgme_op_keylist_ext_start (ctx, pattern, NUM2INT(vsecret_only), 0);
