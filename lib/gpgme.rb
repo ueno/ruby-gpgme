@@ -20,8 +20,6 @@
  
 require 'gpgme_n'
 
-# Ruby-GPGME is a ruby interface to GnuPG Made Easy (GPGME).
-
 module GPGME
   PROTOCOL_NAMES = {
     GPGME_PROTOCOL_OpenPGP => "OpenPGP",
@@ -159,7 +157,7 @@ module GPGME
   class Data
     BLOCK_SIZE = 4096
 
-    # Create a new Data instance.
+    # Create a new instance.
     def self.new
       rdh = Array.new
       err = GPGME::gpgme_data_new(rdh)
@@ -168,7 +166,7 @@ module GPGME
       rdh[0]
     end
 
-    # Create a new Data instance with internal buffer.
+    # Create a new instance with internal buffer.
     def self.new_from_mem(buf, copy = false)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_mem(rdh, buf, buf.length, copy ? 1 : 0)
@@ -177,6 +175,7 @@ module GPGME
       rdh[0]
     end
 
+    # Create a new instance from the specified file.
     def self.new_from_file(filename, copy = false)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_file(rdh, filename, copy ? 1 : 0)
@@ -185,6 +184,7 @@ module GPGME
       rdh[0]
     end
 
+    # Create a new instance from the specified file descriptor.
     def self.new_from_fd(fd)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_fd(rdh, fd)
@@ -193,6 +193,7 @@ module GPGME
       rdh[0]
     end
 
+    # Create a new instance from the specified callbacks.
     def self.new_from_cbs(cbs, hook_value = nil)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_cbs(rdh, cbs, hook_value)
@@ -319,12 +320,12 @@ module GPGME
       mode
     end
 
-    # Returns the current key listing mode.
+    # Return the current key listing mode.
     def keylist_mode
       GPGME::gpgme_get_keylist_mode(self)
     end
 
-    def inspect
+    def inspect                 # :nodoc:
       "#<#{self.class} protocol=#{PROTOCOL_NAMES[protocol] || protocol}, \
 armor=#{armor}, textmode=#{textmode}, \
 keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
@@ -389,21 +390,37 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       rkey[0]
     end
 
-    # Generates a new key pair.
-    # If store is true, this method puts the key pair into the
-    # standard key ring.
-    def genkey(parms, store = false)
-      if store
-	pubkey, seckey = nil, nil
-      else
-	pubkey, seckey = Data.new, Data.new
-      end
+    # Generate a new key pair.
+    # _parms_ is a string which looks like
+    #
+    #  <GnupgKeyParms format="internal">
+    #  Key-Type: DSA
+    #  Key-Length: 1024
+    #  Subkey-Type: ELG-E
+    #  Subkey-Length: 1024
+    #  Name-Real: Joe Tester
+    #  Name-Comment: with stupid passphrase
+    #  Name-Email: joe@foo.bar
+    #  Expire-Date: 0
+    #  Passphrase: abc
+    #  </GnupgKeyParms>
+    #
+    # If _pubkey_ and _seckey_ are both set to nil, it stores the
+    # generated key pair into your key ring.
+    def genkey(parms, pubkey = Data.new, seckey = Data.new)
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       [pubkey, seckey]
     end
     alias generate_key genkey
+
+    def genkey_start(parms, pubkey, seckey)
+      err = GPGME::gpgme_op_genkey_start(self, parms, pubkey, seckey)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+    end
+    alias generate_key_start genkey_start
 
     # Extracts the public keys of the recipients.
     def export(recipients)
