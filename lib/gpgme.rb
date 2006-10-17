@@ -85,7 +85,7 @@ module GPGME
     class NoPublicKey < self; end
   end
 
-  def error_to_exception(err)
+  def error_to_exception(err)   # :nodoc:
     case GPGME::gpgme_err_code(err)
     when GPG_ERR_EOF
       EOFError.new
@@ -202,11 +202,11 @@ module GPGME
       rdh[0]
     end
 
-    # Read bytes from this object.  If len is supplied, it causes
-    # this method to read up to the number of bytes.
-    def read(len = nil)
-      if len
-	GPGME::gpgme_data_read(self, len)
+    # Read at most _length_ bytes from the data object, or to the end
+    # of file if _length_ is omitted or is +nil+.
+    def read(length = nil)
+      if length
+	GPGME::gpgme_data_read(self, length)
       else
 	buf = String.new
         loop do
@@ -218,20 +218,20 @@ module GPGME
       end
     end
 
-    # Reset the data pointer.
+    # Set the data pointer to the beginning.
     def rewind
       seek(0)
     end
 
-    # Seek the data pointer.
+    # Seek to a given _offset_ in the data object according to the
+    # value of _whence_.
     def seek(offset, whence = IO::SEEK_SET)
       GPGME::gpgme_data_seek(self, offset, IO::SEEK_SET)
     end
 
-    # Write bytes into this object.  If len is supplied, it causes
-    # this method to write up to the number of bytes.
-    def write(buf, len = buf.length)
-      GPGME::gpgme_data_write(self, buf, len)
+    # Write _length_ bytes from _buffer_ into the data object.
+    def write(buffer, length = buffer.length)
+      GPGME::gpgme_data_write(self, buffer, length)
     end
 
     # Return the encoding of the underlying data.
@@ -239,12 +239,12 @@ module GPGME
       GPGME::gpgme_data_get_encoding(self)
     end
 
-    # Set the encoding of the underlying data.
-    def encoding=(enc)
-      err = GPGME::gpgme_data_set_encoding(self, enc)
+    # Set the encoding to a given _encoding_ of the underlying data object.
+    def encoding=(encoding)
+      err = GPGME::gpgme_data_set_encoding(self, encoding)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
-      enc
+      encoding
     end
   end
 
@@ -257,14 +257,29 @@ module GPGME
 
   # A context within which all cryptographic operations are performed.
   class Ctx
-    # Create a new Ctx object.
-    def self.new(attrs = Hash.new)
+    # Create a new instance from the given _attributes_.
+    # _attributes_ is a +Hash+
+    #
+    # * <tt>:protocol</tt> Either <tt>GPGME_PROTOCOL_OpenPGP</tt> or
+    # <tt>GPGME_PROTOCOL_CMS</tt>.
+    #
+    # * <tt>:armor</tt>  If +true+, the output should be ASCII armored.
+    #
+    # * <tt>:textmode</tt> If +true+, inform the recipient that the
+    # input is text.
+    #
+    # * <tt>:keylist_mode</tt> Either
+    # <tt>GPGME_KEYLIST_MODE_LOCAL</tt>,
+    # <tt>GPGME_KEYLIST_MODE_EXTERN</tt>,
+    # <tt>GPGME_KEYLIST_MODE_SIGS</tt>,
+    # <tt>GPGME_KEYLIST_MODE_VALIDATE</tt>.
+    def self.new(attributes = Hash.new)
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       ctx = rctx[0]
-      attrs.each_pair do |key, value|
+      attributes.each_pair do |key, value|
         case key
         when :protocol
           ctx.protocol = value
@@ -279,7 +294,7 @@ module GPGME
       ctx
     end
 
-    # Set the protocol used within this context.
+    # Set the _protocol_ used within this context.
     def protocol=(proto)
       err = GPGME::gpgme_set_protocol(self, proto)
       exc = GPGME::error_to_exception(err)
@@ -287,7 +302,7 @@ module GPGME
       proto
     end
 
-    # Return the protocol used within this context.
+    # Return the _protocol_ used within this context.
     def protocol
       GPGME::gpgme_get_protocol(self)
     end
@@ -332,26 +347,46 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Set the passphrase callback with given hook value.
+    # _passfunc_ should respond to +call+ with 5 arguments.
+    #
+    #  lambda {|hook, uid_hint, passphrase_info, prev_was_bad, fd|
+    #    $stderr.write("Passphrase for #{uid_hint}: ")
+    #    $stderr.flush
+    #    begin
+    #      system('stty -echo')
+    #      io = IO.for_fd(fd, 'w')
+    #      io.puts(gets.chomp)
+    #      io.flush
+    #    ensure
+    #      system('stty echo')
+    #    end
+    #    puts
+    #  }
     def set_passphrase_cb(passfunc, hook_value = nil)
       GPGME::gpgme_set_passphrase_cb(self, passfunc, hook_value)
     end
 
     # Set the progress callback with given hook value.
+    # _progfunc_ should respond to +call+ with 5 arguments.
+    #
+    #  lambda {|hook, what, type, current, total|
+    #    $stderr.write("#{what}: #{current}/#{total}\r")
+    #    $stderr.flush
+    #  }
     def set_progress_cb(progfunc, hook_value = nil)
       GPGME::gpgme_set_progress_cb(self, progfunc, hook_value)
     end
 
     # Initiate a key listing operation for given pattern.
-    # If pattern is nil, all available keys are returned.
-    # If secret_only is true, the list is restricted to secret keys only.
+    # If _pattern_ is +nil+, all available keys are returned.
+    # If _secret_only_ is +true+, the only secret keys are returned.
     def keylist_start(pattern = nil, secret_only = false)
       err = GPGME::gpgme_op_keylist_start(self, pattern, secret_only ? 1 : 0)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
 
-    # Return the next key in the list created by a previous
-    # keylist_start operation.
+    # Advance to the next key in the key listing operation.
     def keylist_next
       rkey = Array.new
       err = GPGME::gpgme_op_keylist_next(self, rkey)
@@ -367,8 +402,10 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       raise exc if exc
     end
 
-    # Convenient method to iterate over keylist.
-    def each_keys(pattern = nil, secret_only = false, &block)
+    # Convenient method to iterate over keys.
+    # If _pattern_ is +nil+, all available keys are returned.
+    # If _secret_only_ is +true+, the only secret keys are returned.
+    def each_keys(pattern = nil, secret_only = false, &block) # :yields: key
       keylist_start(pattern, secret_only)
       begin
 	loop do
@@ -381,10 +418,11 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       end
     end
 
-    # Get the key with the fingerprint.
-    def get_key(fpr, secret = false)
+    # Get the key with the _fingerprint_.
+    # If _secret_ is +true+, secret key is returned.
+    def get_key(fingerprint, secret = false)
       rkey = Array.new
-      err = GPGME::gpgme_get_key(self, fpr, rkey, secret ? 1 : 0)
+      err = GPGME::gpgme_get_key(self, fingerprint, rkey, secret ? 1 : 0)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       rkey[0]
@@ -405,7 +443,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #  Passphrase: abc
     #  </GnupgKeyParms>
     #
-    # If _pubkey_ and _seckey_ are both set to nil, it stores the
+    # If _pubkey_ and _seckey_ are both set to +nil+, it stores the
     # generated key pair into your key ring.
     def genkey(parms, pubkey = Data.new, seckey = Data.new)
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
@@ -483,16 +521,19 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       GPGME::gpgme_signers_clear(self)
     end
 
-    # Add the key to the list of signers.
-    def add_signer(key)
-      err = GPGME::gpgme_signers_add(self, key)
-      exc = GPGME::error_to_exception(err)
-      raise exc if exc
+    # Add _keys_ to the list of signers.
+    def add_signer(*keys)
+      keys.each do |key|
+        err = GPGME::gpgme_signers_add(self, key)
+        exc = GPGME::error_to_exception(err)
+        raise exc if exc
+      end
     end
 
-    # Create a signature for the text in the data object.
-    def sign(plain, mode = GPGME::GPGME_SIG_MODE_NORMAL)
-      sig = Data.new
+    # Create a signature for the text.
+    # _plain_ is a data object which contains the text.
+    # _sig_ is a data object where the generated signature is stored.
+    def sign(plain, sig = Data.new, mode = GPGME::GPGME_SIG_MODE_NORMAL)
       err = GPGME::gpgme_op_sign(self, plain, sig, mode)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
