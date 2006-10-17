@@ -569,18 +569,18 @@ passphrase_cb (hook, uid_hint, passphrase_info, prev_was_bad, fd)
      const char *uid_hint, *passphrase_info;
      int prev_was_bad, fd;
 {
-  VALUE vcb = (VALUE)hook, vpassfunc, vhook_value, verr;
+  VALUE vcb = (VALUE)hook, vpassfunc, vhook_value;
 
   vpassfunc = RARRAY(vcb)->ptr[0];
   vhook_value = RARRAY(vcb)->ptr[1];
 
-  verr = rb_funcall (vpassfunc, rb_intern ("call"), 5,
-		     vhook_value,
-		     uid_hint ? rb_str_new2 (uid_hint) : Qnil,
-		     passphrase_info ? rb_str_new2 (passphrase_info) : Qnil,
-		     INT2FIX(prev_was_bad),
-		     INT2NUM(fd));
-  return NUM2LONG(verr);
+  rb_funcall (vpassfunc, rb_intern ("call"), 5,
+	      vhook_value,
+	      uid_hint ? rb_str_new2 (uid_hint) : Qnil,
+	      passphrase_info ? rb_str_new2 (passphrase_info) : Qnil,
+	      INT2FIX(prev_was_bad),
+	      INT2NUM(fd));
+  return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
 static VALUE
