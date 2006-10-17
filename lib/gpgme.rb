@@ -319,20 +319,11 @@ module GPGME
     def set_passphrase_cb(passfunc, hook_value = nil)
       GPGME::gpgme_set_passphrase_cb(self, passfunc, hook_value)
     end
-    # An array which contains a Proc and an Object.
-    # The former is the passphrase callback and the latter is hook value
-    # passed to it.
-    attr_reader :passphrase_cb
 
     # Set the progress callback with given hook value.
     def set_progress_cb(progfunc, hook_value = nil)
       GPGME::gpgme_set_progress_cb(self, progfunc, hook_value)
     end
-    # An array which contains a Proc and an Object.
-    # The former is the progress callback used when progress
-    # information is available and the latter is hook value
-    # passed to it.
-    attr_reader :progress_cb
 
     # Initiates a key listing operation for given pattern.
     # If pattern is nil, all available keys are returned.
@@ -424,17 +415,19 @@ module GPGME
     end
 
     # Decrypt the ciphertext and return the plaintext.
-    def decrypt(cipher)
-      plain = Data.new
+    def decrypt(cipher, plain = Data.new)
       err = GPGME::gpgme_op_decrypt(self, cipher, plain)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       plain
     end
 
+    def decrypt_result
+      GPGME::gpgme_op_decrypt_result(self)
+    end
+
     # Verify that the signature in the data object is a valid signature.
-    def verify(sig, signed_text = nil, plain = nil)
-      plain = Data.new
+    def verify(sig, signed_text = nil, plain = Data.new)
       err = GPGME::gpgme_op_verify(self, sig, signed_text, plain)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -443,6 +436,14 @@ module GPGME
 
     def verify_result
       GPGME::gpgme_op_verify_result(self)
+    end
+
+    # Decrypt the ciphertext and return the plaintext.
+    def decrypt_verify(cipher, plain = Data.new)
+      err = GPGME::gpgme_op_decrypt_verify(self, cipher, plain)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+      plain
     end
 
     # Removes the list of signers from this object.
@@ -466,11 +467,25 @@ module GPGME
       sig
     end
 
+    def sign_result
+      GPGME::gpgme_sign_result(self)
+    end
+
     # Encrypt the plaintext in the data object for the recipients and
     # return the ciphertext.
-    def encrypt(recp, plain, flags = 0)
-      cipher = Data.new
+    def encrypt(recp, plain, cipher = Data.new, flags = 0)
       err = GPGME::gpgme_op_encrypt(self, recp, flags, plain, cipher)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+      cipher
+    end
+
+    def encrypt_result
+      GPGME::gpgme_encrypt_result(self)
+    end
+
+    def encrypt_sign(recp, plain, cipher = Data.new, flags = 0)
+      err = GPGME::gpgme_op_encrypt_sign(self, recp, flags, plain, cipher)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       cipher
