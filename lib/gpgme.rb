@@ -220,11 +220,6 @@ module GPGME
       GPGME::gpgme_data_write(self, buf, len)
     end
 
-    # Return the type of the underlying data.
-    def data_type
-      GPGME::gpgme_data_type(self)
-    end
-
     # Return the encoding of the underlying data.
     def encoding
       GPGME::gpgme_data_get_encoding(self)
