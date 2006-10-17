@@ -27,26 +27,109 @@ module GPGME
     end
     attr_reader :error
 
+    def code
+      GPGME::gpgme_err_code(@error)
+    end
+
+    def source
+      GPGME::gpgme_err_source(@error)
+    end
+
     def message
       GPGME::gpgme_strerror(@error)
     end
+
+    class General < self; end
+    class InvalidValue < self; end
+    class UnusablePublicKey < self; end
+    class UnusableSecretKey < self; end
+    class NoData < self; end
+    class Conflict < self; end
+    class NotImplemented < self; end
+    class DecryptFailed < self; end
+    class BadPassphrase < self; end
+    class Canceled < self; end
+    class InvalidEngine < self; end
+    class AmbiguousName < self; end
+    class WrongKeyUsage < self; end
+    class CertificateRevoked < self; end
+    class CertificateExpired < self; end
+    class NoCRLKnown < self; end
+    class NoPolicyMatch < self; end
+    class NoSecretKey < self; end
+    class MissingCertificate < self; end
+    class BadCertificateChain < self; end
+    class UnsupportedAlgorithm < self; end
+    class BadSignature < self; end
+    class NoPublicKey < self; end
   end
   Error = GpgmeError
 
+  private
   def check_error(err)
-    if GPGME::gpgme_err_code(err) == GPG_ERR_EOF
+    case GPGME::gpgme_err_code(err)
+    when GPG_ERR_EOF
       raise EOFError
-    end
-    unless GPGME::gpgme_err_code(err) == GPG_ERR_NO_ERROR
+    when GPG_ERR_NO_ERROR
+    when GPG_ERR_GENERAL
+      raise GpgmeError::General.new(err)
+    when GPG_ERR_ENOMEM
+      raise Errno::ENOMEM
+    when GPG_ERR_INV_VALUE
+      raise GpgmeError::InvalidValue.new(err)
+    when GPG_ERR_UNUSABLE_PUBKEY
+      raise GpgmeError::UnusablePublicKey.new(err)
+    when GPG_ERR_UNUSABLE_SECKEY
+      raise GpgmeError::UnusableSecretKey.new(err)
+    when GPG_ERR_NO_DATA
+      raise GpgmeError::NoData.new(err)
+    when GPG_ERR_CONFLICT
+      raise GpgmeError::Conflict.new(err)
+    when GPG_ERR_NOT_IMPLEMENTED
+      raise GpgmeError::NotImplemented.new(err)
+    when GPG_ERR_DECRYPT_FAILED
+      raise GpgmeError::DecryptFailed.new(err)
+    when GPG_ERR_BAD_PASSPHRASE
+      raise GpgmeError::BadPassphrase.new(err)
+    when GPG_ERR_CANCELED
+      raise GpgmeError::Canceled.new(err)
+    when GPG_ERR_INV_ENGINE
+      raise GpgmeError::InvalidEngine.new(err)
+    when GPG_ERR_AMBIGUOUS_NAME
+      raise GpgmeError::AmbiguousName.new(err)
+    when GPG_ERR_WRONG_KEY_USAGE
+      raise GpgmeError::WrongKeyUsage.new(err)
+    when GPG_ERR_CERT_REVOKED
+      raise GpgmeError::CertificateRevoked.new(err)
+    when GPG_ERR_CERT_EXPIRED
+      raise GpgmeError::CertificateExpired.new(err)
+    when GPG_ERR_NO_CRL_KNOWN
+      raise GpgmeError::NoCRLKnown.new(err)
+    when GPG_ERR_NO_POLICY_MATCH
+      raise GpgmeError::NoPolicyMatch.new(err)
+    when GPG_ERR_NO_SECKEY
+      raise GpgmeError::NoSecretKey.new(err)
+    when GPG_ERR_MISSING_CERT
+      raise GpgmeError::MissingCertificate.new(err)
+    when GPG_ERR_BAD_CERT_CHAIN
+      raise GpgmeError::BadCertificateChain.new(err)
+    when GPG_ERR_UNSUPPORTED_ALGORITHM
+      raise GpgmeError::UnsupportedAlgorithm.new(err)
+    when GPG_ERR_BAD_SIGNATURE
+      raise GpgmeError::BadSignature.new(err)
+    when GPG_ERR_NO_PUBKEY
+      raise GpgmeError::NoPublicKey.new(err)
+    else
       raise GpgmeError.new(err)
     end
   end
   module_function :check_error
 
+  public
   def engine_info
-    info = Array.new
-    GPGME::gpgme_get_engine_info(info)
-    info
+    rinfo = Array.new
+    GPGME::gpgme_get_engine_info(rinfo)
+    rinfo
   end
   module_function :engine_info
 
@@ -56,39 +139,39 @@ module GPGME
 
     # Create a new GpgmeData instance.
     def self.new
-      dh = Array.new
-      err = GPGME::gpgme_data_new(dh)
+      rdh = Array.new
+      err = GPGME::gpgme_data_new(rdh)
       GPGME::check_error(err)
-      dh[0]
+      rdh[0]
     end
 
     # Create a new GpgmeData instance with internal buffer.
     def self.new_from_mem(buf, copy = false)
-      dh = Array.new
-      err = GPGME::gpgme_data_new_from_mem(dh, buf, buf.length, copy ? 1 : 0)
+      rdh = Array.new
+      err = GPGME::gpgme_data_new_from_mem(rdh, buf, buf.length, copy ? 1 : 0)
       GPGME::check_error(err)
-      dh[0]
+      rdh[0]
     end
 
     def self.new_from_file(filename, copy = false)
-      dh = Array.new
-      err = GPGME::gpgme_data_new_from_file(dh, filename, copy ? 1 : 0)
+      rdh = Array.new
+      err = GPGME::gpgme_data_new_from_file(rdh, filename, copy ? 1 : 0)
       GPGME::check_error(err)
-      dh[0]
+      rdh[0]
     end
 
     def self.new_from_fd(fd)
-      dh = Array.new
-      err = GPGME::gpgme_data_new_from_fd(dh, fd)
+      rdh = Array.new
+      err = GPGME::gpgme_data_new_from_fd(rdh, fd)
       GPGME::check_error(err)
-      dh[0]
+      rdh[0]
     end
 
     def self.new_from_cbs(cbs, hook_value = nil)
-      dh = Array.new
-      err = GPGME::gpgme_data_new_from_cbs(dh, cbs, hook_value)
+      rdh = Array.new
+      err = GPGME::gpgme_data_new_from_cbs(rdh, cbs, hook_value)
       GPGME::check_error(err)
-      dh[0]
+      rdh[0]
     end
 
     def _read(len)
@@ -166,11 +249,24 @@ module GPGME
   # A context within which all cryptographic operations are performed.
   class GpgmeCtx
     # Create a new GpgmeCtx object.
-    def self.new
-      ctx = Array.new
-      err = GPGME::gpgme_new(ctx)
+    def self.new(attrs = Hash.new)
+      rctx = Array.new
+      err = GPGME::gpgme_new(rctx)
       GPGME::check_error(err)
-      ctx[0]
+      ctx = rctx[0]
+      attrs.each_pair do |key, value|
+        case key
+        when :protocol
+          ctx.protocol = value
+        when :armor
+          ctx.armor = value
+        when :textmode
+          ctx.textmode = value
+        when :keylist_mode
+          ctx.keylist_mode = value
+        end
+      end
+      ctx
     end
 
     # Set the protocol used within this context.
@@ -248,10 +344,10 @@ module GPGME
     # Returns the next key in the list created by a previous
     # keylist_start operation.
     def keylist_next
-      key = Array.new
-      err = GPGME::gpgme_op_keylist_next(self, key)
+      rkey = Array.new
+      err = GPGME::gpgme_op_keylist_next(self, rkey)
       GPGME::check_error(err)
-      key[0]
+      rkey[0]
     end
 
     # End a pending key list operation.
@@ -276,10 +372,10 @@ module GPGME
 
     # Get the key with the fingerprint.
     def get_key(fpr, secret = false)
-      key = Array.new
-      err = GPGME::gpgme_get_key(self, fpr, key, secret ? 1 : 0)
+      rkey = Array.new
+      err = GPGME::gpgme_get_key(self, fpr, rkey, secret ? 1 : 0)
       GPGME::check_error(err)
-      key[0]
+      rkey[0]
     end
 
     # Generates a new key pair.
