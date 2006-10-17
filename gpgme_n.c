@@ -75,7 +75,7 @@ Boston, MA 02110-1301, USA.  */
   Data_Get_Struct(vkey, struct _gpgme_key, key)
 
 #define WRAP_GPGME_TRUST_ITEM(item)					  \
-  Data_Wrap_Struct(cGpgmeTrustItem, 0, gpgme_trust_item_release, item)	  \
+  Data_Wrap_Struct(cGpgmeTrustItem, 0, gpgme_trust_item_unref, item)	  \
 /* `gpgme_trust_item_t' is typedef'ed as `struct _gpgme_trust_item *'. */
 #define UNWRAP_GPGME_TRUST_ITEM(vitem, item)				  \
   Data_Get_Struct(vitem, struct _gpgme_trust_item, item)
@@ -828,33 +828,6 @@ rb_s_gpgme_get_key (dummy, vctx, vfpr, rkey, vsecret)
 }
 
 static VALUE
-rb_s_gpgme_key_get_string_attr (dummy, vkey, vwhat, vidx)
-     VALUE dummy, vkey, vwhat, vidx;
-{
-  gpgme_key_t key;
-  const char *attr;
-
-  UNWRAP_GPGME_KEY(vkey, key);
-  attr = gpgme_key_get_string_attr (key, NUM2INT(vwhat), NULL, NUM2INT(vidx));
-  if (!attr)
-    return Qnil;
-  return rb_str_new2 (attr);
-}
-
-static VALUE
-rb_s_gpgme_key_get_ulong_attr (dummy, vkey, vwhat, vidx)
-     VALUE dummy, vkey, vwhat, vidx;
-{
-  gpgme_key_t key;
-  unsigned long attr;
-
-  UNWRAP_GPGME_KEY(vkey, key);
-  attr = gpgme_key_get_ulong_attr (key, NUM2INT(vwhat), NULL,
-				   NUM2INT(vidx));
-  return ULONG2NUM(attr);
-}
-
-static VALUE
 rb_s_gpgme_key_ref (dummy, vkey)
      VALUE dummy, vkey;
 {
@@ -1025,23 +998,6 @@ rb_s_gpgme_op_import_result (dummy, vctx)
 }
 
 static VALUE
-rb_s_gpgme_op_import_ext (dummy, vctx, vkeydata, rnr)
-     VALUE dummy, vctx, vkeydata, rnr;
-{
-  gpgme_ctx_t ctx;
-  gpgme_data_t keydata;
-  int nr, err;
-
-  UNWRAP_GPGME_CTX(vctx, ctx);
-  UNWRAP_GPGME_DATA(vkeydata, keydata);
-
-  err = gpgme_op_import_ext (ctx, keydata, &nr);
-  if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rnr, INT2NUM(nr));
-  return LONG2NUM(err);
-}
-
-static VALUE
 rb_s_gpgme_op_delete (dummy, vctx, vkey, vallow_secret)
      VALUE dummy, vctx, vkey, vallow_secret;
 {
@@ -1091,11 +1047,23 @@ rb_s_gpgme_op_trustlist_next (dummy, vctx, ritem)
   gpgme_ctx_t ctx;
   gpgme_trust_item_t item;
   gpgme_error_t err;
+  VALUE vitem;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   err = gpgme_op_trustlist_next (ctx, &item);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (ritem, WRAP_GPGME_TRUST_ITEM(item));
+    {
+      vitem = WRAP_GPGME_TRUST_ITEM(item);
+      rb_iv_set (vitem, "@keyid", rb_str_new2 (item->keyid));
+      rb_iv_set (vitem, "@type", INT2FIX(item->type));
+      rb_iv_set (vitem, "@level", INT2FIX(item->level));
+      if (item->owner_trust)
+	rb_iv_set (vitem, "@owner_trust", rb_str_new2 (item->owner_trust));
+      rb_iv_set (vitem, "@validity", rb_str_new2 (item->validity));
+      if (item->name)
+	rb_iv_set (vitem, "@name", rb_str_new2 (item->name));
+      rb_ary_push (ritem, vitem);
+    }
   return LONG2NUM(err);
 }
 
@@ -1112,35 +1080,7 @@ rb_s_gpgme_op_trustlist_end (dummy, vctx)
 }
 
 static VALUE
-rb_s_gpgme_trust_item_get_string_attr (dummy, vitem, vwhat, vidx)
-     VALUE dummy, vitem, vwhat, vidx;
-{
-  gpgme_trust_item_t item;
-  const char *attr;
-
-  UNWRAP_GPGME_TRUST_ITEM(vitem, item);
-  attr = gpgme_trust_item_get_string_attr (item, NUM2INT(vwhat), NULL,
-					   NUM2INT(vidx));
-  if (!attr)
-    return Qnil;
-  return rb_str_new2 (attr);
-}
-
-static VALUE
-rb_s_gpgme_trust_item_get_int_attr (dummy, vitem, vwhat, vidx)
-     VALUE dummy, vitem, vwhat, vidx;
-{
-  gpgme_trust_item_t item;
-  int attr;
-
-  UNWRAP_GPGME_TRUST_ITEM(vitem, item);
-  attr = gpgme_trust_item_get_int_attr (item, NUM2INT(vwhat), NULL,
-					NUM2INT(vidx));
-  return INT2NUM(attr);
-}
-
-static VALUE
-rb_s_gpgme_trust_item_release (dummy, vitem)
+rb_s_gpgme_trust_item_unref (dummy, vitem)
      VALUE dummy, vitem;
 {
   gpgme_trust_item_t item;
@@ -1148,8 +1088,8 @@ rb_s_gpgme_trust_item_release (dummy, vitem)
   UNWRAP_GPGME_TRUST_ITEM(vitem, item);
   if (!item)
     rb_raise (rb_eRuntimeError,
-      "gpgme_trust_item_t has already been released.");
-  gpgme_trust_item_release (item);
+      "gpgme_trust_item_t has already been unref'd.");
+  gpgme_trust_item_unref (item);
   DATA_PTR(vitem) = NULL;
   return Qnil;
 }
@@ -1265,67 +1205,6 @@ rb_s_gpgme_op_verify_result (dummy, vctx)
       rb_ary_push (vsignatures, vsignature);
     }
   return vverify_result;
-}
-
-static VALUE
-rb_s_gpgme_get_sig_status (dummy, vctx, vidx, rstat, rcreated)
-     VALUE dummy, vctx, vidx, rstat, rcreated;
-{
-  gpgme_ctx_t ctx;
-  gpgme_sig_stat_t stat;
-  time_t created;
-  const char *fingerprint;
-
-  UNWRAP_GPGME_CTX(vctx, ctx);
-  fingerprint = gpgme_get_sig_status (ctx, NUM2INT(vidx), &stat, &created);
-  if (!fingerprint)
-    return Qnil;
-  rb_ary_push (rstat, INT2NUM(stat));
-  rb_ary_push (rcreated, rb_time_new (created, 0));
-  return rb_str_new2 (fingerprint);
-}
-
-static VALUE
-rb_s_gpgme_get_sig_string_attr (dummy, vctx, vidx, vwhat, vwhatidx)
-     VALUE dummy, vctx, vidx, vwhat, vwhatidx;
-{
-  gpgme_ctx_t ctx;
-  const char *attr;
-
-  UNWRAP_GPGME_CTX(vctx, ctx);
-  attr = gpgme_get_sig_string_attr (ctx, NUM2INT(vidx), NUM2INT(vwhat),
-				    NUM2INT(vwhatidx));
-  if (!attr)
-    return Qnil;
-  return rb_str_new2 (attr);
-}
-
-static VALUE
-rb_s_gpgme_get_sig_ulong_attr (dummy, vctx, vidx, vwhat, vwhatidx)
-     VALUE dummy, vctx, vidx, vwhat, vwhatidx;
-{
-  gpgme_ctx_t ctx;
-  unsigned long attr;
-
-  UNWRAP_GPGME_CTX(vctx, ctx);
-  attr = gpgme_get_sig_ulong_attr (ctx, NUM2INT(vidx), NUM2INT(vwhat),
-				   NUM2INT(vwhatidx));
-  return ULONG2NUM(attr);
-}
-
-static VALUE
-rb_s_gpgme_get_sig_key (dummy, vctx, vidx, rkey)
-     VALUE dummy, vctx, vidx, rkey;
-{
-  gpgme_ctx_t ctx;
-  gpgme_key_t key;
-  gpgme_error_t err;
-
-  UNWRAP_GPGME_CTX(vctx, ctx);
-  err = gpgme_get_sig_key (ctx, NUM2INT(vidx), &key);
-  if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rkey, WRAP_GPGME_KEY(key));
-  return LONG2NUM(err);
 }
 
 static VALUE
@@ -1684,10 +1563,6 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_keylist_end, 1);
   rb_define_module_function (mGPGME, "gpgme_get_key",
 			     rb_s_gpgme_get_key, 4);
-  rb_define_module_function (mGPGME, "gpgme_key_get_string_attr",
-			     rb_s_gpgme_key_get_string_attr, 3);
-  rb_define_module_function (mGPGME, "gpgme_key_get_ulong_attr",
-			     rb_s_gpgme_key_get_ulong_attr, 3);
   rb_define_module_function (mGPGME, "gpgme_key_ref",
 			     rb_s_gpgme_key_ref, 1);
   rb_define_module_function (mGPGME, "gpgme_key_unref",
@@ -1704,8 +1579,6 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_import, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_start",
 			     rb_s_gpgme_op_import_start, 2);
-  rb_define_module_function (mGPGME, "gpgme_op_import_ext",
-			     rb_s_gpgme_op_import_ext, 3);
   rb_define_module_function (mGPGME, "gpgme_op_delete",
 			     rb_s_gpgme_op_delete, 3);
   rb_define_module_function (mGPGME, "gpgme_op_delete_start",
@@ -1718,12 +1591,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_trustlist_next, 2);
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_end",
 			     rb_s_gpgme_op_trustlist_end, 1);
-  rb_define_module_function (mGPGME, "gpgme_trust_item_get_string_attr",
-			     rb_s_gpgme_trust_item_get_string_attr, 3);
-  rb_define_module_function (mGPGME, "gpgme_trust_item_get_int_attr",
-			     rb_s_gpgme_trust_item_get_int_attr, 3);
-  rb_define_module_function (mGPGME, "gpgme_trust_item_release",
-			     rb_s_gpgme_trust_item_release, 1);
+  rb_define_module_function (mGPGME, "gpgme_trust_item_unref",
+			     rb_s_gpgme_trust_item_unref, 1);
 
   /* Decrypt */
   rb_define_module_function (mGPGME, "gpgme_op_decrypt",
@@ -1738,14 +1607,6 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_verify_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_verify_result",
 			     rb_s_gpgme_op_verify_result, 1);
-  rb_define_module_function (mGPGME, "gpgme_get_sig_status",
-			     rb_s_gpgme_get_sig_status, 4);
-  rb_define_module_function (mGPGME, "gpgme_get_sig_string_attr",
-			     rb_s_gpgme_get_sig_string_attr, 4);
-  rb_define_module_function (mGPGME, "gpgme_get_sig_ulong_attr",
-			     rb_s_gpgme_get_sig_ulong_attr, 4);
-  rb_define_module_function (mGPGME, "gpgme_get_sig_key",
-			     rb_s_gpgme_get_sig_key, 3);
 
   /* Decrypt and Verify */
   rb_define_module_function (mGPGME, "gpgme_op_decrypt_verify",

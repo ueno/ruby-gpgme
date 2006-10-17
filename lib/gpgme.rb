@@ -33,6 +33,17 @@ module GPGME
   end
   Error = GpgmeError
 
+  alias gpgme_trust_item_release gpgme_trust_item_unref
+
+  def gpgme_data_rewind
+    begin
+      seek(0, IO::SEEK_SET)
+    rescue SystemCallError => e
+      return e.errno
+    end
+  end
+  module_function gpgme_data_rewind
+
   def gpgme_op_import_ext(ctx, keydata, nr)
     err = GPGME::gpgme_op_import(ctx, keydata)
     if GPGME::gpgme_err_code(err) == GPGME::GPG_ERR_NO_ERROR
@@ -132,7 +143,7 @@ module GPGME
 
     # Reset the data pointer.
     def rewind
-      seek(0, IO::SEEK_SET)
+      GPGME::gpgme_data_rewind(self)
     end
 
     # Seek the data pointer.
