@@ -656,6 +656,19 @@ rb_s_gpgme_get_progress_cb (dummy, vctx, rprogfunc, rhook_value)
 }
 
 static VALUE
+rb_s_gpgme_set_locale (dummy, vctx, vcategory, vvalue)
+     VALUE dummy, vctx, vcategory, vvalue;
+{
+  gpgme_ctx_t ctx;
+  gpgme_error_t err;
+  
+  UNWRAP_GPGME_CTX(vctx, ctx);
+
+  err = gpgme_set_locale (ctx, NUM2INT(vcategory), StringValueCStr(vvalue));
+  return LONG2NUM(err);
+}
+
+static VALUE
 rb_s_gpgme_op_keylist_start (dummy, vctx, vpattern, vsecret_only)
      VALUE dummy, vctx, vpattern, vsecret_only;
 {
@@ -1551,6 +1564,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_set_progress_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_get_progress_cb",
 			     rb_s_gpgme_get_progress_cb, 3);
+  rb_define_module_function (mGPGME, "gpgme_set_locale",
+			     rb_s_gpgme_set_locale, 3);
 
   /* Key Management */
   rb_define_module_function (mGPGME, "gpgme_op_keylist_start",
@@ -2024,6 +2039,8 @@ void Init_gpgme_n ()
 		   INT2FIX(GPGME_KEYLIST_MODE_EXTERN));
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIGS",
 		   INT2FIX(GPGME_KEYLIST_MODE_SIGS));
+  rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_VALIDATE",
+		   INT2FIX(GPGME_KEYLIST_MODE_VALIDATE));
 
   /* The available flags for status field of gpgme_import_status_t.  */
   rb_define_const (mGPGME, "GPGME_IMPORT_NEW", INT2FIX(GPGME_IMPORT_NEW));
