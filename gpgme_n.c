@@ -25,7 +25,7 @@ Boston, MA 02110-1301, USA.  */
    function, or a constant.  No instance methods are defined here.
 2. Each symbol exported from this module follows the same naming
    convention as the GPGME API.  That is, symbol names are followed
-   by `gpgme_' for functions and are followed by `GPGME_' or `GPG_' for
+   by `gpgme_' for functions are followed by `GPGME_' or `GPG_' for
    constants.
 3. Output arguments are wrapped in arrays.  For example, the 1st
    argument of `gpgme_data_new' has type `gpgme_data_t *' to store the
@@ -90,7 +90,9 @@ static VALUE cGpgmeEngineInfo,
   cGpgmeVerifyResult,
   cGpgmeSignature,
   cGpgmeSigNotation,
-  cGpgmeTrustItem;
+  cGpgmeTrustItem,
+  cGpgmeImportStatus,
+  cGpgmeImportResult;
 
 static VALUE
 rb_s_gpgme_check_version (dummy, vreq)
@@ -968,6 +970,58 @@ rb_s_gpgme_op_import_start (dummy, vctx, vkeydata)
 
   err = gpgme_op_import_start (ctx, keydata);
   return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_import_result (dummy, vctx)
+     VALUE dummy, vctx;
+{
+  gpgme_ctx_t ctx;
+  gpgme_import_result_t import_result;
+  gpgme_import_status_t import_status;
+  VALUE vimport_result, vimports;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+
+  import_result = gpgme_op_import_result (ctx);
+  vimport_result = rb_class_new_instance (0, NULL, cGpgmeImportResult);
+  rb_iv_set (vimport_result, "@considered",
+	     INT2NUM(import_result->considered));
+  rb_iv_set (vimport_result, "@no_user_id",
+	     INT2NUM(import_result->no_user_id));
+  rb_iv_set (vimport_result, "@imported", INT2NUM(import_result->imported));
+  rb_iv_set (vimport_result, "@imported_rsa",
+	     INT2NUM(import_result->imported_rsa));
+  rb_iv_set (vimport_result, "@unchanged", INT2NUM(import_result->unchanged));
+  rb_iv_set (vimport_result, "@new_user_ids",
+	     INT2NUM(import_result->new_user_ids));
+  rb_iv_set (vimport_result, "@new_sub_keys",
+	     INT2NUM(import_result->new_sub_keys));
+  rb_iv_set (vimport_result, "@new_signatures",
+	     INT2NUM(import_result->new_signatures));
+  rb_iv_set (vimport_result, "@new_revocations",
+	     INT2NUM(import_result->new_revocations));
+  rb_iv_set (vimport_result, "@secret_read",
+	     INT2NUM(import_result->secret_read));
+  rb_iv_set (vimport_result, "@secret_imported",
+	     INT2NUM(import_result->secret_imported));
+  rb_iv_set (vimport_result, "@secret_unchanged",
+	     INT2NUM(import_result->secret_unchanged));
+  rb_iv_set (vimport_result, "@not_imported",
+	     INT2NUM(import_result->not_imported));
+  vimports = rb_ary_new ();
+  rb_iv_set (vimport_result, "@imports", vimports);
+  for (import_status = import_result->imports; import_status;
+       import_status = import_status->next)
+    {
+      VALUE vimport_status =
+	rb_class_new_instance (0, NULL, cGpgmeImportStatus);
+      rb_iv_set (vimport_status, "@fpr", rb_str_new2 (import_status->fpr));
+      rb_iv_set (vimport_status, "@result", LONG2NUM(import_status->result));
+      rb_iv_set (vimport_status, "@status", UINT2NUM(import_status->status));
+      rb_ary_push (vimports, vimport_status);
+    }
+  return vimport_result;
 }
 
 static VALUE
@@ -2109,4 +2163,13 @@ void Init_gpgme_n ()
 		   INT2FIX(GPGME_KEYLIST_MODE_EXTERN));
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIGS",
 		   INT2FIX(GPGME_KEYLIST_MODE_SIGS));
+
+  /* The available flags for status field of gpgme_import_status_t.  */
+  rb_define_const (mGPGME, "GPGME_IMPORT_NEW", INT2FIX(GPGME_IMPORT_NEW));
+  rb_define_const (mGPGME, "GPGME_IMPORT_UID", INT2FIX(GPGME_IMPORT_UID));
+  rb_define_const (mGPGME, "GPGME_IMPORT_SIG", INT2FIX(GPGME_IMPORT_SIG));
+  rb_define_const (mGPGME, "GPGME_IMPORT_SUBKEY",
+		   INT2FIX(GPGME_IMPORT_SUBKEY));
+  rb_define_const (mGPGME, "GPGME_IMPORT_SECRET",
+		   INT2FIX(GPGME_IMPORT_SECRET));
 }
