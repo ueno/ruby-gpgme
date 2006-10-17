@@ -535,11 +535,6 @@ module GPGME
     def secret?
       @secret == 1
     end
-
-    # Return the value of the attribute of the key.
-    def [](what, idx = 0)
-      GPGME::gpgme_key_get_string_attr(self, what, idx)
-    end
   end
 
   class SubKey
