@@ -15,7 +15,6 @@ passphrase_cb = proc {|hook, uid_hint, passphrase_info, prev_was_bad, fd|
     system('stty echo')
   end
   puts
-  GPGME::GPG_ERR_NO_ERROR
 }
 ctx.set_passphrase_cb(passphrase_cb)
 

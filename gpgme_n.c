@@ -85,7 +85,7 @@ static VALUE cEngineInfo,
   cData,
   cKey,
   cSubKey,
-  cUserId,
+  cUserID,
   cKeySig,
   cInvalidKey,
   cNewSignature,
@@ -140,6 +140,26 @@ rb_s_gpgme_get_engine_info (dummy, rinfo)
 	}
     }
   return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_pubkey_algo_name (dummy, valgo)
+     VALUE dummy, valgo;
+{
+  const char *name = gpgme_pubkey_algo_name (NUM2INT(valgo));
+  if (name)
+    return rb_str_new2 (name);
+  return Qnil;
+}
+
+static VALUE
+rb_s_gpgme_hash_algo_name (dummy, valgo)
+     VALUE dummy, valgo;
+{
+  const char *name = gpgme_hash_algo_name (NUM2INT(valgo));
+  if (name)
+    return rb_str_new2 (name);
+  return Qnil;
 }
 
 static VALUE
@@ -765,8 +785,7 @@ save_gpgme_key_attrs (vkey, key)
   rb_iv_set (vkey, "@uids", vuids);
   for (user_id = key->uids; user_id; user_id = user_id->next)
     {
-      VALUE vuser_id = rb_class_new_instance(0, NULL, cUserId),
-	vsignatures = rb_ary_new ();
+      VALUE vuser_id = rb_class_new_instance(0, NULL, cUserID), vsignatures;
       rb_iv_set (vuser_id, "@revoked", INT2FIX(user_id->revoked));
       rb_iv_set (vuser_id, "@invalid", INT2FIX(user_id->invalid));
       rb_iv_set (vuser_id, "@validity", INT2FIX(user_id->validity));
@@ -775,6 +794,8 @@ save_gpgme_key_attrs (vkey, key)
       rb_iv_set (vuser_id, "@comment", rb_str_new2 (user_id->comment));
       rb_iv_set (vuser_id, "@email", rb_str_new2 (user_id->email));
 
+      vsignatures = rb_ary_new ();
+      rb_iv_set (vuser_id, "@signatures", vsignatures);
       gpgme_key_sig_t key_sig;
       for (key_sig = user_id->signatures; key_sig; key_sig = key_sig->next)
 	{
@@ -1551,6 +1572,11 @@ void Init_gpgme_n ()
   rb_define_module_function (mGPGME, "gpgme_get_engine_info",
 			     rb_s_gpgme_get_engine_info, 1);
 
+  rb_define_module_function (mGPGME, "gpgme_pubkey_algo_name",
+			     rb_s_gpgme_pubkey_algo_name, 1);
+  rb_define_module_function (mGPGME, "gpgme_hash_algo_name",
+			     rb_s_gpgme_hash_algo_name, 1);
+
   rb_define_module_function (mGPGME, "gpgme_err_code",
 			     rb_s_gpgme_err_code, 1);
   rb_define_module_function (mGPGME, "gpgme_err_source",
@@ -1568,8 +1594,8 @@ void Init_gpgme_n ()
     rb_define_class_under (mGPGME, "Key", rb_cObject);
   cSubKey =
     rb_define_class_under (mGPGME, "SubKey", rb_cObject);
-  cUserId =
-    rb_define_class_under (mGPGME, "UserId", rb_cObject);
+  cUserID =
+    rb_define_class_under (mGPGME, "UserID", rb_cObject);
   cKeySig =
     rb_define_class_under (mGPGME, "KeySig", rb_cObject);
   cDecryptResult =
@@ -1759,6 +1785,29 @@ void Init_gpgme_n ()
   /* Run Control */
   rb_define_module_function (mGPGME, "gpgme_wait",
 			     rb_s_gpgme_wait, 3);
+
+  /* gpgme_pubkey_algo_t */
+  rb_define_const (mGPGME, "GPGME_PK_RSA", INT2FIX(GPGME_PK_RSA));
+  rb_define_const (mGPGME, "GPGME_PK_DSA", INT2FIX(GPGME_PK_DSA));
+  rb_define_const (mGPGME, "GPGME_PK_ELG", INT2FIX(GPGME_PK_ELG));
+  rb_define_const (mGPGME, "GPGME_PK_ELG_E", INT2FIX(GPGME_PK_ELG_E));
+
+  /* gpgme_hash_algo_t */
+  rb_define_const (mGPGME, "GPGME_MD_MD5", INT2FIX(GPGME_MD_MD5));
+  rb_define_const (mGPGME, "GPGME_MD_SHA1", INT2FIX(GPGME_MD_SHA1));
+  rb_define_const (mGPGME, "GPGME_MD_RMD160", INT2FIX(GPGME_MD_RMD160));
+  rb_define_const (mGPGME, "GPGME_MD_MD2", INT2FIX(GPGME_MD_MD2));
+  rb_define_const (mGPGME, "GPGME_MD_TIGER", INT2FIX(GPGME_MD_TIGER));
+  rb_define_const (mGPGME, "GPGME_MD_HAVAL", INT2FIX(GPGME_MD_HAVAL));
+  rb_define_const (mGPGME, "GPGME_MD_SHA256", INT2FIX(GPGME_MD_SHA256));
+  rb_define_const (mGPGME, "GPGME_MD_SHA384", INT2FIX(GPGME_MD_SHA384));
+  rb_define_const (mGPGME, "GPGME_MD_SHA512", INT2FIX(GPGME_MD_SHA512));
+  rb_define_const (mGPGME, "GPGME_MD_MD4", INT2FIX(GPGME_MD_MD4));
+  rb_define_const (mGPGME, "GPGME_MD_CRC32", INT2FIX(GPGME_MD_CRC32));
+  rb_define_const (mGPGME, "GPGME_MD_CRC32_RFC1510",
+		   INT2FIX(GPGME_MD_CRC32_RFC1510));
+  rb_define_const (mGPGME, "GPGME_MD_CRC24_RFC2440",
+		   INT2FIX(GPGME_MD_CRC24_RFC2440));
 
   /* gpgme_err_code_t */
   rb_define_const (mGPGME, "GPG_ERR_EOF",

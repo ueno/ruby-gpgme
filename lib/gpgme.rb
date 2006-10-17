@@ -21,6 +21,27 @@
 require 'gpgme_n'
 
 module GPGME
+  Protocol = {
+    GPGME_PROTOCOL_OpenPGP => "OpenPGP",
+    GPGME_PROTOCOL_CMS => "CMS"
+  }
+
+  KeyListMode = {
+    GPGME_KEYLIST_MODE_LOCAL => "LOCAL",
+    GPGME_KEYLIST_MODE_EXTERN => "EXTERN",
+    GPGME_KEYLIST_MODE_SIGS => "SIGS",
+    GPGME_KEYLIST_MODE_VALIDATE => "VALIDATE"
+  }
+
+  Validity = {
+    GPGME_VALIDITY_UNKNOWN => "UNKNOWN",
+    GPGME_VALIDITY_UNDEFINED => "UNDEFINED",
+    GPGME_VALIDITY_NEVER => "NEVER",
+    GPGME_VALIDITY_MARGINAL => "MARGINAL",
+    GPGME_VALIDITY_FULL => "FULL",
+    GPGME_VALIDITY_ULTIMATE => "ULTIMATE"
+  }
+
   class Error < StandardError
     def initialize(error)
       @error = error
@@ -290,7 +311,7 @@ module GPGME
 
     # Return true if the output is ASCII armored.
     def armor
-      GPGME::gpgme_get_armor(self)
+      GPGME::gpgme_get_armor(self) == 1 ? true : false
     end
 
     # Tell whether canonical text mode should be used.
@@ -301,7 +322,7 @@ module GPGME
 
     # Return true if canonical text mode is enabled.
     def textmode
-      GPGME::gpgme_get_textmode(self)
+      GPGME::gpgme_get_textmode(self) == 1 ? true : false
     end
 
     # Change the default behaviour of the key listing functions.
@@ -313,6 +334,12 @@ module GPGME
     # Returns the current key listing mode.
     def keylist_mode
       GPGME::gpgme_get_keylist_mode(self)
+    end
+
+    def inspect
+      "#<#{self.class} protocol=#{Protocol[protocol] || protocol}, \
+armor=#{armor}, textmode=#{textmode}, \
+keylist_mode=#{KeyListMode[keylist_mode]}>"
     end
 
     # Set the passphrase callback with given hook value.
@@ -535,6 +562,12 @@ module GPGME
     def secret?
       @secret == 1
     end
+
+    def inspect
+      "#<#{self.class} #{secret? ? "SECRET" : "PUBLIC"} \
+owner_trust=#{Validity[owner_trust]}, \
+subkeys=#{subkeys.inspect}, uids=#{uids.inspect}>"
+    end
   end
 
   class SubKey
@@ -586,9 +619,25 @@ module GPGME
     def expires
       Time.new(@expires)
     end
+
+    def inspect
+      caps = Array.new
+      caps << "encrypt" if can_encrypt?
+      caps << "sign" if can_sign?
+      caps << "certify" if can_certify?
+      caps << "authentication" if can_authenticate?
+      if secret?
+        "#<#{self.class} SECRET #{keyid}, \
+caps=#{caps.inspect}>"
+      else
+        "#<#{self.class} PUBLIC \
+#{GPGME::gpgme_pubkey_algo_name(pubkey_algo)} #{keyid}, 
+caps=#{caps.inspect}>"
+      end
+    end
   end
 
-  class UserId
+  class UserID
     private_class_method :new
 
     attr_reader :validity, :uid, :name, :comment, :email, :signatures
@@ -599,6 +648,11 @@ module GPGME
 
     def invalid?
       @invalid == 1
+    end
+
+    def inspect
+      "#<#{self.class} #{name} <#{email}> \
+validity=#{Validity[validity]}, signatures=#{signatures.inspect}>"
     end
   end
 
@@ -713,7 +767,7 @@ module GPGME
   GpgmeCtx = Ctx
   GpgmeKey = Key
   GpgmeSubKey = SubKey
-  GpgmeUserId = UserId
+  GpgmeUserID = UserID
   GpgmeKeySig = KeySig
   GpgmeVerifyResult = VerifyResult
   GpgmeSignature = Signature
@@ -746,4 +800,3 @@ module GPGME
   end
   module_function :gpgme_op_import_ext
 end
-
