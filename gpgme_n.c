@@ -87,10 +87,15 @@ static VALUE cGpgmeEngineInfo,
   cGpgmeSubKey,
   cGpgmeUserId,
   cGpgmeKeySig,
-  cGpgmeVerifyResult,
+  cGpgmeInvalidKey,
+  cGpgmeNewSignature,
   cGpgmeSignature,
   cGpgmeSigNotation,
   cGpgmeTrustItem,
+  cGpgmeDecryptResult,
+  cGpgmeVerifyResult,
+  cGpgmeSignResult,
+  cGpgmeEncryptResult,
   cGpgmeImportStatus,
   cGpgmeImportResult;
 
@@ -963,51 +968,40 @@ rb_s_gpgme_op_import_result (dummy, vctx)
      VALUE dummy, vctx;
 {
   gpgme_ctx_t ctx;
-  gpgme_import_result_t import_result;
-  gpgme_import_status_t import_status;
-  VALUE vimport_result, vimports;
+  gpgme_import_result_t result;
+  gpgme_import_status_t status;
+  VALUE vresult, vimports;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
-  import_result = gpgme_op_import_result (ctx);
-  vimport_result = rb_class_new_instance (0, NULL, cGpgmeImportResult);
-  rb_iv_set (vimport_result, "@considered",
-	     INT2NUM(import_result->considered));
-  rb_iv_set (vimport_result, "@no_user_id",
-	     INT2NUM(import_result->no_user_id));
-  rb_iv_set (vimport_result, "@imported", INT2NUM(import_result->imported));
-  rb_iv_set (vimport_result, "@imported_rsa",
-	     INT2NUM(import_result->imported_rsa));
-  rb_iv_set (vimport_result, "@unchanged", INT2NUM(import_result->unchanged));
-  rb_iv_set (vimport_result, "@new_user_ids",
-	     INT2NUM(import_result->new_user_ids));
-  rb_iv_set (vimport_result, "@new_sub_keys",
-	     INT2NUM(import_result->new_sub_keys));
-  rb_iv_set (vimport_result, "@new_signatures",
-	     INT2NUM(import_result->new_signatures));
-  rb_iv_set (vimport_result, "@new_revocations",
-	     INT2NUM(import_result->new_revocations));
-  rb_iv_set (vimport_result, "@secret_read",
-	     INT2NUM(import_result->secret_read));
-  rb_iv_set (vimport_result, "@secret_imported",
-	     INT2NUM(import_result->secret_imported));
-  rb_iv_set (vimport_result, "@secret_unchanged",
-	     INT2NUM(import_result->secret_unchanged));
-  rb_iv_set (vimport_result, "@not_imported",
-	     INT2NUM(import_result->not_imported));
+  result = gpgme_op_import_result (ctx);
+  vresult = rb_class_new_instance (0, NULL, cGpgmeImportResult);
+  rb_iv_set (vresult, "@considered", INT2NUM(result->considered));
+  rb_iv_set (vresult, "@no_user_id", INT2NUM(result->no_user_id));
+  rb_iv_set (vresult, "@imported", INT2NUM(result->imported));
+  rb_iv_set (vresult, "@imported_rsa", INT2NUM(result->imported_rsa));
+  rb_iv_set (vresult, "@unchanged", INT2NUM(result->unchanged));
+  rb_iv_set (vresult, "@new_user_ids", INT2NUM(result->new_user_ids));
+  rb_iv_set (vresult, "@new_sub_keys", INT2NUM(result->new_sub_keys));
+  rb_iv_set (vresult, "@new_signatures", INT2NUM(result->new_signatures));
+  rb_iv_set (vresult, "@new_revocations", INT2NUM(result->new_revocations));
+  rb_iv_set (vresult, "@secret_read", INT2NUM(result->secret_read));
+  rb_iv_set (vresult, "@secret_imported", INT2NUM(result->secret_imported));
+  rb_iv_set (vresult, "@secret_unchanged", INT2NUM(result->secret_unchanged));
+  rb_iv_set (vresult, "@not_imported", INT2NUM(result->not_imported));
   vimports = rb_ary_new ();
-  rb_iv_set (vimport_result, "@imports", vimports);
-  for (import_status = import_result->imports; import_status;
-       import_status = import_status->next)
+  rb_iv_set (vresult, "@imports", vimports);
+  for (status = result->imports; status;
+       status = status->next)
     {
-      VALUE vimport_status =
+      VALUE vstatus =
 	rb_class_new_instance (0, NULL, cGpgmeImportStatus);
-      rb_iv_set (vimport_status, "@fpr", rb_str_new2 (import_status->fpr));
-      rb_iv_set (vimport_status, "@result", LONG2NUM(import_status->result));
-      rb_iv_set (vimport_status, "@status", UINT2NUM(import_status->status));
-      rb_ary_push (vimports, vimport_status);
+      rb_iv_set (vstatus, "@fpr", rb_str_new2 (status->fpr));
+      rb_iv_set (vstatus, "@result", LONG2NUM(status->result));
+      rb_iv_set (vstatus, "@status", UINT2NUM(status->status));
+      rb_ary_push (vimports, vstatus);
     }
-  return vimport_result;
+  return vresult;
 }
 
 static VALUE
@@ -1137,6 +1131,25 @@ rb_s_gpgme_op_decrypt_start (dummy, vctx, vcipher, vplain)
 
   err = gpgme_op_decrypt_start (ctx, cipher, plain);
   return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_decrypt_result (dummy, vctx)
+     VALUE dummy, vctx;
+{
+  gpgme_ctx_t ctx;
+  gpgme_decrypt_result_t result;
+  VALUE vresult;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+
+  result = gpgme_op_decrypt_result (ctx);
+  vresult = rb_class_new_instance (0, NULL, cGpgmeDecryptResult);
+  if (result->unsupported_algorithm)
+    rb_iv_set (vresult, "@unsupported_algorithm",
+	       rb_str_new2 (result->unsupported_algorithm));
+  rb_iv_set (vresult, "@wrong_key_usage", INT2FIX(result->wrong_key_usage));
+  return vresult;
 }
 
 static VALUE
@@ -1326,6 +1339,53 @@ rb_s_gpgme_op_sign_start (dummy, vctx, vplain, vsig, vmode)
 }
 
 static VALUE
+rb_s_gpgme_op_sign_result (dummy, vctx)
+     VALUE dummy, vctx;
+{
+  gpgme_ctx_t ctx;
+  gpgme_sign_result_t result;
+  gpgme_invalid_key_t invalid_key;
+  gpgme_new_signature_t new_signature;
+  VALUE vresult, vinvalid_signers, vsignatures;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+
+  result = gpgme_op_sign_result (ctx);
+  vresult = rb_class_new_instance (0, NULL, cGpgmeSignResult);
+  vinvalid_signers = rb_ary_new ();
+  rb_iv_set (vresult, "@invalid_signers", vinvalid_signers);
+  for (invalid_key = result->invalid_signers; invalid_key;
+       invalid_key = invalid_key->next)
+    {
+      VALUE vinvalid_key =
+	rb_class_new_instance (0, NULL, cGpgmeInvalidKey);
+      rb_iv_set (vinvalid_key, "@fpr", rb_str_new2 (invalid_key->fpr));
+      rb_iv_set (vinvalid_key, "@reason", LONG2NUM(invalid_key->reason));
+      rb_ary_push (vinvalid_signers, vinvalid_key);
+    }
+  vsignatures = rb_ary_new ();
+  rb_iv_set (vresult, "@signatures", vsignatures);
+  for (new_signature = result->signatures; new_signature;
+       new_signature = new_signature->next)
+    {
+      VALUE vnew_signature =
+	rb_class_new_instance (0, NULL, cGpgmeNewSignature);
+      rb_iv_set (vnew_signature, "@type", INT2FIX(new_signature->type));
+      rb_iv_set (vnew_signature, "@pubkey_algo",
+		 INT2FIX(new_signature->pubkey_algo));
+      rb_iv_set (vnew_signature, "@hash_algo",
+		 INT2FIX(new_signature->hash_algo));
+      rb_iv_set (vnew_signature, "@sig_class",
+		 UINT2NUM(new_signature->sig_class));
+      rb_iv_set (vnew_signature, "@timestamp",
+		 LONG2NUM(new_signature->timestamp));
+      rb_iv_set (vnew_signature, "@fpr", rb_str_new2 (new_signature->fpr));
+      rb_ary_push (vsignatures, vnew_signature);
+    }
+  return vresult;
+}
+
+static VALUE
 rb_s_gpgme_op_encrypt (dummy, vctx, vrecp, vflags, vplain, vcipher)
      VALUE dummy, vctx, vrecp, vflags, vplain, vcipher;
 {
@@ -1377,6 +1437,33 @@ rb_s_gpgme_op_encrypt_start (dummy, vctx, vrecp, vflags, vplain, vcipher)
 
   err = gpgme_op_encrypt_start (ctx, recp, NUM2INT(vflags), plain, cipher);
   return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_encrypt_result (dummy, vctx)
+     VALUE dummy, vctx;
+{
+  gpgme_ctx_t ctx;
+  gpgme_encrypt_result_t result;
+  gpgme_invalid_key_t invalid_key;
+  VALUE vresult, vinvalid_recipients;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+
+  result = gpgme_op_encrypt_result (ctx);
+  vresult = rb_class_new_instance (0, NULL, cGpgmeEncryptResult);
+  vinvalid_recipients = rb_ary_new ();
+  rb_iv_set (vresult, "@invalid_recipients", vinvalid_recipients);
+  for (invalid_key = result->invalid_recipients; invalid_key;
+       invalid_key = invalid_key->next)
+    {
+      VALUE vinvalid_key =
+	rb_class_new_instance (0, NULL, cGpgmeInvalidKey);
+      rb_iv_set (vinvalid_key, "@fpr", rb_str_new2 (invalid_key->fpr));
+      rb_iv_set (vinvalid_key, "@reason", LONG2NUM(invalid_key->reason));
+      rb_ary_push (vinvalid_recipients, vinvalid_key);
+    }
+  return vresult;
 }
 
 static VALUE
@@ -1485,14 +1572,28 @@ void Init_gpgme_n ()
     rb_define_class_under (mGPGME, "GpgmeUserId", rb_cObject);
   cGpgmeKeySig =
     rb_define_class_under (mGPGME, "GpgmeKeySig", rb_cObject);
+  cGpgmeDecryptResult =
+    rb_define_class_under (mGPGME, "GpgmeDecryptResult", rb_cObject);
   cGpgmeVerifyResult =
     rb_define_class_under (mGPGME, "GpgmeVerifyResult", rb_cObject);
+  cGpgmeSignResult =
+    rb_define_class_under (mGPGME, "GpgmeSignResult", rb_cObject);
+  cGpgmeEncryptResult =
+    rb_define_class_under (mGPGME, "GpgmeEncryptResult", rb_cObject);
   cGpgmeSignature =
     rb_define_class_under (mGPGME, "GpgmeSignature", rb_cObject);
   cGpgmeSigNotation =
     rb_define_class_under (mGPGME, "GpgmeSigNotation", rb_cObject);
   cGpgmeTrustItem =
     rb_define_class_under (mGPGME, "GpgmeTrustItem", rb_cObject);
+  cGpgmeInvalidKey =
+    rb_define_class_under (mGPGME, "GpgmeInvalidKey", rb_cObject);
+  cGpgmeNewSignature =
+    rb_define_class_under (mGPGME, "GpgmeNewSignature", rb_cObject);
+  cGpgmeImportResult =
+    rb_define_class_under (mGPGME, "GpgmeImportResult", rb_cObject);
+  cGpgmeImportStatus =
+    rb_define_class_under (mGPGME, "GpgmeImportStatus", rb_cObject);
 
   /* Creating Data Buffers
    *
@@ -1614,6 +1715,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_decrypt, 3);
   rb_define_module_function (mGPGME, "gpgme_op_decrypt_start",
 			     rb_s_gpgme_op_decrypt_start, 3);
+  rb_define_module_function (mGPGME, "gpgme_op_decrypt_result",
+			     rb_s_gpgme_op_decrypt_result, 1);
 
   /* Verify */
   rb_define_module_function (mGPGME, "gpgme_op_verify",
@@ -1646,6 +1749,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_encrypt, 5);
   rb_define_module_function (mGPGME, "gpgme_op_encrypt_start",
 			     rb_s_gpgme_op_encrypt_start, 5);
+  rb_define_module_function (mGPGME, "gpgme_op_encrypt_result",
+			     rb_s_gpgme_op_encrypt_result, 1);
   rb_define_module_function (mGPGME, "gpgme_op_encrypt_sign",
 			     rb_s_gpgme_op_encrypt_sign, 5);
   rb_define_module_function (mGPGME, "gpgme_op_encrypt_sign_start",
@@ -2050,4 +2155,8 @@ void Init_gpgme_n ()
 		   INT2FIX(GPGME_IMPORT_SUBKEY));
   rb_define_const (mGPGME, "GPGME_IMPORT_SECRET",
 		   INT2FIX(GPGME_IMPORT_SECRET));
+
+  /* The available flags for gpgme_op_encrypt.  */
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_ALWAYS_TRUST",
+		   INT2FIX(GPGME_ENCRYPT_ALWAYS_TRUST));
 }

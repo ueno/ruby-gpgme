@@ -206,7 +206,7 @@ module GPGME
 
     # Reset the data pointer.
     def rewind
-      GPGME::gpgme_data_rewind(self)
+      seek(0)
     end
 
     # Seek the data pointer.
@@ -629,6 +629,45 @@ module GPGME
   end
   Signature = GpgmeSignature
 
+  class GpgmeDecryptResult
+    private_class_method :new
+
+    attr_reader :unsupported_algorithm, :wrong_key_usage
+  end
+  DecryptResult = GpgmeDecryptResult
+
+  class GpgmeSignResult
+    private_class_method :new
+
+    attr_reader :invalid_signers, :signatures
+  end
+  SignResult = GpgmeSignResult
+
+  class GpgmeEncryptResult
+    private_class_method :new
+
+    attr_reader :invalid_recipients
+  end
+  EncryptResult = GpgmeEncryptResult
+
+  class GpgmeInvalidKey
+    private_class_method :new
+
+    attr_reader :fpr, :reason
+  end
+  InvalidKey = GpgmeInvalidKey
+
+  class GpgmeNewSignature
+    private_class_method :new
+
+    attr_reader :type, :pubkey_algo, :hash_algo, :sig_class, :fpr
+
+    def timestamp
+      Time.at(@timestamp)
+    end
+  end
+  NewSignature = GpgmeNewSignature
+
   class GpgmeImportStatus
     private_class_method :new
 
@@ -644,8 +683,10 @@ module GPGME
     attr_reader :secret_read, :secret_imported, :secret_unchanged
     attr_reader :not_imported, :imports
   end
-  ImportResult = ImportStatus
+  ImportResult = GpgmeImportStatus
+end
 
+module GPGME
   # Deprecated functions.
   alias gpgme_trust_item_release gpgme_trust_item_unref
 
