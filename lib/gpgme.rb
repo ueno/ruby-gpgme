@@ -66,64 +66,65 @@ module GPGME
   Error = GpgmeError
 
   private
-  def check_error(err)
+  def error_to_exception(err)
     case GPGME::gpgme_err_code(err)
     when GPG_ERR_EOF
-      raise EOFError
+      EOFError.new
     when GPG_ERR_NO_ERROR
+      nil
     when GPG_ERR_GENERAL
-      raise GpgmeError::General.new(err)
+      GpgmeError::General.new(err)
     when GPG_ERR_ENOMEM
-      raise Errno::ENOMEM
+      Errno::ENOMEM.new
     when GPG_ERR_INV_VALUE
-      raise GpgmeError::InvalidValue.new(err)
+      GpgmeError::InvalidValue.new(err)
     when GPG_ERR_UNUSABLE_PUBKEY
-      raise GpgmeError::UnusablePublicKey.new(err)
+      GpgmeError::UnusablePublicKey.new(err)
     when GPG_ERR_UNUSABLE_SECKEY
-      raise GpgmeError::UnusableSecretKey.new(err)
+      GpgmeError::UnusableSecretKey.new(err)
     when GPG_ERR_NO_DATA
-      raise GpgmeError::NoData.new(err)
+      GpgmeError::NoData.new(err)
     when GPG_ERR_CONFLICT
-      raise GpgmeError::Conflict.new(err)
+      GpgmeError::Conflict.new(err)
     when GPG_ERR_NOT_IMPLEMENTED
-      raise GpgmeError::NotImplemented.new(err)
+      GpgmeError::NotImplemented.new(err)
     when GPG_ERR_DECRYPT_FAILED
-      raise GpgmeError::DecryptFailed.new(err)
+      GpgmeError::DecryptFailed.new(err)
     when GPG_ERR_BAD_PASSPHRASE
-      raise GpgmeError::BadPassphrase.new(err)
+      GpgmeError::BadPassphrase.new(err)
     when GPG_ERR_CANCELED
-      raise GpgmeError::Canceled.new(err)
+      GpgmeError::Canceled.new(err)
     when GPG_ERR_INV_ENGINE
-      raise GpgmeError::InvalidEngine.new(err)
+      GpgmeError::InvalidEngine.new(err)
     when GPG_ERR_AMBIGUOUS_NAME
-      raise GpgmeError::AmbiguousName.new(err)
+      GpgmeError::AmbiguousName.new(err)
     when GPG_ERR_WRONG_KEY_USAGE
-      raise GpgmeError::WrongKeyUsage.new(err)
+      GpgmeError::WrongKeyUsage.new(err)
     when GPG_ERR_CERT_REVOKED
-      raise GpgmeError::CertificateRevoked.new(err)
+      GpgmeError::CertificateRevoked.new(err)
     when GPG_ERR_CERT_EXPIRED
-      raise GpgmeError::CertificateExpired.new(err)
+      GpgmeError::CertificateExpired.new(err)
     when GPG_ERR_NO_CRL_KNOWN
-      raise GpgmeError::NoCRLKnown.new(err)
+      GpgmeError::NoCRLKnown.new(err)
     when GPG_ERR_NO_POLICY_MATCH
-      raise GpgmeError::NoPolicyMatch.new(err)
+      GpgmeError::NoPolicyMatch.new(err)
     when GPG_ERR_NO_SECKEY
-      raise GpgmeError::NoSecretKey.new(err)
+      GpgmeError::NoSecretKey.new(err)
     when GPG_ERR_MISSING_CERT
-      raise GpgmeError::MissingCertificate.new(err)
+      GpgmeError::MissingCertificate.new(err)
     when GPG_ERR_BAD_CERT_CHAIN
-      raise GpgmeError::BadCertificateChain.new(err)
+      GpgmeError::BadCertificateChain.new(err)
     when GPG_ERR_UNSUPPORTED_ALGORITHM
-      raise GpgmeError::UnsupportedAlgorithm.new(err)
+      GpgmeError::UnsupportedAlgorithm.new(err)
     when GPG_ERR_BAD_SIGNATURE
-      raise GpgmeError::BadSignature.new(err)
+      GpgmeError::BadSignature.new(err)
     when GPG_ERR_NO_PUBKEY
-      raise GpgmeError::NoPublicKey.new(err)
+      GpgmeError::NoPublicKey.new(err)
     else
-      raise GpgmeError.new(err)
+      GpgmeError.new(err)
     end
   end
-  module_function :check_error
+  module_function :error_to_exception
 
   public
   def engine_info
@@ -141,7 +142,8 @@ module GPGME
     def self.new
       rdh = Array.new
       err = GPGME::gpgme_data_new(rdh)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       rdh[0]
     end
 
@@ -149,28 +151,32 @@ module GPGME
     def self.new_from_mem(buf, copy = false)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_mem(rdh, buf, buf.length, copy ? 1 : 0)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       rdh[0]
     end
 
     def self.new_from_file(filename, copy = false)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_file(rdh, filename, copy ? 1 : 0)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       rdh[0]
     end
 
     def self.new_from_fd(fd)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_fd(rdh, fd)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       rdh[0]
     end
 
     def self.new_from_cbs(cbs, hook_value = nil)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_cbs(rdh, cbs, hook_value)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       rdh[0]
     end
 
@@ -228,7 +234,8 @@ module GPGME
     # Set the encoding of the underlying data.
     def encoding=(enc)
       err = gpgme_data_set_encoding(self, enc)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       enc
     end
   end
@@ -247,7 +254,8 @@ module GPGME
     def self.new(attrs = Hash.new)
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       ctx = rctx[0]
       attrs.each_pair do |key, value|
         case key
@@ -267,7 +275,8 @@ module GPGME
     # Set the protocol used within this context.
     def protocol=(proto)
       err = GPGME::gpgme_set_protocol(self, proto)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       proto
     end
 
@@ -333,7 +342,8 @@ module GPGME
     # If secret_only is true, the list is restricted to secret keys only.
     def keylist_start(pattern = nil, secret_only = false)
       err = GPGME::gpgme_op_keylist_start(self, pattern, secret_only ? 1 : 0)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
     end
 
     # Returns the next key in the list created by a previous
@@ -341,14 +351,16 @@ module GPGME
     def keylist_next
       rkey = Array.new
       err = GPGME::gpgme_op_keylist_next(self, rkey)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       rkey[0]
     end
 
     # End a pending key list operation.
     def keylist_end
       err = GPGME::gpgme_op_keylist_end(self)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
     end
 
     # Convenient method to iterate over keylist.
@@ -369,7 +381,8 @@ module GPGME
     def get_key(fpr, secret = false)
       rkey = Array.new
       err = GPGME::gpgme_get_key(self, fpr, rkey, secret ? 1 : 0)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       rkey[0]
     end
 
@@ -383,7 +396,8 @@ module GPGME
 	pubkey, seckey = GpgmeData.new, GpgmeData.new
       end
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       [pubkey, seckey]
     end
 
@@ -391,14 +405,16 @@ module GPGME
     def export(recipients)
       keydata = GpgmeData.new
       err = GPGME::gpgme_op_export(self, recipients, keydata)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       keydata
     end
 
     # Add the keys in the data buffer to the key ring.
     def import(keydata)
       err = GPGME::gpgme_op_import(self, keydata)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
     end
 
     # Delete the key from the key ring.
@@ -406,14 +422,16 @@ module GPGME
     # otherwise secret keys are deleted as well.
     def delete(key, allow_secret = false)
       err = GPGME::gpgme_op_delete(self, key, allow_secret ? 1 : 0)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
     end
 
     # Decrypt the ciphertext and return the plaintext.
     def decrypt(cipher)
       plain = GpgmeData.new
       err = GPGME::gpgme_op_decrypt(self, cipher, plain)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       plain
     end
 
@@ -421,7 +439,8 @@ module GPGME
     def verify(sig, signed_text = nil, plain = nil)
       plain = GpgmeData.new
       err = GPGME::gpgme_op_verify(self, sig, signed_text, plain)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       plain
     end
 
@@ -437,14 +456,16 @@ module GPGME
     # Add the key to the list of signers.
     def add_signer(key)
       err = GPGME::gpgme_signers_add(self, key)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
     end
 
     # Create a signature for the text in the data object.
     def sign(plain, mode = GPGME::GPGME_SIG_MODE_NORMAL)
       sig = GpgmeData.new
       err = GPGME::gpgme_op_sign(self, plain, sig, mode)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       sig
     end
 
@@ -453,7 +474,8 @@ module GPGME
     def encrypt(recp, plain, flags = 0)
       cipher = GpgmeData.new
       err = GPGME::gpgme_op_encrypt(self, recp, flags, plain, cipher)
-      GPGME::check_error(err)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
       cipher
     end
   end

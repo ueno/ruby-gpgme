@@ -19,8 +19,7 @@ passphrase_cb = proc {|hook, uid_hint, passphrase_info, prev_was_bad, fd|
 }
 ctx.set_passphrase_cb(passphrase_cb)
 
-begin
-  pair = ctx.genkey(<<'EOF')
+pair = ctx.genkey(<<'EOF')
 <GnupgKeyParms format="internal">
 Key-Type: DSA
 Key-Length: 1024
@@ -33,10 +32,6 @@ Passphrase: abcdabcdfs
 Expire-Date: 2010-08-15
 </GnupgKeyParms>
 EOF
-rescue GPGME::Error => err
-  $stderr.puts(err.message)
-  exit!
-end
 
 puts("Pubkey:\n#{pair[0].read}")
 puts("Seckey:\n#{pair[1].read}")
