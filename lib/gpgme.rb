@@ -21,7 +21,7 @@
 require 'gpgme_n'
 
 module GPGME
-  class GpgmeError < StandardError
+  class Error < StandardError
     def initialize(error)
       @error = error
     end
@@ -63,9 +63,7 @@ module GPGME
     class BadSignature < self; end
     class NoPublicKey < self; end
   end
-  Error = GpgmeError
 
-  private
   def error_to_exception(err)
     case GPGME::gpgme_err_code(err)
     when GPG_ERR_EOF
@@ -73,60 +71,60 @@ module GPGME
     when GPG_ERR_NO_ERROR
       nil
     when GPG_ERR_GENERAL
-      GpgmeError::General.new(err)
+      Error::General.new(err)
     when GPG_ERR_ENOMEM
       Errno::ENOMEM.new
     when GPG_ERR_INV_VALUE
-      GpgmeError::InvalidValue.new(err)
+      Error::InvalidValue.new(err)
     when GPG_ERR_UNUSABLE_PUBKEY
-      GpgmeError::UnusablePublicKey.new(err)
+      Error::UnusablePublicKey.new(err)
     when GPG_ERR_UNUSABLE_SECKEY
-      GpgmeError::UnusableSecretKey.new(err)
+      Error::UnusableSecretKey.new(err)
     when GPG_ERR_NO_DATA
-      GpgmeError::NoData.new(err)
+      Error::NoData.new(err)
     when GPG_ERR_CONFLICT
-      GpgmeError::Conflict.new(err)
+      Error::Conflict.new(err)
     when GPG_ERR_NOT_IMPLEMENTED
-      GpgmeError::NotImplemented.new(err)
+      Error::NotImplemented.new(err)
     when GPG_ERR_DECRYPT_FAILED
-      GpgmeError::DecryptFailed.new(err)
+      Error::DecryptFailed.new(err)
     when GPG_ERR_BAD_PASSPHRASE
-      GpgmeError::BadPassphrase.new(err)
+      Error::BadPassphrase.new(err)
     when GPG_ERR_CANCELED
-      GpgmeError::Canceled.new(err)
+      Error::Canceled.new(err)
     when GPG_ERR_INV_ENGINE
-      GpgmeError::InvalidEngine.new(err)
+      Error::InvalidEngine.new(err)
     when GPG_ERR_AMBIGUOUS_NAME
-      GpgmeError::AmbiguousName.new(err)
+      Error::AmbiguousName.new(err)
     when GPG_ERR_WRONG_KEY_USAGE
-      GpgmeError::WrongKeyUsage.new(err)
+      Error::WrongKeyUsage.new(err)
     when GPG_ERR_CERT_REVOKED
-      GpgmeError::CertificateRevoked.new(err)
+      Error::CertificateRevoked.new(err)
     when GPG_ERR_CERT_EXPIRED
-      GpgmeError::CertificateExpired.new(err)
+      Error::CertificateExpired.new(err)
     when GPG_ERR_NO_CRL_KNOWN
-      GpgmeError::NoCRLKnown.new(err)
+      Error::NoCRLKnown.new(err)
     when GPG_ERR_NO_POLICY_MATCH
-      GpgmeError::NoPolicyMatch.new(err)
+      Error::NoPolicyMatch.new(err)
     when GPG_ERR_NO_SECKEY
-      GpgmeError::NoSecretKey.new(err)
+      Error::NoSecretKey.new(err)
     when GPG_ERR_MISSING_CERT
-      GpgmeError::MissingCertificate.new(err)
+      Error::MissingCertificate.new(err)
     when GPG_ERR_BAD_CERT_CHAIN
-      GpgmeError::BadCertificateChain.new(err)
+      Error::BadCertificateChain.new(err)
     when GPG_ERR_UNSUPPORTED_ALGORITHM
-      GpgmeError::UnsupportedAlgorithm.new(err)
+      Error::UnsupportedAlgorithm.new(err)
     when GPG_ERR_BAD_SIGNATURE
-      GpgmeError::BadSignature.new(err)
+      Error::BadSignature.new(err)
     when GPG_ERR_NO_PUBKEY
-      GpgmeError::NoPublicKey.new(err)
+      Error::NoPublicKey.new(err)
     else
-      GpgmeError.new(err)
+      Error.new(err)
     end
   end
   module_function :error_to_exception
+  private :error_to_exception
 
-  public
   def engine_info
     rinfo = Array.new
     GPGME::gpgme_get_engine_info(rinfo)
@@ -135,10 +133,10 @@ module GPGME
   module_function :engine_info
 
   # A class for managing data buffers.
-  class GpgmeData
+  class Data
     BLOCK_SIZE = 4096
 
-    # Create a new GpgmeData instance.
+    # Create a new Data instance.
     def self.new
       rdh = Array.new
       err = GPGME::gpgme_data_new(rdh)
@@ -147,7 +145,7 @@ module GPGME
       rdh[0]
     end
 
-    # Create a new GpgmeData instance with internal buffer.
+    # Create a new Data instance with internal buffer.
     def self.new_from_mem(buf, copy = false)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_mem(rdh, buf, buf.length, copy ? 1 : 0)
@@ -239,18 +237,17 @@ module GPGME
       enc
     end
   end
-  Data = GpgmeData
 
-  class GpgmeEngineInfo
+  class EngineInfo
     private_class_method :new
     
     attr_reader :protocol, :file_name, :version, :req_version
+    alias required_version req_version
   end
-  EngineInfo = GpgmeEngineInfo
 
   # A context within which all cryptographic operations are performed.
-  class GpgmeCtx
-    # Create a new GpgmeCtx object.
+  class Ctx
+    # Create a new Ctx object.
     def self.new(attrs = Hash.new)
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)
@@ -393,7 +390,7 @@ module GPGME
       if store
 	pubkey, seckey = nil, nil
       else
-	pubkey, seckey = GpgmeData.new, GpgmeData.new
+	pubkey, seckey = Data.new, Data.new
       end
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
@@ -403,7 +400,7 @@ module GPGME
 
     # Extracts the public keys of the recipients.
     def export(recipients)
-      keydata = GpgmeData.new
+      keydata = Data.new
       err = GPGME::gpgme_op_export(self, recipients, keydata)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -428,7 +425,7 @@ module GPGME
 
     # Decrypt the ciphertext and return the plaintext.
     def decrypt(cipher)
-      plain = GpgmeData.new
+      plain = Data.new
       err = GPGME::gpgme_op_decrypt(self, cipher, plain)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -437,7 +434,7 @@ module GPGME
 
     # Verify that the signature in the data object is a valid signature.
     def verify(sig, signed_text = nil, plain = nil)
-      plain = GpgmeData.new
+      plain = Data.new
       err = GPGME::gpgme_op_verify(self, sig, signed_text, plain)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -462,7 +459,7 @@ module GPGME
 
     # Create a signature for the text in the data object.
     def sign(plain, mode = GPGME::GPGME_SIG_MODE_NORMAL)
-      sig = GpgmeData.new
+      sig = Data.new
       err = GPGME::gpgme_op_sign(self, plain, sig, mode)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -472,17 +469,16 @@ module GPGME
     # Encrypt the plaintext in the data object for the recipients and
     # return the ciphertext.
     def encrypt(recp, plain, flags = 0)
-      cipher = GpgmeData.new
+      cipher = Data.new
       err = GPGME::gpgme_op_encrypt(self, recp, flags, plain, cipher)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       cipher
     end
   end
-  Ctx = GpgmeCtx
 
   # A public or secret key.
-  class GpgmeKey
+  class Key
     private_class_method :new
 
     attr_reader :keylist_mode, :protocol, :owner_trust
@@ -530,12 +526,12 @@ module GPGME
       GPGME::gpgme_key_get_string_attr(self, what, idx)
     end
   end
-  Key = GpgmeKey
 
-  class GpgmeSubKey
+  class SubKey
     private_class_method :new
 
     attr_reader :pubkey_algo, :length, :keyid, :fpr
+    alias fingerprint fpr
 
     def revoked?
       @revoked == 1
@@ -581,9 +577,8 @@ module GPGME
       Time.new(@expires)
     end
   end
-  SubKey = GpgmeSubKey
 
-  class GpgmeUserId
+  class UserId
     private_class_method :new
 
     attr_reader :validity, :uid, :name, :comment, :email, :signatures
@@ -596,9 +591,8 @@ module GPGME
       @invalid == 1
     end
   end
-  UserId = GpgmeUserId
 
-  class GpgmeKeySig
+  class KeySig
     private_class_method :new
 
     attr_reader :pubkey_algo, :keyid
@@ -627,19 +621,18 @@ module GPGME
       Time.at(@expires)
     end
   end
-  KeySig = GpgmeKeySig
 
-  class GpgmeVerifyResult
+  class VerifyResult
     private_class_method :new
 
     attr_reader :signatures
   end
-  VerifyResult = GpgmeVerifyResult
 
-  class GpgmeSignature
+  class Signature
     private_class_method :new
 
     attr_reader :summary, :fpr, :status, :notations
+    alias fingerprint fpr
 
     def timestamp
       Time.at(@timestamp)
@@ -649,55 +642,51 @@ module GPGME
       Time.at(@exp_timestamp)
     end
   end
-  Signature = GpgmeSignature
 
-  class GpgmeDecryptResult
+  class DecryptResult
     private_class_method :new
 
     attr_reader :unsupported_algorithm, :wrong_key_usage
   end
-  DecryptResult = GpgmeDecryptResult
 
-  class GpgmeSignResult
+  class SignResult
     private_class_method :new
 
     attr_reader :invalid_signers, :signatures
   end
-  SignResult = GpgmeSignResult
 
-  class GpgmeEncryptResult
+  class EncryptResult
     private_class_method :new
 
     attr_reader :invalid_recipients
   end
-  EncryptResult = GpgmeEncryptResult
 
-  class GpgmeInvalidKey
+  class InvalidKey
     private_class_method :new
 
     attr_reader :fpr, :reason
+    alias fingerprint fpr
   end
-  InvalidKey = GpgmeInvalidKey
 
-  class GpgmeNewSignature
+  class NewSignature
     private_class_method :new
 
     attr_reader :type, :pubkey_algo, :hash_algo, :sig_class, :fpr
+    alias fingerprint fpr
 
     def timestamp
       Time.at(@timestamp)
     end
   end
-  NewSignature = GpgmeNewSignature
 
-  class GpgmeImportStatus
+  class ImportStatus
     private_class_method :new
 
     attr_reader :fpr, :result, :status
+    alias fingerprint fpr
   end
-  ImportStatus = GpgmeImportStatus
 
-  class GpgmeImportResult
+  class ImportResult
     private_class_method :new
 
     attr_reader :considered, :no_user_id, :imported, :imported_rsa, :unchanged
@@ -705,10 +694,27 @@ module GPGME
     attr_reader :secret_read, :secret_imported, :secret_unchanged
     attr_reader :not_imported, :imports
   end
-  ImportResult = GpgmeImportStatus
 end
 
 module GPGME
+  GpgmeError = Error
+  GpgmeData = Data
+  GpgmeEngineInfo = EngineInfo
+  GpgmeCtx = Ctx
+  GpgmeKey = Key
+  GpgmeSubKey = SubKey
+  GpgmeUserId = UserId
+  GpgmeKeySig = KeySig
+  GpgmeVerifyResult = VerifyResult
+  GpgmeSignature = Signature
+  GpgmeDecryptResult = DecryptResult
+  GpgmeSignResult = SignResult
+  GpgmeEncryptResult = EncryptResult
+  GpgmeInvalidKey = InvalidKey
+  GpgmeNewSignature = NewSignature
+  GpgmeImportStatus = ImportStatus
+  GpgmeImportResult = ImportResult
+
   # Deprecated functions.
   alias gpgme_trust_item_release gpgme_trust_item_unref
 
@@ -730,3 +736,4 @@ module GPGME
   end
   module_function :gpgme_op_import_ext
 end
+
