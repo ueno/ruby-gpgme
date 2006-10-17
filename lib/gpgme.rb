@@ -33,8 +33,16 @@ module GPGME
   end
   Error = GpgmeError
 
-  def check_error(meth, *args)
-    err = method(meth).call(*args)
+  def gpgme_op_import_ext(ctx, keydata, nr)
+    err = GPGME::gpgme_op_import(ctx, keydata)
+    if GPGME::gpgme_err_code(err) == GPGME::GPG_ERR_NO_ERROR
+      result = GPGME::gpgme_op_import_result(ctx)
+      nr.push(result.considered)
+    end
+  end
+  module_function gpgme_op_import_ext
+
+  def check_error(err)
     if GPGME::gpgme_err_code(err) == GPG_ERR_EOF
       raise EOFError
     end
@@ -58,34 +66,37 @@ module GPGME
     # Create a new GpgmeData instance.
     def self.new
       dh = Array.new
-      GPGME::check_error(:gpgme_data_new, dh)
+      err = gpgme_data_new(dh)
+      GPGME::check_error(err)
       dh[0]
     end
 
     # Create a new GpgmeData instance with internal buffer.
     def self.new_from_mem(buf, copy = false)
       dh = Array.new
-      GPGME::check_error(:gpgme_data_new_from_mem, dh, buf, buf.length,
-                         copy ? 1 : 0)
+      err = gpgme_data_new_from_mem(dh, buf, buf.length, copy ? 1 : 0)
+      GPGME::check_error()
       dh[0]
     end
 
     def self.new_from_file(filename, copy = false)
       dh = Array.new
-      GPGME::check_error(:gpgme_data_new_from_file, dh, filename,
-                         copy ? 1 : 0)
+      err = gpgme_data_new_from_file(dh, filename, copy ? 1 : 0)
+      GPGME::check_error(err)
       dh[0]
     end
 
     def self.new_from_fd(fd)
       dh = Array.new
-      GPGME::check_error(:gpgme_data_new_from_fd, dh, fd)
+      err = gpgme_data_new_from_fd(dh, fd)
+      GPGME::check_error(err)
       dh[0]
     end
 
     def self.new_from_cbs(cbs, hook_value = nil)
       dh = Array.new
-      GPGME::check_error(:gpgme_data_new_from_cbs, dh, cbs, hook_value)
+      err = gpgme_data_new_from_cbs(dh, cbs, hook_value)
+      GPGME::check_error(err)
       dh[0]
     end
 
@@ -147,7 +158,8 @@ module GPGME
 
     # Set the encoding of the underlying data.
     def encoding=(enc)
-      GPGME::check_error(:gpgme_data_set_encoding, self, enc)
+      err = gpgme_data_set_encoding(self, enc)
+      GPGME::check_error(err)
       enc
     end
   end
@@ -165,13 +177,15 @@ module GPGME
     # Create a new GpgmeCtx object.
     def self.new
       ctx = Array.new
-      GPGME::check_error(:gpgme_new, ctx)
+      err = gpgme_new(ctx)
+      GPGME::check_error(err)
       ctx[0]
     end
 
     # Set the protocol used within this context.
     def protocol=(proto)
-      GPGME::check_error(:gpgme_set_protocol, self, proto)
+      err = gpgme_set_protocol(self, proto)
+      GPGME::check_error(err)
       proto
     end
 
@@ -236,21 +250,23 @@ module GPGME
     # If pattern is nil, all available keys are returned.
     # If secret_only is true, the list is restricted to secret keys only.
     def keylist_start(pattern = nil, secret_only = false)
-      GPGME::check_error(:gpgme_op_keylist_start, self, pattern,
-			 secret_only ? 1 : 0)
+      err = gpgme_op_keylist_start(self, pattern, secret_only ? 1 : 0)
+      GPGME::check_error(err)
     end
 
     # Returns the next key in the list created by a previous
     # keylist_start operation.
     def keylist_next
       key = Array.new
-      GPGME::check_error(:gpgme_op_keylist_next, self, key)
+      err = gpgme_op_keylist_next(self, key)
+      GPGME::check_error(err)
       key[0]
     end
 
     # End a pending key list operation.
     def keylist_end
-      GPGME::check_error(:gpgme_op_keylist_end, self)
+      err = gpgme_op_keylist_end(self)
+      GPGME::check_error(err)
     end
 
     # Convenient method to iterate over keylist.
@@ -270,7 +286,8 @@ module GPGME
     # Get the key with the fingerprint.
     def get_key(fpr, secret = false)
       key = Array.new
-      GPGME::check_error(:gpgme_get_key, self, fpr, key, secret ? 1 : 0)
+      err = gpgme_get_key(self, fpr, key, secret ? 1 : 0)
+      GPGME::check_error(err)
       key[0]
     end
 
@@ -283,40 +300,46 @@ module GPGME
       else
 	pubkey, seckey = GpgmeData.new, GpgmeData.new
       end
-      GPGME::check_error(:gpgme_op_genkey, self, parms, pubkey, seckey)
+      err = gpgme_op_genkey(self, parms, pubkey, seckey)
+      GPGME::check_error(err)
       [pubkey, seckey]
     end
 
     # Extracts the public keys of the recipients.
     def export(recipients)
       keydata = GpgmeData.new
-      GPGME::check_error(:gpgme_op_export, self, recipients, keydata)
+      err = gpgme_op_export(self, recipients, keydata)
+      GPGME::check_error(err)
       keydata
     end
 
     # Add the keys in the data buffer to the key ring.
     def import(keydata)
-      GPGME::check_error(:gpgme_op_export, self, keydata)
+      err = gpgme_op_import(self, keydata)
+      GPGME::check_error(err)
     end
 
     # Delete the key from the key ring.
     # If allow_secret is false, only public keys are deleted,
     # otherwise secret keys are deleted as well.
     def delete(key, allow_secret = false)
-      GPGME::check_error(:gpgme_op_delete, self, key, allow_secret ? 1 : 0)
+      err = gpgme_op_delete(self, key, allow_secret ? 1 : 0)
+      GPGME::check_error(err)
     end
 
     # Decrypt the ciphertext and return the plaintext.
     def decrypt(cipher)
       plain = GpgmeData.new
-      GPGME::check_error(:gpgme_op_decrypt, self, cipher, plain)
+      err = gpgme_op_decrypt(self, cipher, plain)
+      GPGME::check_error(err)
       plain
     end
 
     # Verify that the signature in the data object is a valid signature.
     def verify(sig, signed_text = nil, plain = nil)
       plain = GpgmeData.new
-      GPGME::check_error(:gpgme_op_verify, self, sig, signed_text, plain)
+      err = gpgme_op_verify(self, sig, signed_text, plain)
+      GPGME::check_error(err)
       plain
     end
 
@@ -331,13 +354,15 @@ module GPGME
 
     # Add the key to the list of signers.
     def add_signer(key)
-      GPGME::check_error(:gpgme_signers_add, self, key)
+      err = gpgme_signers_add(self, key)
+      GPGME::check_error(err)
     end
 
     # Create a signature for the text in the data object.
     def sign(plain, mode = GPGME::GPGME_SIG_MODE_NORMAL)
       sig = GpgmeData.new
-      GPGME::check_error(:gpgme_op_sign, self, plain, sig, mode)
+      err = gpgme_op_sign(self, plain, sig, mode)
+      GPGME::check_error(err)
       sig
     end
 
@@ -345,7 +370,8 @@ module GPGME
     # return the ciphertext.
     def encrypt(recp, plain, flags = 0)
       cipher = GpgmeData.new
-      GPGME::check_error(:gpgme_op_encrypt, self, recp, flags, plain, cipher)
+      err = gpgme_op_encrypt(self, recp, flags, plain, cipher)
+      GPGME::check_error(err)
       cipher
     end
   end
