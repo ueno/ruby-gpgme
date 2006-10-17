@@ -33,26 +33,6 @@ module GPGME
   end
   Error = GpgmeError
 
-  alias gpgme_trust_item_release gpgme_trust_item_unref
-
-  def gpgme_data_rewind
-    begin
-      seek(0, IO::SEEK_SET)
-    rescue SystemCallError => e
-      return e.errno
-    end
-  end
-  module_function gpgme_data_rewind
-
-  def gpgme_op_import_ext(ctx, keydata, nr)
-    err = GPGME::gpgme_op_import(ctx, keydata)
-    if GPGME::gpgme_err_code(err) == GPGME::GPG_ERR_NO_ERROR
-      result = GPGME::gpgme_op_import_result(ctx)
-      nr.push(result.considered)
-    end
-  end
-  module_function gpgme_op_import_ext
-
   def check_error(err)
     if GPGME::gpgme_err_code(err) == GPG_ERR_EOF
       raise EOFError
@@ -557,4 +537,42 @@ module GPGME
     end
   end
   Signature = GpgmeSignature
+
+  class GpgmeImportStatus
+    private_class_method :new
+
+    attr_reader :fpr, :result, :status
+  end
+  ImportStatus = GpgmeImportStatus
+
+  class GpgmeImportResult
+    private_class_method :new
+
+    attr_reader :considered, :no_user_id, :imported, :imported_rsa, :unchanged
+    attr_reader :new_user_ids, :new_sub_keys, :new_signatures, :new_revocations
+    attr_reader :secret_read, :secret_imported, :secret_unchanged
+    attr_reader :not_imported, :imports
+  end
+  ImportResult = ImportStatus
+
+  # Deprecated functions.
+  alias gpgme_trust_item_release gpgme_trust_item_unref
+
+  def gpgme_data_rewind
+    begin
+      seek(0, IO::SEEK_SET)
+    rescue SystemCallError => e
+      return e.errno
+    end
+  end
+  module_function gpgme_data_rewind
+
+  def gpgme_op_import_ext(ctx, keydata, nr)
+    err = GPGME::gpgme_op_import(ctx, keydata)
+    if GPGME::gpgme_err_code(err) == GPGME::GPG_ERR_NO_ERROR
+      result = GPGME::gpgme_op_import_result(ctx)
+      nr.push(result.considered)
+    end
+  end
+  module_function gpgme_op_import_ext
 end
