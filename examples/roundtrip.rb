@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
 require 'gpgme'
 
-ctx = GPGME::Ctx.new
-ctx.armor = true
+ctx = GPGME::Ctx.new({:armor => true})
 passphrase_cb = proc {|hook, uid_hint, passphrase_info, prev_was_bad, fd|
   io = IO.for_fd(fd, 'w')
   io.puts('test')
