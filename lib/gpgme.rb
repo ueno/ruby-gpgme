@@ -231,7 +231,7 @@ module GPGME
 
     # Set the encoding of the underlying data.
     def encoding=(enc)
-      err = gpgme_data_set_encoding(self, enc)
+      err = GPGME::gpgme_data_set_encoding(self, enc)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       enc
