@@ -20,20 +20,22 @@
  
 require 'gpgme_n'
 
+# Ruby-GPGME is a ruby interface to GnuPG Made Easy (GPGME).
+
 module GPGME
-  Protocol = {
+  PROTOCOL_NAMES = {
     GPGME_PROTOCOL_OpenPGP => "OpenPGP",
     GPGME_PROTOCOL_CMS => "CMS"
   }
 
-  KeyListMode = {
+  KEYLIST_MODE_NAMES = {
     GPGME_KEYLIST_MODE_LOCAL => "LOCAL",
     GPGME_KEYLIST_MODE_EXTERN => "EXTERN",
     GPGME_KEYLIST_MODE_SIGS => "SIGS",
     GPGME_KEYLIST_MODE_VALIDATE => "VALIDATE"
   }
 
-  Validity = {
+  VALIDITY_NAMES = {
     GPGME_VALIDITY_UNKNOWN => "UNKNOWN",
     GPGME_VALIDITY_UNDEFINED => "UNDEFINED",
     GPGME_VALIDITY_NEVER => "NEVER",
@@ -199,33 +201,19 @@ module GPGME
       rdh[0]
     end
 
-    def _read(len)
-      buf = "\x0" * len
-      nread = GPGME::gpgme_data_read(self, buf, len)
-      if nread > 0
-        buf[0 .. nread - 1]
-      elsif nread == 0
-        raise EOFError
-      else
-        raise 'error reading data'
-      end
-    end
-    private :_read
-
     # Read bytes from this object.  If len is supplied, it causes
     # this method to read up to the number of bytes.
     def read(len = nil)
       if len
-	_read(len)
+	GPGME::gpgme_data_read(self, len)
       else
-	buf = ''
-	begin
-	  loop do
-	    buf << _read(BLOCK_SIZE)
-	  end
-	rescue EOFError
-	  buf
-	end
+	buf = String.new
+        loop do
+          s = GPGME::gpgme_data_read(self, BLOCK_SIZE)
+          break unless s
+          buf << s
+        end
+        buf
       end
     end
 
@@ -337,9 +325,9 @@ module GPGME
     end
 
     def inspect
-      "#<#{self.class} protocol=#{Protocol[protocol] || protocol}, \
+      "#<#{self.class} protocol=#{PROTOCOL_NAMES[protocol] || protocol}, \
 armor=#{armor}, textmode=#{textmode}, \
-keylist_mode=#{KeyListMode[keylist_mode]}>"
+keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Set the passphrase callback with given hook value.
@@ -415,6 +403,7 @@ keylist_mode=#{KeyListMode[keylist_mode]}>"
       raise exc if exc
       [pubkey, seckey]
     end
+    alias generate_key genkey
 
     # Extracts the public keys of the recipients.
     def export(recipients)
@@ -565,7 +554,7 @@ keylist_mode=#{KeyListMode[keylist_mode]}>"
 
     def inspect
       "#<#{self.class} #{secret? ? "SECRET" : "PUBLIC"} \
-owner_trust=#{Validity[owner_trust]}, \
+owner_trust=#{VALIDITY_NAMES[owner_trust]}, \
 subkeys=#{subkeys.inspect}, uids=#{uids.inspect}>"
     end
   end
@@ -628,11 +617,11 @@ subkeys=#{subkeys.inspect}, uids=#{uids.inspect}>"
       caps << "authentication" if can_authenticate?
       if secret?
         "#<#{self.class} SECRET #{keyid}, \
-caps=#{caps.inspect}>"
+capability=#{caps.inspect}>"
       else
         "#<#{self.class} PUBLIC \
 #{GPGME::gpgme_pubkey_algo_name(pubkey_algo)} #{keyid}, 
-caps=#{caps.inspect}>"
+capability=#{caps.inspect}>"
       end
     end
   end
@@ -652,7 +641,7 @@ caps=#{caps.inspect}>"
 
     def inspect
       "#<#{self.class} #{name} <#{email}> \
-validity=#{Validity[validity]}, signatures=#{signatures.inspect}>"
+validity=#{VALIDITY_NAMES[validity]}, signatures=#{signatures.inspect}>"
     end
   end
 
@@ -683,6 +672,10 @@ validity=#{Validity[validity]}, signatures=#{signatures.inspect}>"
 
     def expires
       Time.at(@expires)
+    end
+
+    def inspect
+      "#<#{self.class} #{keyid} timestamp=#{timestamp}, expires=#{expires}>"
     end
   end
 

@@ -371,24 +371,24 @@ rb_s_gpgme_data_release_and_get_mem (dummy, vdh, rlength)
 }
 
 static VALUE
-rb_s_gpgme_data_read (dummy, vdh, rbuffer, vlength)
-     VALUE dummy, vdh, rbuffer, vlength;
+rb_s_gpgme_data_read (dummy, vdh, vlength)
+     VALUE dummy, vdh, vlength;
 {
   gpgme_data_t dh;
   ssize_t length = NUM2LONG(vlength), nread;
+  void *buffer;
+  VALUE vbuffer = Qnil;
 
-  if (!NIL_P(rbuffer))
-    {
-      if (RSTRING(rbuffer)->len < length)
-	rb_raise (rb_eArgError, "argument out of range");
-      rb_str_modify (rbuffer);
-    }
   UNWRAP_GPGME_DATA(vdh, dh);
-  nread = gpgme_data_read (dh, NIL_P(rbuffer) ? NULL : StringValuePtr(rbuffer),
-			   length);
+
+  buffer = ALLOC_N (char, length);
+  nread = gpgme_data_read (dh, buffer, length);
+  if (nread > 0)
+    vbuffer = rb_str_new (buffer, nread);
+  xfree (buffer);
   if (nread < 0)
     rb_sys_fail ("rb_s_gpgme_data_read");
-  return LONG2NUM(nread);
+  return vbuffer;
 }
 
 static VALUE
@@ -720,14 +720,15 @@ rb_s_gpgme_op_keylist_ext_start (dummy, vctx, vpattern, vsecret_only)
   if (!NIL_P(vpattern))
     {
       /* Convert RARRAY into `const char *' array. */
-      pattern = (const char **)ALLOCA_N(const char *,
-					RARRAY_LEN(vpattern) + 1);
+      pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern) + 1);
       for (i = 0; i<RARRAY_LEN(vpattern); i++)
 	pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
       pattern[RARRAY_LEN(vpattern)] = NULL;
     }
 
   err = gpgme_op_keylist_ext_start (ctx, pattern, NUM2INT(vsecret_only), 0);
+  if (pattern)
+    xfree (pattern);
   return LONG2NUM(err);
 }
 
@@ -1421,7 +1422,7 @@ rb_s_gpgme_op_encrypt (dummy, vctx, vrecp, vflags, vplain, vcipher)
   if (!NIL_P(vrecp))
     {
       int i;
-      recp = ALLOCA_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
+      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
 	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
@@ -1430,6 +1431,8 @@ rb_s_gpgme_op_encrypt (dummy, vctx, vrecp, vflags, vplain, vcipher)
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
   err = gpgme_op_encrypt (ctx, recp, NUM2INT(vflags), plain, cipher);
+  if (recp)
+    xfree (recp);
   return LONG2NUM(err);
 }
 
@@ -1448,7 +1451,7 @@ rb_s_gpgme_op_encrypt_start (dummy, vctx, vrecp, vflags, vplain, vcipher)
   if (!NIL_P(vrecp))
     {
       int i;
-      recp = ALLOCA_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
+      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
 	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
@@ -1457,6 +1460,8 @@ rb_s_gpgme_op_encrypt_start (dummy, vctx, vrecp, vflags, vplain, vcipher)
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
   err = gpgme_op_encrypt_start (ctx, recp, NUM2INT(vflags), plain, cipher);
+  if (recp)
+    xfree (recp);
   return LONG2NUM(err);
 }
 
@@ -1502,7 +1507,7 @@ rb_s_gpgme_op_encrypt_sign (dummy, vctx, vrecp, vflags, vplain, vcipher)
   if (!NIL_P(vrecp))
     {
       int i;
-      recp = ALLOCA_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
+      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
 	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
@@ -1511,6 +1516,8 @@ rb_s_gpgme_op_encrypt_sign (dummy, vctx, vrecp, vflags, vplain, vcipher)
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
   err = gpgme_op_encrypt_sign (ctx, recp, NUM2INT(vflags), plain, cipher);
+  if (recp)
+    xfree (recp);
   return LONG2NUM(err);
 }
 
@@ -1529,7 +1536,7 @@ rb_s_gpgme_op_encrypt_sign_start (dummy, vctx, vrecp, vflags, vplain, vcipher)
   if (!NIL_P(vrecp))
     {
       int i;
-      recp = ALLOCA_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
+      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
 	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
@@ -1537,7 +1544,10 @@ rb_s_gpgme_op_encrypt_sign_start (dummy, vctx, vrecp, vflags, vplain, vcipher)
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
-  err = gpgme_op_encrypt_sign_start (ctx, recp, NUM2INT(vflags), plain, cipher);
+  err = gpgme_op_encrypt_sign_start (ctx, recp, NUM2INT(vflags), plain,
+				     cipher);
+  if (recp)
+    xfree (recp);
   return LONG2NUM(err);
 }
 
@@ -1644,7 +1654,7 @@ void Init_gpgme_n ()
 
   /* Manipulating Data Buffers */
   rb_define_module_function (mGPGME, "gpgme_data_read",
-			     rb_s_gpgme_data_read, 3);
+			     rb_s_gpgme_data_read, 2);
   rb_define_module_function (mGPGME, "gpgme_data_seek",
 			     rb_s_gpgme_data_seek, 3);
   rb_define_module_function (mGPGME, "gpgme_data_write",
