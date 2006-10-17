@@ -341,7 +341,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       GPGME::gpgme_set_progress_cb(self, progfunc, hook_value)
     end
 
-    # Initiates a key listing operation for given pattern.
+    # Initiate a key listing operation for given pattern.
     # If pattern is nil, all available keys are returned.
     # If secret_only is true, the list is restricted to secret keys only.
     def keylist_start(pattern = nil, secret_only = false)
@@ -350,7 +350,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       raise exc if exc
     end
 
-    # Returns the next key in the list created by a previous
+    # Return the next key in the list created by a previous
     # keylist_start operation.
     def keylist_next
       rkey = Array.new
@@ -411,7 +411,6 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
-      [pubkey, seckey]
     end
     alias generate_key genkey
 
@@ -422,7 +421,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
     alias generate_key_start genkey_start
 
-    # Extracts the public keys of the recipients.
+    # Extract the public keys of the recipients.
     def export(recipients)
       keydata = Data.new
       err = GPGME::gpgme_op_export(self, recipients, keydata)
@@ -479,7 +478,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       plain
     end
 
-    # Removes the list of signers from this object.
+    # Remove the list of signers from this object.
     def clear_signers
       GPGME::gpgme_signers_clear(self)
     end

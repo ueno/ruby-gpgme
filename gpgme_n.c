@@ -213,7 +213,7 @@ rb_s_gpgme_data_new_from_mem (dummy, rdh, vbuffer, vsize, vcopy)
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       vdh = WRAP_GPGME_DATA(dh);
-      /* Keep a references to VBUFFER to avoid GC. */
+      /* Keep a reference to VBUFFER to avoid GC. */
       rb_iv_set (vdh, "@buffer", vbuffer);
       rb_ary_push (rdh, vdh);
     }
@@ -325,7 +325,7 @@ rb_s_gpgme_data_new_from_cbs (dummy, rdh, vcbs, vhandle)
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       VALUE vdh = WRAP_GPGME_DATA(dh);
-      /* Keep a references to avoid GC. */
+      /* Keep a reference to avoid GC. */
       rb_iv_set (vdh, "@cbs_handle", vcbs_handle);
       rb_ary_push (rdh, vdh);
     }
@@ -617,7 +617,7 @@ rb_s_gpgme_set_passphrase_cb (dummy, vctx, vpassfunc, vhook_value)
 
   rb_ary_push (vcb, vpassfunc);
   rb_ary_push (vcb, vhook_value);
-  /* Keep a references to avoid GC. */
+  /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@passphrase_cb", vcb);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
@@ -648,8 +648,9 @@ progress_cb (hook, what, type, current, total)
   vprogfunc = RARRAY(vcb)->ptr[0];
   vhook_value = RARRAY(vcb)->ptr[1];
 
-  rb_funcall (vprogfunc, rb_intern ("call"), 5, vhook_value, INT2NUM(type),
-	      INT2NUM(current), INT2NUM(total));
+  rb_funcall (vprogfunc, rb_intern ("call"), 5, vhook_value,
+	      rb_str_new2 (what), INT2NUM(type), INT2NUM(current),
+	      INT2NUM(total));
 }
 
 static VALUE
@@ -661,11 +662,11 @@ rb_s_gpgme_set_progress_cb (dummy, vctx, vprogfunc, vhook_value)
 
   rb_ary_push (vcb, vprogfunc);
   rb_ary_push (vcb, vhook_value);
-  /* Keep a references to avoid GC. */
+  /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@progress_cb", vcb);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
-  gpgme_set_progress_cb (ctx, progress_cb, (void*)vctx);
+  gpgme_set_progress_cb (ctx, progress_cb, (void*)vcb);
 
   return Qnil;
 }
