@@ -18,6 +18,7 @@
 # Boston, MA 02110-1301, USA.
  
 require 'gpgme_n'
+require 'gpgme/constants'
 
 # call-seq:
 #   GPGME.decrypt(cipher, plain=nil, options=Hash.new){|signature| ...}
@@ -123,7 +124,7 @@ def GPGME.sign(plain, *args_options)
 
   ctx = GPGME::Ctx.new(options)
   ctx.add_signer(find_keys(options[:signers]), true) if options[:signers]
-  mode = options[:mode] || GPGME::GPGME_SIG_MODE_NORMAL
+  mode = options[:mode] || GPGME::SIG_MODE_NORMAL
   plain_data = input_data(plain)
   sig_data = output_data(sig)
   err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
@@ -276,24 +277,24 @@ end
 
 module GPGME
   PROTOCOL_NAMES = {
-    GPGME_PROTOCOL_OpenPGP => :OpenPGP,
-    GPGME_PROTOCOL_CMS => :CMS
+    PROTOCOL_OpenPGP => :OpenPGP,
+    PROTOCOL_CMS => :CMS
   }
 
   KEYLIST_MODE_NAMES = {
-    GPGME_KEYLIST_MODE_LOCAL => :local,
-    GPGME_KEYLIST_MODE_EXTERN => :extern,
-    GPGME_KEYLIST_MODE_SIGS => :sigs,
-    GPGME_KEYLIST_MODE_VALIDATE => :validate
+    KEYLIST_MODE_LOCAL => :local,
+    KEYLIST_MODE_EXTERN => :extern,
+    KEYLIST_MODE_SIGS => :sigs,
+    KEYLIST_MODE_VALIDATE => :validate
   }
 
   VALIDITY_NAMES = {
-    GPGME_VALIDITY_UNKNOWN => :unknown,
-    GPGME_VALIDITY_UNDEFINED => :undefined,
-    GPGME_VALIDITY_NEVER => :never,
-    GPGME_VALIDITY_MARGINAL => :marginal,
-    GPGME_VALIDITY_FULL => :full,
-    GPGME_VALIDITY_ULTIMATE => :ultimate
+    VALIDITY_UNKNOWN => :unknown,
+    VALIDITY_UNDEFINED => :undefined,
+    VALIDITY_NEVER => :never,
+    VALIDITY_MARGINAL => :marginal,
+    VALIDITY_FULL => :full,
+    VALIDITY_ULTIMATE => :ultimate
   }
 
   class Error < StandardError
@@ -514,8 +515,8 @@ module GPGME
     # Create a new instance from the given <i>options</i>.
     # <i>options</i> is a Hash.
     #
-    # * <tt>:protocol</tt> Either <tt>GPGME_PROTOCOL_OpenPGP</tt> or
-    #   <tt>GPGME_PROTOCOL_CMS</tt>.
+    # * <tt>:protocol</tt> Either <tt>PROTOCOL_OpenPGP</tt> or
+    #   <tt>PROTOCOL_CMS</tt>.
     #
     # * <tt>:armor</tt>  If <tt>true</tt>, the output should be ASCII armored.
     #
@@ -523,10 +524,10 @@ module GPGME
     #   input is text.
     #
     # * <tt>:keylist_mode</tt> Either
-    #   <tt>GPGME_KEYLIST_MODE_LOCAL</tt>,
-    #   <tt>GPGME_KEYLIST_MODE_EXTERN</tt>,
-    #   <tt>GPGME_KEYLIST_MODE_SIGS</tt>, or
-    #   <tt>GPGME_KEYLIST_MODE_VALIDATE</tt>.
+    #   <tt>KEYLIST_MODE_LOCAL</tt>,
+    #   <tt>KEYLIST_MODE_EXTERN</tt>,
+    #   <tt>KEYLIST_MODE_SIGS</tt>, or
+    #   <tt>KEYLIST_MODE_VALIDATE</tt>.
     def self.new(options = Hash.new)
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)
@@ -806,7 +807,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     # Create a signature for the text.
     # <i>plain</i> is a data object which contains the text.
     # <i>sig</i> is a data object where the generated signature is stored.
-    def sign(plain, sig = Data.new, mode = GPGME::GPGME_SIG_MODE_NORMAL)
+    def sign(plain, sig = Data.new, mode = GPGME::SIG_MODE_NORMAL)
       err = GPGME::gpgme_op_sign(self, plain, sig, mode)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -935,10 +936,10 @@ capability=%s, subkeys=%s, uids=%s>",
     end
 
     PUBKEY_ALGO_LETTERS = {
-      GPGME_PK_RSA => ?R,
-      GPGME_PK_ELG_E => ?g,
-      GPGME_PK_ELG => ?G,
-      GPGME_PK_DSA => ?D
+      PK_RSA => ?R,
+      PK_ELG_E => ?g,
+      PK_ELG => ?G,
+      PK_DSA => ?D
     }
 
     def pubkey_algo_letter
@@ -957,12 +958,12 @@ capability=%s, subkeys=%s, uids=%s>",
     end
 
     def to_s
-      s << sprintf("%s   %4d%c/%s %s\n",
-                   secret? ? 'ssc' : 'sub',
-                   length,
-                   pubkey_algo_letter,
-                   fingerprint[-8 .. -1],
-                   timestamp.strftime("%Y-%m-%d"))
+      sprintf("%s   %4d%c/%s %s\n",
+              secret? ? 'ssc' : 'sub',
+              length,
+              pubkey_algo_letter,
+              fingerprint[-8 .. -1],
+              timestamp.strftime("%Y-%m-%d"))
     end
   end
 
