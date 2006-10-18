@@ -53,8 +53,11 @@ def GPGME.decrypt(cipher, *args_options, &block)
       yield signature
     end
   end
-  plain_data.seek(plain_pos, IO::SEEK_SET)
-  plain_data.read
+
+  unless plain.kind_of? GPGME::Data
+    plain_data.seek(plain_pos, IO::SEEK_SET)
+    plain_data.read
+  end
 end
 
 # call-seq:
@@ -95,7 +98,7 @@ def GPGME.verify(sig, *args_options, &block) # :yields: signature
   ctx.verify_result.signatures.each do |signature|
     yield signature
   end
-  if plain_data
+  unless plain.kind_of? GPGME::Data
     plain_data.seek(plain_pos, IO::SEEK_SET)
     plain_data.read
   end
@@ -129,8 +132,11 @@ def GPGME.sign(plain, *args_options)
   err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
-  sig_data.seek(sig_pos, IO::SEEK_SET)
-  sig_data.read
+
+  unless sig.kind_of? GPGME::Data
+    sig_data.seek(sig_pos, IO::SEEK_SET)
+    sig_data.read
+  end
 end
 
 # call-seq:
@@ -166,8 +172,10 @@ def GPGME.encrypt(recipients, plain, *args_options)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
 
-  cipher_data.seek(cipher_pos, IO::SEEK_SET)
-  cipher_data.read
+  unless cipher.kind_of? GPGME::Data
+    cipher_data.seek(cipher_pos, IO::SEEK_SET)
+    cipher_data.read
+  end
 end
 
 # call-seq:
