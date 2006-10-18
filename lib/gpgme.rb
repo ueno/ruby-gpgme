@@ -624,9 +624,10 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #    begin
     #      system('stty -echo')
     #      io = IO.for_fd(fd, 'w')
-    #      io.puts(gets.chomp)
+    #      io.puts(gets)
     #      io.flush
     #    ensure
+    #      (0 ... $_.length).each do |i| $_[i] = ?0 end if $_
     #      system('stty echo')
     #    end
     #    puts
