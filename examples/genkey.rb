@@ -19,6 +19,12 @@ require 'gpgme'
 #   puts
 # end
 
+unless ENV['GNUPGHOME']
+  $stderr.write('You are attempting to generate a new key pair and add it to *your* keyring.  Really proceed? (y/n) ')
+  $stderr.flush
+  exit unless gets.chomp == 'y'
+end
+  
 def progfunc(hook, what, type, current, total)
   $stderr.write("#{what}: #{current}/#{total}\r")
   $stderr.flush
