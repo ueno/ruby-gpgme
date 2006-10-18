@@ -273,6 +273,7 @@ module GPGME
     end
 
     def seek(hook, offset, whence)
+      return @io.pos if offset == 0 && whence == IO::SEEK_CUR
       @io.seek(offset, whence)
       @io.pos
     end
