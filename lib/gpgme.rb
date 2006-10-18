@@ -19,15 +19,222 @@
  
 require 'gpgme_n'
 
+# call-seq:
+#   GPGME.decrypt(cipher, plain=nil, options=Hash.new){|signature| ...}
+#
+# <code>GPGME.decrypt</code> performs decryption.
+#
+# The arguments should be specified as follows.
+# All arguments except <i>cipher</i> are optional.  If the last
+# argument is a Hash, options will be read from it.
+# 
+# - GPGME.decrypt(<i>cipher</i>, <i>plain</i>, <i>options</i>)
+# - GPGME.decrypt(<i>cipher</i>, <i>options</i>) -> <i>plain</i>
+#
+# The cipher text is specified by a file, a string, or a GPGME::Data object.
+#
+def GPGME.decrypt(cipher, *args_options, &block)
+  raise ArgumentError, "wrong number of arguments" if args_options.length > 2
+  args, options = split_args(args_options)
+  plain = args[0]
+
+  ctx = GPGME::Ctx.new(options)
+  cipher_data = input_data(cipher)
+  plain_data = output_data(plain)
+  err = GPGME::gpgme_op_decrypt_verify(ctx, cipher_data, plain_data)
+  exc = GPGME::error_to_exception(err)
+  raise exc if exc
+
+  verify_result = ctx.verify_result
+  if verify_result && block_given?
+    verify_result.signatures.each do |signature|
+      yield signature
+    end
+  end
+  unless plain
+    plain_data.rewind
+    plain_data.read
+  end
+end
+
+# call-seq:
+#   GPGME.verify(sig, signed_text=nil, plain=nil, options=Hash.new){|signature| ...}
+#
+# <code>GPGME.verify</code> verifies a signature.
+#
+# The arguments should be specified as follows.
+# All arguments except <i>sig</i> are optional.  If the last
+# argument is a Hash, options will be read from it.
+# 
+# - GPGME.verify(<i>sig</i>, <i>signed_text</i>, <i>plain</i>, <i>options</i>)
+# - GPGME.verify(<i>sig</i>, <i>signed_text</i>, <i>options</i>) -> <i>plain</i>
+#
+# The signature <i>sig</i> is specified by a file, a string, or a
+# GPGME::Data object.
+#
+def GPGME.verify(sig, *args_options, &block) # :yields: signature
+  raise ArgumentError, "wrong number of arguments" if args_options.length > 3
+  args, options = split_args(args_options)
+  signed_text, plain = args[0]
+
+  ctx = GPGME::Ctx.new(options)
+  sig_data = input_data(sig)
+  if signed_text
+    signed_text_data = input_data(signed_text)
+    plain_data = nil
+  else
+    signed_text_data = nil
+    plain_data = output_data(plain)
+  end
+  err = GPGME::gpgme_op_verify(ctx, sig_data, signed_text_data,
+                               plain_data)
+  exc = GPGME::error_to_exception(err)
+  raise exc if exc
+
+  if signed_text
+    ctx.verify_result.signatures
+  else
+    ctx.verify_result.signatures.each do |signature|
+      yield signature
+    end
+    plain_data.rewind
+    plain_data.read
+  end
+end
+
+# call-seq:
+#   GPGME.sign(plain, sig=nil, options=Hash.new)
+#
+# <code>GPGME.sign</code> create a signature of the plaintext.
+#
+# The arguments should be specified as follows.
+# All arguments except <i>plain</i> are optional.  If the last
+# argument is a Hash, options will be read from it.
+# 
+# - GPGME.sign(<i>plain</i>, <i>sig</i>, <i>options</i>)
+# - GPGME.sign(<i>plain</i>, <i>options</i>) -> <i>sig</i>
+#
+# The plain text is specified by a file, a string, or a GPGME::Data object.
+#
+def GPGME.sign(plain, *args_options)
+  raise ArgumentError, "wrong number of arguments" if args_options.length > 2
+  args, options = split_args(args_options)
+  sig = args[0]
+
+  ctx = GPGME::Ctx.new(options)
+  ctx.add_signer(find_keys(options[:signers]), true) if options[:signers]
+  mode = options[:mode] || GPGME::GPGME_SIG_MODE_NORMAL
+  plain_data = input_data(plain)
+  sig_data = output_data(sig)
+  err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
+  exc = GPGME::error_to_exception(err)
+  raise exc if exc
+  unless sig
+    sig_data.rewind
+    sig_data.read
+  end
+end
+
+# call-seq:
+#   GPGME.encrypt(recipients, plain, cipher=nil, options=Hash.new)
+#
+# <code>GPGME.encrypt</code> performs encryption.
+#
+# The arguments should be specified as follows.
+# All arguments except <i>recipients</i> and <i>plain</i> are
+# optional.  If the last argument is a Hash, options will be read from
+# it.
+# 
+# - GPGME.encrypt(<i>recipients</i>, <i>plain</i>, <i>cipher</i>, <i>options</i>)
+# - GPGME.encrypt(<i>recipients</i>, <i>plain</i>, <i>options</i>) -> <i>cipher</i>
+#
+# The recipients are specified by an array whose elements are a string
+# or a GPGME::Key object.  If <i>recipients</i> is <tt>nil</tt>, it
+# performs symmetric encryption.
+# The plain text is specified by a file, a string, or a GPGME::Data object.
+#
+def GPGME.encrypt(recipients, plain, *args_options)
+  raise ArgumentError, "wrong number of arguments" if args_options.length > 3
+  args, options = split_args(args_options)
+  cipher = args[0]
+  recipient_keys = recipients ? find_keys(recipients, false) : nil
+
+  ctx = GPGME::Ctx.new(options)
+  plain_data = input_data(plain)
+  cipher_data = output_data(cipher)
+  err = GPGME::gpgme_op_encrypt(ctx, recipient_keys, 0, plain_data,
+                                cipher_data)
+  exc = GPGME::error_to_exception(err)
+  raise exc if exc
+
+  unless cipher
+    cipher_data.rewind
+    cipher_data.read
+  end
+end
+
+# call-seq:
+#   GPGME.each_key(pattern=nil, secret_only=false, options=Hash.new)
+#
+# <code>GPGME.each_key</code> iterates over the keyring.
+#
+# The arguments should be specified as follows.
+# All arguments are optional.  If the last argument is a Hash, options
+# will be read from it.
+# 
+# - GPGME.each_key(<i>pattern</i>, <i>secret_only</i>, <i>options</i>)
+#
+# If <i>pattern</i> is <tt>nil</tt>, all available keys are
+# returned.  If <i>secret_only</i> is <tt>true</tt>, the only
+# secret keys are returned.
+#
+def GPGME.each_key(*args_options) # :yields: key
+  raise ArgumentError, "wrong number of arguments" if args_options.length > 3
+  args, options = split_args(args_options)
+  pattern, secret_only = args[0]
+  ctx = GPGME::Ctx.new
+  ctx.each_key(pattern, secret_only || false) do |key|
+    yield key
+  end
+end
+
+# :stopdoc:
 module GPGME
-  # :stopdoc:
+  private
+
+  def split_args(args_options)
+    if args_options.length > 0 and args_options[-1].respond_to? :to_hash
+      args = args_options[0 ... -1]
+      options = args_options[-1]
+    else
+      args = args_options
+      options = Hash.new
+    end
+    [args, options]
+  end
+  module_function :split_args
+
+  def find_keys(keys_or_names, secret_only)
+    ctx = GPGME::Ctx.new
+    keys = Array.new
+    keys_or_names.each do |key_or_name|
+      if key_or_name.kind_of? Key
+        keys << key_or_name
+      elsif key_or_name.kind_of? String
+        keys += ctx.keys(key_or_name)
+      end
+    end
+    keys
+  end
+  module_function :find_keys
+
   def input_data(input)
     if input.kind_of? GPGME::Data
       input
     elsif input.respond_to? :to_str
       GPGME::Data.new_from_mem(input.to_str)
     elsif input.respond_to? :read
-      GPGME::Data.new_from_cbs(IOCallback.new(input))
+      GPGME::Data.new_from_callbacks(IOCallbacks.new(input))
     else
       raise ArgumentError, input.inspect
     end
@@ -38,7 +245,7 @@ module GPGME
     if output.kind_of? GPGME::Data
       output
     elsif output.respond_to? :write
-      GPGME::Data.new_from_cbs(IOCallback.new(output))
+      GPGME::Data.new_from_callbacks(IOCallbacks.new(output))
     elsif !output
       GPGME::Data.new
     else
@@ -47,7 +254,7 @@ module GPGME
   end
   module_function :output_data
 
-  class IOCallback			# :nodoc:
+  class IOCallbacks
     def initialize(io)
       @io = io
     end
@@ -64,124 +271,29 @@ module GPGME
       io.seek(offset, whence)
     end
   end
+end
+# :startdoc:
 
-  # :startdoc:
-  def decrypt(cipher, plain = nil, options = Hash.new,
-	      &block) # :yields: signature
-    ctx = Ctx.new(options)
-    cipher_data = input_data(cipher)
-    plain_data = output_data(plain)
-    err = GPGME::gpgme_op_decrypt_verify(ctx, cipher_data, plain_data)
-    exc = GPGME::error_to_exception(err)
-    raise exc if exc
-
-    verify_result = ctx.verify_result
-    if verify_result && block_given?
-      verify_result.signatures.each do |signature|
-	yield signature
-      end
-    end
-    unless plain
-      plain_data.rewind
-      plain_data.read
-    end
-  end
-  module_function :decrypt
-
-  def verify(sig, signed_text = nil, plain = nil, options = Hash.new,
-	     &block) # :yields: signature
-    ctx = Ctx.new(options)
-    sig_data = input_data(sig)
-    if signed_text
-      signed_text_data = input_data(signed_text)
-      plain_data = nil
-    else
-      signed_text_data = nil
-      plain_data = output_data(plain)
-    end
-    err = GPGME::gpgme_op_verify(ctx, sig_data, signed_text_data,
-				 plain_data)
-    exc = GPGME::error_to_exception(err)
-    raise exc if exc
-
-    if signed_text
-      ctx.verify_result.signatures
-    else
-      ctx.verify_result.signatures.each do |signature|
-	yield signature
-      end
-      plain_data.rewind
-      plain_data.read
-    end
-  end
-  module_function :verify
-
-  def sign(plain, sig = nil, options = Hash.new)
-    ctx = Ctx.new(options)
-    mode = options[:mode] || GPGME::GPGME_SIG_MODE_NORMAL
-    plain_data = input_data(plain)
-    sig_data = output_data(sig)
-    err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
-    exc = GPGME::error_to_exception(err)
-    raise exc if exc
-    unless sig
-      sig_data.rewind
-      sig_data.read
-    end
-  end
-  module_function :sign
-
-  def encrypt(recipients, plain, cipher = nil, options = Hash.new)
-    ctx = Ctx.new(options)
-    plain_data = input_data(plain)
-    cipher_data = output_data(cipher)
-    if recipients
-      recipient_keys = Array.new
-      recipients.each do |recipient|
-	if recipient.kind_of? Key
-	  recipient_keys << recipient
-	elsif recipient.kind_of? String
-	  recipient_keys += ctx.find_keys(recipient)
-	end
-      end
-    else
-      recipient_keys = nil
-    end
-    if options[:sign]
-      err = GPGME::gpgme_op_encrypt_sign(ctx, recipient_keys, 0, plain_data,
-					 cipher_data)
-    else
-      err = GPGME::gpgme_op_encrypt(ctx, recipient_keys, 0, plain_data,
-				    cipher_data)
-    end
-    exc = GPGME::error_to_exception(err)
-    raise exc if exc
-    unless cipher
-      cipher_data.rewind
-      cipher_data.read
-    end
-  end
-  module_function :encrypt
-
+module GPGME
   PROTOCOL_NAMES = {
-    GPGME_PROTOCOL_OpenPGP => "OpenPGP",
-    GPGME_PROTOCOL_CMS => "CMS"
+    GPGME_PROTOCOL_OpenPGP => :OpenPGP,
+    GPGME_PROTOCOL_CMS => :CMS
   }
 
   KEYLIST_MODE_NAMES = {
-    GPGME_KEYLIST_MODE_LOCAL => "LOCAL",
-    GPGME_KEYLIST_MODE_EXTERN => "EXTERN",
-    GPGME_KEYLIST_MODE_SIGS => "SIGS",
-    GPGME_KEYLIST_MODE_VALIDATE => "VALIDATE"
+    GPGME_KEYLIST_MODE_LOCAL => :local,
+    GPGME_KEYLIST_MODE_EXTERN => :extern,
+    GPGME_KEYLIST_MODE_SIGS => :sigs,
+    GPGME_KEYLIST_MODE_VALIDATE => :validate
   }
 
   VALIDITY_NAMES = {
-    GPGME_VALIDITY_UNKNOWN => "UNKNOWN",
-    GPGME_VALIDITY_UNDEFINED => "UNDEFINED",
-    GPGME_VALIDITY_NEVER => "NEVER",
-    GPGME_VALIDITY_MARGINAL => "MARGINAL",
-    GPGME_VALIDITY_FULL => "FULL",
-    GPGME_VALIDITY_ULTIMATE => "ULTIMATE"
+    GPGME_VALIDITY_UNKNOWN => :unknown,
+    GPGME_VALIDITY_UNDEFINED => :undefined,
+    GPGME_VALIDITY_NEVER => :never,
+    GPGME_VALIDITY_MARGINAL => :marginal,
+    GPGME_VALIDITY_FULL => :full,
+    GPGME_VALIDITY_ULTIMATE => :ultimate
   }
 
   class Error < StandardError
@@ -336,16 +448,16 @@ module GPGME
     end
 
     # Create a new instance from the specified callbacks.
-    def self.new_from_cbs(cbs, hook_value = nil)
+    def self.new_from_callbacks(callbacks, hook_value = nil)
       rdh = Array.new
-      err = GPGME::gpgme_data_new_from_cbs(rdh, cbs, hook_value)
+      err = GPGME::gpgme_data_new_from_cbs(rdh, callbacks, hook_value)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       rdh[0]
     end
 
-    # Read at most _length_ bytes from the data object, or to the end
-    # of file if _length_ is omitted or is +nil+.
+    # Read at most <i>length</i> bytes from the data object, or to the end
+    # of file if <i>length</i> is omitted or is <tt>nil</tt>.
     def read(length = nil)
       if length
 	GPGME::gpgme_data_read(self, length)
@@ -365,8 +477,8 @@ module GPGME
       seek(0)
     end
 
-    # Seek to a given _offset_ in the data object according to the
-    # value of _whence_.
+    # Seek to a given <i>offset</i> in the data object according to the
+    # value of <i>whence</i>.
     def seek(offset, whence = IO::SEEK_SET)
       GPGME::gpgme_data_seek(self, offset, IO::SEEK_SET)
     end
@@ -399,29 +511,29 @@ module GPGME
 
   # A context within which all cryptographic operations are performed.
   class Ctx
-    # Create a new instance from the given _attributes_.
-    # _attributes_ is a +Hash+
+    # Create a new instance from the given <i>options</i>.
+    # <i>options</i> is a Hash.
     #
     # * <tt>:protocol</tt> Either <tt>GPGME_PROTOCOL_OpenPGP</tt> or
-    # <tt>GPGME_PROTOCOL_CMS</tt>.
+    #   <tt>GPGME_PROTOCOL_CMS</tt>.
     #
-    # * <tt>:armor</tt>  If +true+, the output should be ASCII armored.
+    # * <tt>:armor</tt>  If <tt>true</tt>, the output should be ASCII armored.
     #
-    # * <tt>:textmode</tt> If +true+, inform the recipient that the
-    # input is text.
+    # * <tt>:textmode</tt> If <tt>true</tt>, inform the recipient that the
+    #   input is text.
     #
     # * <tt>:keylist_mode</tt> Either
-    # <tt>GPGME_KEYLIST_MODE_LOCAL</tt>,
-    # <tt>GPGME_KEYLIST_MODE_EXTERN</tt>,
-    # <tt>GPGME_KEYLIST_MODE_SIGS</tt>,
-    # <tt>GPGME_KEYLIST_MODE_VALIDATE</tt>.
-    def self.new(attributes = Hash.new)
+    #   <tt>GPGME_KEYLIST_MODE_LOCAL</tt>,
+    #   <tt>GPGME_KEYLIST_MODE_EXTERN</tt>,
+    #   <tt>GPGME_KEYLIST_MODE_SIGS</tt>, or
+    #   <tt>GPGME_KEYLIST_MODE_VALIDATE</tt>.
+    def self.new(options = Hash.new)
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       ctx = rctx[0]
-      attributes.each_pair do |key, value|
+      options.each_pair do |key, value|
         case key
         when :protocol
           ctx.protocol = value
@@ -431,12 +543,18 @@ module GPGME
           ctx.textmode = value
         when :keylist_mode
           ctx.keylist_mode = value
+        when :passphrase_callback
+          ctx.set_passphrase_callback(value,
+                                      options[:passphrase_callback_value])
+        when :progress_callback
+          ctx.set_progress_callback(value,
+                                      options[:progress_callback_value])
         end
       end
       ctx
     end
 
-    # Set the _protocol_ used within this context.
+    # Set the <i>protocol</i> used within this context.
     def protocol=(proto)
       err = GPGME::gpgme_set_protocol(self, proto)
       exc = GPGME::error_to_exception(err)
@@ -444,7 +562,7 @@ module GPGME
       proto
     end
 
-    # Return the _protocol_ used within this context.
+    # Return the protocol used within this context.
     def protocol
       GPGME::gpgme_get_protocol(self)
     end
@@ -482,14 +600,14 @@ module GPGME
       GPGME::gpgme_get_keylist_mode(self)
     end
 
-    def inspect                 # :nodoc:
+    def inspect
       "#<#{self.class} protocol=#{PROTOCOL_NAMES[protocol] || protocol}, \
 armor=#{armor}, textmode=#{textmode}, \
 keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Set the passphrase callback with given hook value.
-    # _passfunc_ should respond to +call+ with 5 arguments.
+    # <i>passfunc</i> should respond to <code>call</code> with 5 arguments.
     #
     #  lambda {|hook, uid_hint, passphrase_info, prev_was_bad, fd|
     #    $stderr.write("Passphrase for #{uid_hint}: ")
@@ -504,24 +622,27 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #    end
     #    puts
     #  }
-    def set_passphrase_cb(passfunc, hook_value = nil)
+    def set_passphrase_callback(passfunc, hook_value = nil)
       GPGME::gpgme_set_passphrase_cb(self, passfunc, hook_value)
     end
+    alias set_passphrase_cb set_passphrase_callback
 
     # Set the progress callback with given hook value.
-    # _progfunc_ should respond to +call+ with 5 arguments.
+    # <i>progfunc</i> should respond to <code>call</code> with 5 arguments.
     #
     #  lambda {|hook, what, type, current, total|
     #    $stderr.write("#{what}: #{current}/#{total}\r")
     #    $stderr.flush
     #  }
-    def set_progress_cb(progfunc, hook_value = nil)
+    def set_progress_callback(progfunc, hook_value = nil)
       GPGME::gpgme_set_progress_cb(self, progfunc, hook_value)
     end
+    alias set_progress_cb set_progress_callback
 
     # Initiate a key listing operation for given pattern.
-    # If _pattern_ is +nil+, all available keys are returned.
-    # If _secret_only_ is +true+, the only secret keys are returned.
+    # If <i>pattern</i> is <tt>nil</tt>, all available keys are
+    # returned.  If <i>secret_only</i> is <tt>true</tt>, the only
+    # secret keys are returned.
     def keylist_start(pattern = nil, secret_only = false)
       err = GPGME::gpgme_op_keylist_start(self, pattern, secret_only ? 1 : 0)
       exc = GPGME::error_to_exception(err)
@@ -545,8 +666,9 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Convenient method to iterate over keys.
-    # If _pattern_ is +nil+, all available keys are returned.
-    # If _secret_only_ is +true+, the only secret keys are returned.
+    # If <i>pattern</i> is <tt>nil</tt>, all available keys are
+    # returned.  If <i>secret_only</i> is <tt>true</tt>, the only
+    # secret keys are returned.
     def each_key(pattern = nil, secret_only = false, &block) # :yields: key
       keylist_start(pattern, secret_only)
       begin
@@ -555,14 +677,22 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
 	end
       rescue EOFError
 	# The last key in the list has already been returned.
-      rescue
+      ensure
 	keylist_end
       end
     end
     alias each_keys each_key
 
-    # Get the key with the _fingerprint_.
-    # If _secret_ is +true+, secret key is returned.
+    def keys(pattern = nil, secret_only = nil)
+      keys = Array.new
+      each_key(pattern, secret_only) do |key|
+        keys << key
+      end
+      keys
+    end
+
+    # Get the key with the <i>fingerprint</i>.
+    # If <i>secret</i> is <tt>true</tt>, secret key is returned.
     def get_key(fingerprint, secret = false)
       rkey = Array.new
       err = GPGME::gpgme_get_key(self, fingerprint, rkey, secret ? 1 : 0)
@@ -572,7 +702,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Generate a new key pair.
-    # _parms_ is a string which looks like
+    # <i>parms</i> is a string which looks like
     #
     #  <GnupgKeyParms format="internal">
     #  Key-Type: DSA
@@ -586,8 +716,8 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #  Passphrase: abc
     #  </GnupgKeyParms>
     #
-    # If _pubkey_ and _seckey_ are both set to +nil+, it stores the
-    # generated key pair into your key ring.
+    # If <i>pubkey</i> and <i>seckey</i> are both set to <tt>nil</tt>,
+    # it stores the generated key pair into your key ring.
     def genkey(parms, pubkey = Data.new, seckey = Data.new)
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
@@ -674,8 +804,8 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Create a signature for the text.
-    # _plain_ is a data object which contains the text.
-    # _sig_ is a data object where the generated signature is stored.
+    # <i>plain</i> is a data object which contains the text.
+    # <i>sig</i> is a data object where the generated signature is stored.
     def sign(plain, sig = Data.new, mode = GPGME::GPGME_SIG_MODE_NORMAL)
       err = GPGME::gpgme_op_sign(self, plain, sig, mode)
       exc = GPGME::error_to_exception(err)
@@ -716,36 +846,20 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     attr_reader :issuer_serial, :issuer_name, :chain_id
     attr_reader :subkeys, :uids
 
-    def revoked?
-      @revoked == 1
+    def trust
+      return :revoked if @revoked == 1
+      return :expired if @expired == 1
+      return :disabled if @disabled == 1
+      return :invalid if @invalid == 1
     end
 
-    def expired?
-      @expired == 1
-    end
-
-    def disabled?
-      @disabled == 1
-    end
-
-    def invalid?
-      @invalid == 1
-    end
-
-    def can_encrypt?
-      @can_encrypt == 1
-    end
-
-    def can_sign?
-      @can_sign == 1
-    end
-
-    def can_certify?
-      @can_certify == 1
-    end
-
-    def can_authenticate?
-      @can_authenticate == 1
+    def capability
+      caps = Array.new
+      caps << :encrypt if @can_encrypt
+      caps << :sign if @can_sign
+      caps << :certify if @can_certify
+      caps << :authenticate if @can_authenticate
+      caps
     end
 
     def secret?
@@ -753,9 +867,36 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     def inspect
-      "#<#{self.class} #{secret? ? "SECRET" : "PUBLIC"} \
-owner_trust=#{VALIDITY_NAMES[owner_trust]}, \
-subkeys=#{subkeys.inspect}, uids=#{uids.inspect}>"
+      primary_subkey = subkeys[0]
+      sprintf("#<#{self.class} %s %4d%c/%s %s trust=%s, owner_trust=%s, \
+capability=%s, subkeys=%s, uids=%s>",
+              primary_subkey.secret? ? 'sec' : 'pub',
+              primary_subkey.length,
+              primary_subkey.pubkey_algo_letter,
+              primary_subkey.fingerprint[-8 .. -1],
+              primary_subkey.timestamp.strftime("%Y-%m-%d"),
+              trust.inspect,
+              VALIDITY_NAMES[@owner_trust].inspect,
+              capability.inspect,
+              subkeys.inspect,
+              uids.inspect)
+    end
+
+    def to_s
+      primary_subkey = subkeys[0]
+      s = sprintf("%s   %4d%c/%s %s\n",
+                  primary_subkey.secret? ? 'sec' : 'pub',
+                  primary_subkey.length,
+                  primary_subkey.pubkey_algo_letter,
+                  primary_subkey.fingerprint[-8 .. -1],
+                  primary_subkey.timestamp.strftime("%Y-%m-%d"))
+      uids.each do |user_id|
+        s << "uid\t\t#{user_id.name} <#{user_id.email}>\n"
+      end
+      subkeys.each do |subkey|
+        s << subkey.to_s
+      end
+      s
     end
   end
 
@@ -765,36 +906,20 @@ subkeys=#{subkeys.inspect}, uids=#{uids.inspect}>"
     attr_reader :pubkey_algo, :length, :keyid, :fpr
     alias fingerprint fpr
 
-    def revoked?
-      @revoked == 1
+    def trust
+      return :revoked if @revoked == 1
+      return :expired if @expired == 1
+      return :disabled if @disabled == 1
+      return :invalid if @invalid == 1
     end
 
-    def expired?
-      @expired == 1
-    end
-
-    def disabled?
-      @disabled == 1
-    end
-
-    def invalid?
-      @invalid == 1
-    end
-
-    def can_encrypt?
-      @can_encrypt == 1
-    end
-
-    def can_sign?
-      @can_sign == 1
-    end
-
-    def can_certify?
-      @can_certify == 1
-    end
-
-    def can_authenticate?
-      @can_authenticate == 1
+    def capability
+      caps = Array.new
+      caps << :encrypt if @can_encrypt
+      caps << :sign if @can_sign
+      caps << :certify if @can_certify
+      caps << :authenticate if @can_authenticate
+      caps
     end
 
     def secret?
@@ -802,27 +927,42 @@ subkeys=#{subkeys.inspect}, uids=#{uids.inspect}>"
     end
 
     def timestamp
-      Time.new(@timestamp)
+      Time.at(@timestamp)
     end
 
     def expires
-      Time.new(@expires)
+      Time.at(@expires)
+    end
+
+    PUBKEY_ALGO_LETTERS = {
+      GPGME_PK_RSA => ?R,
+      GPGME_PK_ELG_E => ?g,
+      GPGME_PK_ELG => ?G,
+      GPGME_PK_DSA => ?D
+    }
+
+    def pubkey_algo_letter
+      PUBKEY_ALGO_LETTERS[@pubkey_algo] || ??
     end
 
     def inspect
-      caps = Array.new
-      caps << "encrypt" if can_encrypt?
-      caps << "sign" if can_sign?
-      caps << "certify" if can_certify?
-      caps << "authentication" if can_authenticate?
-      if secret?
-        "#<#{self.class} SECRET #{keyid}, \
-capability=#{caps.inspect}>"
-      else
-        "#<#{self.class} PUBLIC \
-#{GPGME::gpgme_pubkey_algo_name(pubkey_algo)} #{keyid}, 
-capability=#{caps.inspect}>"
-      end
+      sprintf("#<#{self.class} %s %4d%c/%s %s trust=%s, capability=%s>",
+              secret? ? 'ssc' : 'sub',
+              length,
+              pubkey_algo_letter,
+              fingerprint[-8 .. -1],
+              timestamp.strftime("%Y-%m-%d"),
+              trust.inspect,
+              capability.inspect)
+    end
+
+    def to_s
+      s << sprintf("%s   %4d%c/%s %s\n",
+                   secret? ? 'ssc' : 'sub',
+                   length,
+                   pubkey_algo_letter,
+                   fingerprint[-8 .. -1],
+                   timestamp.strftime("%Y-%m-%d"))
     end
   end
 
@@ -901,9 +1041,11 @@ validity=#{VALIDITY_NAMES[validity]}, signatures=#{signatures.inspect}>"
 
     def to_s
       ctx = Ctx.new
-      from_key = ctx.get_key(fpr)
-      from = from_key ? "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}" :
-	fpr
+      if from_key = ctx.get_key(fingerprint)
+        from = "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}"
+      else
+        from = fingerprint
+      end
       case GPGME::gpgme_err_code(status)
       when GPGME::GPG_ERR_NO_ERROR
 	"Good signature from #{from}"
@@ -972,45 +1114,4 @@ validity=#{VALIDITY_NAMES[validity]}, signatures=#{signatures.inspect}>"
     attr_reader :secret_read, :secret_imported, :secret_unchanged
     attr_reader :not_imported, :imports
   end
-end
-
-module GPGME
-  GpgmeError = Error
-  GpgmeData = Data
-  GpgmeEngineInfo = EngineInfo
-  GpgmeCtx = Ctx
-  GpgmeKey = Key
-  GpgmeSubKey = SubKey
-  GpgmeUserID = UserID
-  GpgmeKeySig = KeySig
-  GpgmeVerifyResult = VerifyResult
-  GpgmeSignature = Signature
-  GpgmeDecryptResult = DecryptResult
-  GpgmeSignResult = SignResult
-  GpgmeEncryptResult = EncryptResult
-  GpgmeInvalidKey = InvalidKey
-  GpgmeNewSignature = NewSignature
-  GpgmeImportStatus = ImportStatus
-  GpgmeImportResult = ImportResult
-
-  # Deprecated functions.
-  alias gpgme_trust_item_release gpgme_trust_item_unref
-
-  def gpgme_data_rewind(dh)
-    begin
-      GPGME::gpgme_data_seek(dh, 0, IO::SEEK_SET)
-    rescue SystemCallError => e
-      return e.errno
-    end
-  end
-  module_function :gpgme_data_rewind
-
-  def gpgme_op_import_ext(ctx, keydata, nr)
-    err = GPGME::gpgme_op_import(ctx, keydata)
-    if GPGME::gpgme_err_code(err) == GPGME::GPG_ERR_NO_ERROR
-      result = GPGME::gpgme_op_import_result(ctx)
-      nr.push(result.considered)
-    end
-  end
-  module_function :gpgme_op_import_ext
 end

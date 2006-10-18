@@ -63,7 +63,7 @@ Boston, MA 02110-1301, USA.  */
   Data_Get_Struct(vdh, struct gpgme_data, dh);
 
 #define WRAP_GPGME_CTX(ctx)					\
-  Data_Wrap_Struct(cCtx, 0, gpgme_release, ctx)		\
+  Data_Wrap_Struct(cCtx, 0, 0, ctx)		\
 /* `gpgme_ctx_t' is typedef'ed as `struct gpgme_context *'. */
 #define UNWRAP_GPGME_CTX(vctx, ctx)				\
   Data_Get_Struct(vctx, struct gpgme_context, ctx)
@@ -702,6 +702,7 @@ rb_s_gpgme_op_keylist_start (dummy, vctx, vpattern, vsecret_only)
   gpgme_error_t err;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+
   err = gpgme_op_keylist_start (ctx, NIL_P(vpattern) ? NULL :
 				StringValueCStr(vpattern),
 				NUM2INT(vsecret_only));
@@ -1737,6 +1738,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_import, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_start",
 			     rb_s_gpgme_op_import_start, 2);
+  rb_define_module_function (mGPGME, "gpgme_op_import_result",
+			     rb_s_gpgme_op_import_result, 1);
   rb_define_module_function (mGPGME, "gpgme_op_delete",
 			     rb_s_gpgme_op_delete, 3);
   rb_define_module_function (mGPGME, "gpgme_op_delete_start",
@@ -1785,6 +1788,8 @@ void Init_gpgme_n ()
 			     rb_s_gpgme_op_sign, 4);
   rb_define_module_function (mGPGME, "gpgme_op_sign_start",
 			     rb_s_gpgme_op_sign_start, 4);
+  rb_define_module_function (mGPGME, "gpgme_op_sign_result",
+			     rb_s_gpgme_op_sign_result, 1);
 
   /* Encrypt */
   rb_define_module_function (mGPGME, "gpgme_op_encrypt",
