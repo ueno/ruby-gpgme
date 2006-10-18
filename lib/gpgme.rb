@@ -42,7 +42,7 @@ def GPGME.decrypt(cipher, *args_options, &block)
   ctx = GPGME::Ctx.new(options)
   cipher_data = input_data(cipher)
   plain_data = output_data(plain)
-  plain_pos = plain_data.seek(0, IO::SEEK_CUR)
+  plain_pos = plain_data.seek(0, IO::SEEK_CUR) rescue nil
   err = GPGME::gpgme_op_decrypt_verify(ctx, cipher_data, plain_data)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
@@ -55,7 +55,7 @@ def GPGME.decrypt(cipher, *args_options, &block)
   end
 
   unless plain
-    plain_data.seek(plain_pos, IO::SEEK_SET)
+    plain_data.seek(plain_pos, IO::SEEK_SET) if plain_pos
     plain_data.read
   end
 end
@@ -88,7 +88,7 @@ def GPGME.verify(sig, *args_options, &block) # :yields: signature
   else
     signed_text_data = nil
     plain_data = output_data(plain)
-    plain_pos = plain_data.seek(0, IO::SEEK_CUR)
+    plain_pos = plain_data.seek(0, IO::SEEK_CUR) rescue nil
   end
   err = GPGME::gpgme_op_verify(ctx, sig_data, signed_text_data,
                                plain_data)
@@ -98,8 +98,8 @@ def GPGME.verify(sig, *args_options, &block) # :yields: signature
   ctx.verify_result.signatures.each do |signature|
     yield signature
   end
-  unless plain_data
-    plain_data.seek(plain_pos, IO::SEEK_SET)
+  unless signed_text
+    plain_data.seek(plain_pos, IO::SEEK_SET) if plain_pos
     plain_data.read
   end
 end
@@ -128,13 +128,13 @@ def GPGME.sign(plain, *args_options)
   mode = options[:mode] || GPGME::SIG_MODE_NORMAL
   plain_data = input_data(plain)
   sig_data = output_data(sig)
-  sig_pos = sig_data.seek(0, IO::SEEK_CUR)
+  sig_pos = sig_data.seek(0, IO::SEEK_CUR) rescue nil
   err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
 
   unless sig
-    sig_data.seek(sig_pos, IO::SEEK_SET)
+    sig_data.seek(sig_pos, IO::SEEK_SET) if sig_pos
     sig_data.read
   end
 end
@@ -166,14 +166,14 @@ def GPGME.encrypt(recipients, plain, *args_options)
   ctx = GPGME::Ctx.new(options)
   plain_data = input_data(plain)
   cipher_data = output_data(cipher)
-  cipher_pos = cipher_data.seek(0, IO::SEEK_CUR)
+  cipher_pos = cipher_data.seek(0, IO::SEEK_CUR) rescue nil
   err = GPGME::gpgme_op_encrypt(ctx, recipient_keys, 0, plain_data,
                                 cipher_data)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
 
   unless cipher
-    cipher_data.seek(cipher_pos, IO::SEEK_SET)
+    cipher_data.seek(cipher_pos, IO::SEEK_SET) if cipher_pos
     cipher_data.read
   end
 end
@@ -269,7 +269,7 @@ module GPGME
     end
 
     def write(hook, buffer, length)
-      @io.write(buffer, length)
+      @io.write(buffer[0 .. length])
     end
 
     def seek(hook, offset, whence)

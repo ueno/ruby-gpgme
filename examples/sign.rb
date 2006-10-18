@@ -1,4 +1,4 @@
 #!/usr/bin/env ruby
 require 'gpgme'
 
-puts(GPGME::sign('test test test', {:mode => GPGME::SIG_MODE_CLEAR}))
+GPGME::sign('test test test', $stdout, {:mode => GPGME::SIG_MODE_CLEAR})
