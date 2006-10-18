@@ -35,7 +35,7 @@ require 'gpgme/constants'
 # The cipher text is specified by a file, a string, or a GPGME::Data object.
 #
 def GPGME.decrypt(cipher, *args_options, &block)
-  raise ArgumentError, "wrong number of arguments" if args_options.length > 2
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
   args, options = split_args(args_options)
   plain = args[0]
 
@@ -76,7 +76,7 @@ end
 # GPGME::Data object.
 #
 def GPGME.verify(sig, *args_options, &block) # :yields: signature
-  raise ArgumentError, "wrong number of arguments" if args_options.length > 3
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
   signed_text, plain = args[0]
 
@@ -119,7 +119,7 @@ end
 # The plain text is specified by a file, a string, or a GPGME::Data object.
 #
 def GPGME.sign(plain, *args_options)
-  raise ArgumentError, "wrong number of arguments" if args_options.length > 2
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
   args, options = split_args(args_options)
   sig = args[0]
 
@@ -158,7 +158,7 @@ end
 # The plain text is specified by a file, a string, or a GPGME::Data object.
 #
 def GPGME.encrypt(recipients, plain, *args_options)
-  raise ArgumentError, "wrong number of arguments" if args_options.length > 3
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
   cipher = args[0]
   recipient_keys = recipients ? find_keys(recipients, false) : nil
@@ -194,7 +194,7 @@ end
 # secret keys are returned.
 #
 def GPGME.each_key(*args_options) # :yields: key
-  raise ArgumentError, "wrong number of arguments" if args_options.length > 3
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
   pattern, secret_only = args[0]
   ctx = GPGME::Ctx.new
@@ -891,7 +891,7 @@ capability=%s, subkeys=%s, uids=%s>",
               primary_subkey.length,
               primary_subkey.pubkey_algo_letter,
               primary_subkey.fingerprint[-8 .. -1],
-              primary_subkey.timestamp.strftime("%Y-%m-%d"),
+              primary_subkey.timestamp.strftime('%Y-%m-%d'),
               trust.inspect,
               VALIDITY_NAMES[@owner_trust].inspect,
               capability.inspect,
@@ -906,7 +906,7 @@ capability=%s, subkeys=%s, uids=%s>",
                   primary_subkey.length,
                   primary_subkey.pubkey_algo_letter,
                   primary_subkey.fingerprint[-8 .. -1],
-                  primary_subkey.timestamp.strftime("%Y-%m-%d"))
+                  primary_subkey.timestamp.strftime('%Y-%m-%d'))
       uids.each do |user_id|
         s << "uid\t\t#{user_id.name} <#{user_id.email}>\n"
       end
@@ -968,7 +968,7 @@ capability=%s, subkeys=%s, uids=%s>",
               length,
               pubkey_algo_letter,
               fingerprint[-8 .. -1],
-              timestamp.strftime("%Y-%m-%d"),
+              timestamp.strftime('%Y-%m-%d'),
               trust.inspect,
               capability.inspect)
     end
@@ -979,7 +979,7 @@ capability=%s, subkeys=%s, uids=%s>",
               length,
               pubkey_algo_letter,
               fingerprint[-8 .. -1],
-              timestamp.strftime("%Y-%m-%d"))
+              timestamp.strftime('%Y-%m-%d'))
     end
   end
 
