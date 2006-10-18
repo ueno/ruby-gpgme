@@ -42,6 +42,7 @@ def GPGME.decrypt(cipher, *args_options, &block)
   ctx = GPGME::Ctx.new(options)
   cipher_data = input_data(cipher)
   plain_data = output_data(plain)
+  plain_pos = plain_data.seek(0, IO::SEEK_CUR)
   err = GPGME::gpgme_op_decrypt_verify(ctx, cipher_data, plain_data)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
@@ -52,10 +53,8 @@ def GPGME.decrypt(cipher, *args_options, &block)
       yield signature
     end
   end
-  unless plain
-    plain_data.rewind
-    plain_data.read
-  end
+  plain_data.seek(plain_pos, IO::SEEK_SET)
+  plain_data.read
 end
 
 # call-seq:
@@ -86,19 +85,18 @@ def GPGME.verify(sig, *args_options, &block) # :yields: signature
   else
     signed_text_data = nil
     plain_data = output_data(plain)
+    plain_pos = plain_data.seek(0, IO::SEEK_CUR)
   end
   err = GPGME::gpgme_op_verify(ctx, sig_data, signed_text_data,
                                plain_data)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
 
-  if signed_text
-    ctx.verify_result.signatures
-  else
-    ctx.verify_result.signatures.each do |signature|
-      yield signature
-    end
-    plain_data.rewind
+  ctx.verify_result.signatures.each do |signature|
+    yield signature
+  end
+  if plain_data
+    plain_data.seek(plain_pos, IO::SEEK_SET)
     plain_data.read
   end
 end
@@ -127,13 +125,12 @@ def GPGME.sign(plain, *args_options)
   mode = options[:mode] || GPGME::SIG_MODE_NORMAL
   plain_data = input_data(plain)
   sig_data = output_data(sig)
+  sig_pos = sig_data.seek(0, IO::SEEK_CUR)
   err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
-  unless sig
-    sig_data.rewind
-    sig_data.read
-  end
+  sig_data.seek(sig_pos, IO::SEEK_SET)
+  sig_data.read
 end
 
 # call-seq:
@@ -163,15 +160,14 @@ def GPGME.encrypt(recipients, plain, *args_options)
   ctx = GPGME::Ctx.new(options)
   plain_data = input_data(plain)
   cipher_data = output_data(cipher)
+  cipher_pos = cipher_data.seek(0, IO::SEEK_CUR)
   err = GPGME::gpgme_op_encrypt(ctx, recipient_keys, 0, plain_data,
                                 cipher_data)
   exc = GPGME::error_to_exception(err)
   raise exc if exc
 
-  unless cipher
-    cipher_data.rewind
-    cipher_data.read
-  end
+  cipher_data.seek(cipher_pos, IO::SEEK_SET)
+  cipher_data.read
 end
 
 # call-seq:
@@ -270,6 +266,7 @@ module GPGME
 
     def seek(hook, offset, whence)
       io.seek(offset, whence)
+      io.pos
     end
   end
 end
@@ -473,11 +470,6 @@ module GPGME
       end
     end
 
-    # Set the data pointer to the beginning.
-    def rewind
-      seek(0)
-    end
-
     # Seek to a given <i>offset</i> in the data object according to the
     # value of <i>whence</i>.
     def seek(offset, whence = IO::SEEK_SET)
@@ -515,19 +507,26 @@ module GPGME
     # Create a new instance from the given <i>options</i>.
     # <i>options</i> is a Hash.
     #
-    # * <tt>:protocol</tt> Either <tt>PROTOCOL_OpenPGP</tt> or
+    # * <tt>:protocol</tt>  Either <tt>PROTOCOL_OpenPGP</tt> or
     #   <tt>PROTOCOL_CMS</tt>.
     #
     # * <tt>:armor</tt>  If <tt>true</tt>, the output should be ASCII armored.
     #
-    # * <tt>:textmode</tt> If <tt>true</tt>, inform the recipient that the
+    # * <tt>:textmode</tt>  If <tt>true</tt>, inform the recipient that the
     #   input is text.
     #
-    # * <tt>:keylist_mode</tt> Either
+    # * <tt>:keylist_mode</tt>  Either
     #   <tt>KEYLIST_MODE_LOCAL</tt>,
     #   <tt>KEYLIST_MODE_EXTERN</tt>,
     #   <tt>KEYLIST_MODE_SIGS</tt>, or
     #   <tt>KEYLIST_MODE_VALIDATE</tt>.
+    # * <tt>:passphrase_callback</tt>  A callback function.
+    # * <tt>:passphrase_callback_value</tt> An object passed to
+    #   passphrase_callback.
+    # * <tt>:progress_callback</tt>  A callback function.
+    # * <tt>:progress_callback_value</tt> An object passed to
+    #   progress_callback.
+    #
     def self.new(options = Hash.new)
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)

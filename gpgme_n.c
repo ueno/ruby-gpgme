@@ -63,7 +63,7 @@ Boston, MA 02110-1301, USA.  */
   Data_Get_Struct(vdh, struct gpgme_data, dh);
 
 #define WRAP_GPGME_CTX(ctx)					\
-  Data_Wrap_Struct(cCtx, 0, 0, ctx)		\
+  Data_Wrap_Struct(cCtx, 0, gpgme_release, ctx)		\
 /* `gpgme_ctx_t' is typedef'ed as `struct gpgme_context *'. */
 #define UNWRAP_GPGME_CTX(vctx, ctx)				\
   Data_Get_Struct(vctx, struct gpgme_context, ctx)

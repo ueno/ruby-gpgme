@@ -17,6 +17,13 @@ module GPGME
   GpgmeImportStatus = ImportStatus
   GpgmeImportResult = ImportResult
 
+  class Ctx
+    # Set the data pointer to the beginning.
+    def rewind
+      seek(0)
+    end
+  end
+
   # Deprecated functions.
   alias gpgme_trust_item_release gpgme_trust_item_unref
 
