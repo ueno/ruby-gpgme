@@ -610,7 +610,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     # Set the passphrase callback with given hook value.
     # <i>passfunc</i> should respond to <code>call</code> with 5 arguments.
     #
-    #  lambda {|hook, uid_hint, passphrase_info, prev_was_bad, fd|
+    #  def passfunc(hook, uid_hint, passphrase_info, prev_was_bad, fd)
     #    $stderr.write("Passphrase for #{uid_hint}: ")
     #    $stderr.flush
     #    begin
@@ -622,7 +622,10 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #      system('stty echo')
     #    end
     #    puts
-    #  }
+    #  end
+    #
+    #  ctx.set_passphrase_callback(method(:passfunc))
+    #
     def set_passphrase_callback(passfunc, hook_value = nil)
       GPGME::gpgme_set_passphrase_cb(self, passfunc, hook_value)
     end
@@ -631,10 +634,13 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     # Set the progress callback with given hook value.
     # <i>progfunc</i> should respond to <code>call</code> with 5 arguments.
     #
-    #  lambda {|hook, what, type, current, total|
+    #  def progfunc(hook, what, type, current, total)
     #    $stderr.write("#{what}: #{current}/#{total}\r")
     #    $stderr.flush
-    #  }
+    #  end
+    #
+    #  ctx.set_progress_callback(method(:progfunc))
+    #
     def set_progress_callback(progfunc, hook_value = nil)
       GPGME::gpgme_set_progress_cb(self, progfunc, hook_value)
     end
@@ -719,44 +725,47 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #
     # If <i>pubkey</i> and <i>seckey</i> are both set to <tt>nil</tt>,
     # it stores the generated key pair into your key ring.
-    def genkey(parms, pubkey = Data.new, seckey = Data.new)
+    def generate_key(parms, pubkey = Data.new, seckey = Data.new)
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
-    alias generate_key genkey
+    alias genkey generate_key
 
-    def genkey_start(parms, pubkey, seckey)
+    def generate_key_start(parms, pubkey, seckey)
       err = GPGME::gpgme_op_genkey_start(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
-    alias generate_key_start genkey_start
+    alias genkey_start generate_key_start
 
     # Extract the public keys of the recipients.
-    def export(recipients)
+    def export_keys(recipients)
       keydata = Data.new
       err = GPGME::gpgme_op_export(self, recipients, keydata)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       keydata
     end
+    alias export export_keys
 
     # Add the keys in the data buffer to the key ring.
-    def import(keydata)
+    def import_keys(keydata)
       err = GPGME::gpgme_op_import(self, keydata)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
+    alias import import_keys
 
     # Delete the key from the key ring.
     # If allow_secret is false, only public keys are deleted,
     # otherwise secret keys are deleted as well.
-    def delete(key, allow_secret = false)
+    def delete_key(key, allow_secret = false)
       err = GPGME::gpgme_op_delete(self, key, allow_secret ? 1 : 0)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
+    alias delete delete_key
 
     # Decrypt the ciphertext and return the plaintext.
     def decrypt(cipher, plain = Data.new)
