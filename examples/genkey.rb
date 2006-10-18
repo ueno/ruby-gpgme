@@ -23,7 +23,7 @@ progress_cb = proc {|hook, what, type, current, total|
   $stderr.flush
 }
 
-ctx.set_progress_cb(progress_cb)
+#ctx.set_progress_cb(progress_cb)
 ctx.genkey(<<'EOF', nil, nil)
 <GnupgKeyParms format="internal">
 Key-Type: DSA

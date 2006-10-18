@@ -1199,13 +1199,15 @@ rb_s_gpgme_op_verify_start (dummy, vctx, vsig, vsigned_text, vplain)
      VALUE dummy, vctx, vsig, vsigned_text, vplain;
 {
   gpgme_ctx_t ctx;
-  gpgme_data_t sig, signed_text, plain;
+  gpgme_data_t sig, signed_text = NULL, plain = NULL;
   gpgme_error_t err;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vsig, sig);
-  UNWRAP_GPGME_DATA(vsigned_text, signed_text);
-  UNWRAP_GPGME_DATA(vplain, plain);
+  if (!NIL_P(vsigned_text))
+    UNWRAP_GPGME_DATA(vsigned_text, signed_text);
+  if (!NIL_P(vplain))
+    UNWRAP_GPGME_DATA(vplain, plain);
 
   err = gpgme_op_verify_start (ctx, sig, signed_text, plain);
   return LONG2NUM(err);
@@ -1565,9 +1567,12 @@ rb_s_gpgme_wait (dummy, vctx, rstatus, vhang)
     UNWRAP_GPGME_CTX(vctx, ctx);
 
   ctx = gpgme_wait (ctx, &status, NUM2INT(vhang));
-  rb_ary_push (rstatus, INT2NUM(status));
-
-  return WRAP_GPGME_CTX(ctx);
+  if (ctx)
+    {
+      rb_ary_push (rstatus, INT2NUM(status));
+      return WRAP_GPGME_CTX(ctx);
+    }
+  return Qnil;
 }
 
 void Init_gpgme_n ()

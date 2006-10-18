@@ -1,4 +1,3 @@
-# gpgme.rb -- OO interface to GPGME
 # Copyright (C) 2003,2006 Daiki Ueno
 
 # This file is a part of Ruby-GPGME.
@@ -21,6 +20,149 @@
 require 'gpgme_n'
 
 module GPGME
+  # :stopdoc:
+  def input_data(input)
+    if input.kind_of? GPGME::Data
+      input
+    elsif input.respond_to? :to_str
+      GPGME::Data.new_from_mem(input.to_str)
+    elsif input.respond_to? :read
+      GPGME::Data.new_from_cbs(IOCallback.new(input))
+    else
+      raise ArgumentError, input.inspect
+    end
+  end
+  module_function :input_data
+
+  def output_data(output)
+    if output.kind_of? GPGME::Data
+      output
+    elsif output.respond_to? :write
+      GPGME::Data.new_from_cbs(IOCallback.new(output))
+    elsif !output
+      GPGME::Data.new
+    else
+      raise ArgumentError, output.inspect
+    end
+  end
+  module_function :output_data
+
+  class IOCallback			# :nodoc:
+    def initialize(io)
+      @io = io
+    end
+
+    def read(hook, length)
+      io.read(length)
+    end
+
+    def write(hook, buffer, length)
+      io.write(buffer, length)
+    end
+
+    def seek(hook, offset, whence)
+      io.seek(offset, whence)
+    end
+  end
+
+  # :startdoc:
+  def decrypt(cipher, plain = nil, options = Hash.new,
+	      &block) # :yields: signature
+    ctx = Ctx.new(options)
+    cipher_data = input_data(cipher)
+    plain_data = output_data(plain)
+    err = GPGME::gpgme_op_decrypt_verify(ctx, cipher_data, plain_data)
+    exc = GPGME::error_to_exception(err)
+    raise exc if exc
+
+    verify_result = ctx.verify_result
+    if verify_result && block_given?
+      verify_result.signatures.each do |signature|
+	yield signature
+      end
+    end
+    unless plain
+      plain_data.rewind
+      plain_data.read
+    end
+  end
+  module_function :decrypt
+
+  def verify(sig, signed_text = nil, plain = nil, options = Hash.new,
+	     &block) # :yields: signature
+    ctx = Ctx.new(options)
+    sig_data = input_data(sig)
+    if signed_text
+      signed_text_data = input_data(signed_text)
+      plain_data = nil
+    else
+      signed_text_data = nil
+      plain_data = output_data(plain)
+    end
+    err = GPGME::gpgme_op_verify(ctx, sig_data, signed_text_data,
+				 plain_data)
+    exc = GPGME::error_to_exception(err)
+    raise exc if exc
+
+    if signed_text
+      ctx.verify_result.signatures
+    else
+      ctx.verify_result.signatures.each do |signature|
+	yield signature
+      end
+      plain_data.rewind
+      plain_data.read
+    end
+  end
+  module_function :verify
+
+  def sign(plain, sig = nil, options = Hash.new)
+    ctx = Ctx.new(options)
+    mode = options[:mode] || GPGME::GPGME_SIG_MODE_NORMAL
+    plain_data = input_data(plain)
+    sig_data = output_data(sig)
+    err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
+    exc = GPGME::error_to_exception(err)
+    raise exc if exc
+    unless sig
+      sig_data.rewind
+      sig_data.read
+    end
+  end
+  module_function :sign
+
+  def encrypt(recipients, plain, cipher = nil, options = Hash.new)
+    ctx = Ctx.new(options)
+    plain_data = input_data(plain)
+    cipher_data = output_data(cipher)
+    if recipients
+      recipient_keys = Array.new
+      recipients.each do |recipient|
+	if recipient.kind_of? Key
+	  recipient_keys << recipient
+	elsif recipient.kind_of? String
+	  recipient_keys += ctx.find_keys(recipient)
+	end
+      end
+    else
+      recipient_keys = nil
+    end
+    if options[:sign]
+      err = GPGME::gpgme_op_encrypt_sign(ctx, recipient_keys, 0, plain_data,
+					 cipher_data)
+    else
+      err = GPGME::gpgme_op_encrypt(ctx, recipient_keys, 0, plain_data,
+				    cipher_data)
+    end
+    exc = GPGME::error_to_exception(err)
+    raise exc if exc
+    unless cipher
+      cipher_data.rewind
+      cipher_data.read
+    end
+  end
+  module_function :encrypt
+
   PROTOCOL_NAMES = {
     GPGME_PROTOCOL_OpenPGP => "OpenPGP",
     GPGME_PROTOCOL_CMS => "CMS"
@@ -405,7 +547,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     # Convenient method to iterate over keys.
     # If _pattern_ is +nil+, all available keys are returned.
     # If _secret_only_ is +true+, the only secret keys are returned.
-    def each_keys(pattern = nil, secret_only = false, &block) # :yields: key
+    def each_key(pattern = nil, secret_only = false, &block) # :yields: key
       keylist_start(pattern, secret_only)
       begin
 	loop do
@@ -417,6 +559,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
 	keylist_end
       end
     end
+    alias each_keys each_key
 
     # Get the key with the _fingerprint_.
     # If _secret_ is +true+, secret key is returned.
@@ -754,6 +897,27 @@ validity=#{VALIDITY_NAMES[validity]}, signatures=#{signatures.inspect}>"
 
     def exp_timestamp
       Time.at(@exp_timestamp)
+    end
+
+    def to_s
+      ctx = Ctx.new
+      from_key = ctx.get_key(fpr)
+      from = from_key ? "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}" :
+	fpr
+      case GPGME::gpgme_err_code(status)
+      when GPGME::GPG_ERR_NO_ERROR
+	"Good signature from #{from}"
+      when GPGME::GPG_ERR_SIG_EXPIRED
+	"Expired signature from #{from}"
+      when GPGME::GPG_ERR_KEY_EXPIRED
+	"Signature made from expired key #{from}"
+      when GPGME::GPG_ERR_CERT_REVOKED
+	"Signature made from revoked key #{from}"
+      when GPGME::GPG_ERR_BAD_SIGNATURE
+	"Bad signature from #{from}"
+      when GPGME::GPG_ERR_NO_ERROR
+	"No public key for #{from}"
+      end
     end
   end
 
