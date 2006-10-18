@@ -265,16 +265,16 @@ module GPGME
     end
 
     def read(hook, length)
-      io.read(length)
+      @io.read(length)
     end
 
     def write(hook, buffer, length)
-      io.write(buffer, length)
+      @io.write(buffer, length)
     end
 
     def seek(hook, offset, whence)
-      io.seek(offset, whence)
-      io.pos
+      @io.seek(offset, whence)
+      @io.pos
     end
   end
 end
