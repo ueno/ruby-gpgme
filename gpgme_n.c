@@ -251,7 +251,7 @@ read_cb (void *handle, void *buffer, size_t size)
 }
 
 static ssize_t
-write_cb (void *handle, void *buffer, size_t size)
+write_cb (void *handle, const void *buffer, size_t size)
 {
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnwrite;
 
