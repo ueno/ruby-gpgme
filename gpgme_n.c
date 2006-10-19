@@ -779,7 +779,8 @@ save_gpgme_key_attrs (vkey, key)
       rb_iv_set (vsubkey, "@pubkey_algo", INT2FIX(subkey->pubkey_algo));
       rb_iv_set (vsubkey, "@length", UINT2NUM(subkey->length));
       rb_iv_set (vsubkey, "@keyid", rb_str_new2 (subkey->keyid));
-      rb_iv_set (vsubkey, "@fpr", rb_str_new2 (subkey->fpr));
+      if (subkey->fpr)
+        rb_iv_set (vsubkey, "@fpr", rb_str_new2 (subkey->fpr));
       rb_iv_set (vsubkey, "@timestamp", LONG2NUM(subkey->timestamp));
       rb_iv_set (vsubkey, "@expires", LONG2NUM(subkey->expires));
       rb_ary_push (vsubkeys, vsubkey);

@@ -969,7 +969,7 @@ capability=%s, subkeys=%s, uids=%s>",
               secret? ? 'ssc' : 'sub',
               length,
               pubkey_algo_letter,
-              fingerprint[-8 .. -1],
+              (@fingerprint || @keyid)[-8 .. -1],
               timestamp.strftime('%Y-%m-%d'),
               trust.inspect,
               capability.inspect)
@@ -980,7 +980,7 @@ capability=%s, subkeys=%s, uids=%s>",
               secret? ? 'ssc' : 'sub',
               length,
               pubkey_algo_letter,
-              fingerprint[-8 .. -1],
+              (@fingerprint || @keyid)[-8 .. -1],
               timestamp.strftime('%Y-%m-%d'))
     end
   end
