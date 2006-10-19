@@ -1494,7 +1494,7 @@ rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
 static VALUE
 rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
 {
-  gpgme_ctx_t ctx = NULL;
+  gpgme_ctx_t ctx = NULL, ret;
   gpgme_error_t status;
 
   /* The CTX argument can be `NULL'.  In that case, `gpgme_wait' waits
@@ -1502,11 +1502,13 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
   if (!NIL_P(vctx))
     UNWRAP_GPGME_CTX(vctx, ctx);
 
-  ctx = gpgme_wait (ctx, &status, NUM2INT(vhang));
-  if (ctx)
+  ret = gpgme_wait (ctx, &status, NUM2INT(vhang));
+  if (ret)
     {
       rb_ary_push (rstatus, INT2NUM(status));
-      return WRAP_GPGME_CTX(ctx);
+      if (ret != ctx)
+	vctx = WRAP_GPGME_CTX(ret);
+      return vctx;
     }
   return Qnil;
 }
