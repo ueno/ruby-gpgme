@@ -187,7 +187,8 @@ rb_s_gpgme_data_new (VALUE dummy, VALUE rdh)
 }  
 
 static VALUE
-rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer, VALUE vsize, VALUE vcopy)
+rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
+			      VALUE vsize, VALUE vcopy)
 {
   gpgme_data_t dh;
   VALUE vdh;
@@ -211,7 +212,8 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer, VALUE vsize
 }  
 
 static VALUE
-rb_s_gpgme_data_new_from_file (VALUE dummy, VALUE rdh, VALUE vfilename, VALUE vcopy)
+rb_s_gpgme_data_new_from_file (VALUE dummy, VALUE rdh, VALUE vfilename,
+			       VALUE vcopy)
 {
   gpgme_data_t dh;
   gpgme_error_t err = gpgme_data_new_from_file (&dh,
@@ -290,7 +292,8 @@ static struct gpgme_data_cbs cbs =
   };
 
 static VALUE
-rb_s_gpgme_data_new_from_cbs (VALUE dummy, VALUE rdh, VALUE vcbs, VALUE vhandle)
+rb_s_gpgme_data_new_from_cbs (VALUE dummy, VALUE rdh, VALUE vcbs,
+			      VALUE vhandle)
 {
   gpgme_data_t dh;
   gpgme_error_t err;
@@ -548,7 +551,8 @@ rb_s_gpgme_get_keylist_mode (VALUE dummy, VALUE vctx)
 }
 
 static gpgme_error_t
-passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info, int prev_was_bad, int fd)
+passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info,
+	       int prev_was_bad, int fd)
 {
   VALUE vcb = (VALUE)hook, vpassfunc, vhook_value;
 
@@ -565,7 +569,8 @@ passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info, in
 }
 
 static VALUE
-rb_s_gpgme_set_passphrase_cb (VALUE dummy, VALUE vctx, VALUE vpassfunc, VALUE vhook_value)
+rb_s_gpgme_set_passphrase_cb (VALUE dummy, VALUE vctx, VALUE vpassfunc,
+			      VALUE vhook_value)
 {
   gpgme_ctx_t ctx;
   VALUE vcb = rb_ary_new ();
@@ -581,7 +586,8 @@ rb_s_gpgme_set_passphrase_cb (VALUE dummy, VALUE vctx, VALUE vpassfunc, VALUE vh
 }
 
 static VALUE
-rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc, VALUE rhook_value)
+rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
+			      VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@passphrase_cb");
 
@@ -605,7 +611,8 @@ progress_cb (void *hook, const char *what, int type, int current, int total)
 }
 
 static VALUE
-rb_s_gpgme_set_progress_cb (VALUE dummy, VALUE vctx, VALUE vprogfunc, VALUE vhook_value)
+rb_s_gpgme_set_progress_cb (VALUE dummy, VALUE vctx, VALUE vprogfunc,
+			    VALUE vhook_value)
 {
   gpgme_ctx_t ctx;
   VALUE vcb = rb_ary_new ();
@@ -622,7 +629,8 @@ rb_s_gpgme_set_progress_cb (VALUE dummy, VALUE vctx, VALUE vprogfunc, VALUE vhoo
 }
 
 static VALUE
-rb_s_gpgme_get_progress_cb (VALUE dummy, VALUE vctx, VALUE rprogfunc, VALUE rhook_value)
+rb_s_gpgme_get_progress_cb (VALUE dummy, VALUE vctx, VALUE rprogfunc,
+			    VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@progress_cb");
   rb_ary_push (rprogfunc, RARRAY(vcb)->ptr[0]);
@@ -643,7 +651,8 @@ rb_s_gpgme_set_locale (VALUE dummy, VALUE vctx, VALUE vcategory, VALUE vvalue)
 }
 
 static VALUE
-rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vsecret_only)
+rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
+			     VALUE vsecret_only)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
@@ -657,7 +666,8 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vsec
 }
 
 static VALUE
-rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vsecret_only)
+rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
+				 VALUE vsecret_only)
 {
   gpgme_ctx_t ctx;
   const char **pattern = NULL;
@@ -793,7 +803,8 @@ rb_s_gpgme_op_keylist_end (VALUE dummy, VALUE vctx)
 }
 
 static VALUE
-rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey, VALUE vsecret)
+rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey,
+		    VALUE vsecret)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
@@ -832,7 +843,8 @@ rb_s_gpgme_key_unref (VALUE dummy, VALUE vkey)
 }
 
 static VALUE
-rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey, VALUE vseckey)
+rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
+		      VALUE vseckey)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t pubkey = NULL, seckey = NULL;
@@ -848,7 +860,8 @@ rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey, VALU
 }
 
 static VALUE
-rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey, VALUE vseckey)
+rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
+			    VALUE vpubkey, VALUE vseckey)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t pubkey = NULL, seckey = NULL;
@@ -864,7 +877,8 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey
 }
 
 static VALUE
-rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved, VALUE vkeydata)
+rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved,
+		      VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
@@ -879,7 +893,8 @@ rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved, 
 }
 
 static VALUE
-rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved, VALUE vkeydata)
+rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
+			    VALUE vreserved, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
@@ -976,7 +991,8 @@ rb_s_gpgme_op_delete (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_secret)
 }
 
 static VALUE
-rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_secret)
+rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
+			    VALUE vallow_secret)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
@@ -990,7 +1006,8 @@ rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_se
 }
 
 static VALUE
-rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmax_level)
+rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
+			       VALUE vmax_level)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
@@ -1068,7 +1085,8 @@ rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
 }
 
 static VALUE
-rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
+rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher,
+			     VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
@@ -1101,7 +1119,8 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
 }
 
 static VALUE
-rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text, VALUE vplain)
+rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
+		      VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
@@ -1119,7 +1138,8 @@ rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text, V
 }
 
 static VALUE
-rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text, VALUE vplain)
+rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig,
+			    VALUE vsigned_text, VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
@@ -1181,7 +1201,8 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
 }
 
 static VALUE
-rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
+rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
+			      VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
@@ -1196,7 +1217,8 @@ rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vpla
 }
 
 static VALUE
-rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
+rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher,
+				    VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
@@ -1249,7 +1271,8 @@ rb_s_gpgme_signers_enum (VALUE dummy, VALUE vctx, VALUE vseq)
 }
 
 static VALUE
-rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig, VALUE vmode)
+rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
+		    VALUE vmode)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t plain, sig;
@@ -1264,7 +1287,8 @@ rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig, VALUE vmo
 }
 
 static VALUE
-rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig, VALUE vmode)
+rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
+			  VALUE vmode)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t plain, sig;
@@ -1325,7 +1349,8 @@ rb_s_gpgme_op_sign_result (VALUE dummy, VALUE vctx)
 }
 
 static VALUE
-rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags, VALUE vplain, VALUE vcipher)
+rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
+		       VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
@@ -1353,7 +1378,8 @@ rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags, VALUE
 }
 
 static VALUE
-rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags, VALUE vplain, VALUE vcipher)
+rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp,
+			     VALUE vflags, VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
@@ -1407,7 +1433,8 @@ rb_s_gpgme_op_encrypt_result (VALUE dummy, VALUE vctx)
 }
 
 static VALUE
-rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags, VALUE vplain, VALUE vcipher)
+rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
+			    VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
@@ -1435,7 +1462,8 @@ rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags, 
 }
 
 static VALUE
-rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags, VALUE vplain, VALUE vcipher)
+rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
+				  VALUE vflags, VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
