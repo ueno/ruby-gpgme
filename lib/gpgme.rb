@@ -26,13 +26,22 @@ require 'gpgme/constants'
 # <code>GPGME.decrypt</code> performs decryption.
 #
 # The arguments should be specified as follows.
-# All arguments except <i>cipher</i> are optional.  If the last
-# argument is a Hash, options will be read from it.
 # 
 # - GPGME.decrypt(<i>cipher</i>, <i>plain</i>, <i>options</i>)
 # - GPGME.decrypt(<i>cipher</i>, <i>options</i>) -> <i>plain</i>
 #
-# The cipher text is specified by a file, a string, or a GPGME::Data object.
+
+# All arguments except <i>cipher</i> are optional.  <i>cipher</i> is
+# input, and <i>plain</i> is output.  If the last argument is a
+# Hash, options will be read from it.
+#
+# An input argument is specified by an IO like object (which responds
+# to <code>read</code>), a string, or a GPGME::Data object.
+#
+# An output argument is specified by an IO like object (which responds
+# to <code>write</code>) or a GPGME::Data object.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
 #
 def GPGME.decrypt(cipher, *args_options, &block)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
@@ -65,14 +74,26 @@ end
 # <code>GPGME.verify</code> verifies a signature.
 #
 # The arguments should be specified as follows.
-# All arguments except <i>sig</i> are optional.  If the last
-# argument is a Hash, options will be read from it.
 # 
 # - GPGME.verify(<i>sig</i>, <i>signed_text</i>, <i>plain</i>, <i>options</i>)
 # - GPGME.verify(<i>sig</i>, <i>signed_text</i>, <i>options</i>) -> <i>plain</i>
 #
-# The signature <i>sig</i> is specified by a file, a string, or a
-# GPGME::Data object.
+# All arguments except <i>sig</i> are optional.  <i>sig</i> and
+# <i>signed_text</i> are input.  <i>plain</i> is output.  If the last
+# argument is a Hash, options will be read from it.
+#
+# An input argument is specified by an IO like object (which responds
+# to <code>read</code>), a string, or a GPGME::Data object.
+#
+# An output argument is specified by an IO like object (which responds
+# to <code>write</code>) or a GPGME::Data object.
+#
+# If <i>sig</i> is a detached signature, then the signed text should
+# be provided in <i>signed_text</i> and <i>plain</i> should be
+# <tt>nil</tt>.  Otherwise, if <i>sig</i> is a normal (or cleartext)
+# signature, <i>signed_text</i> should be <tt>nil</tt>.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
 #
 def GPGME.verify(sig, *args_options, &block) # :yields: signature
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
@@ -105,16 +126,31 @@ end
 # call-seq:
 #   GPGME.sign(plain, sig=nil, options=Hash.new)
 #
-# <code>GPGME.sign</code> create a signature of the plaintext.
+# <code>GPGME.sign</code> creates a signature of the plaintext.
 #
 # The arguments should be specified as follows.
-# All arguments except <i>plain</i> are optional.  If the last
-# argument is a Hash, options will be read from it.
 # 
 # - GPGME.sign(<i>plain</i>, <i>sig</i>, <i>options</i>)
 # - GPGME.sign(<i>plain</i>, <i>options</i>) -> <i>sig</i>
 #
-# The plain text is specified by a file, a string, or a GPGME::Data object.
+# All arguments except <i>plain</i> are optional.  <i>plain</i> is
+# input and <i>sig</i> is output.  If the last argument is a Hash,
+# options will be read from it.
+#
+# An input argument is specified by an IO like object (which responds
+# to <code>read</code>), a string, or a GPGME::Data object.
+#
+# An output argument is specified by an IO like object (which responds
+# to <code>write</code>) or a GPGME::Data object.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
+#
+# - <tt>:signers</tt> Signing keys.  If specified, it is an array
+#   whose elements are a GPGME::Key object or a string.
+# - <tt>:mode</tt> Desired type of a signature.  Either
+#   <tt>GPGME::SIG_MODE_NORMAL</tt> for a normal signature,
+#   <tt>GPGME::SIG_MODE_DETACH</tt> for a detached signature, or
+#   <tt>GPGME::SIG_MODE_CLEAR</tt> for a cleartext signature.
 #
 def GPGME.sign(plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
@@ -142,17 +178,22 @@ end
 # <code>GPGME.encrypt</code> performs encryption.
 #
 # The arguments should be specified as follows.
-# All arguments except <i>recipients</i> and <i>plain</i> are
-# optional.  If the last argument is a Hash, options will be read from
-# it.
 # 
 # - GPGME.encrypt(<i>recipients</i>, <i>plain</i>, <i>cipher</i>, <i>options</i>)
 # - GPGME.encrypt(<i>recipients</i>, <i>plain</i>, <i>options</i>) -> <i>cipher</i>
 #
+# All arguments except <i>recipients</i> and <i>plain</i> are
+# optional.  <i>plain</i> is input and <i>cipher</i> is output.  If
+# the last argument is a Hash, options will be read from it.
+#
 # The recipients are specified by an array whose elements are a string
 # or a GPGME::Key object.  If <i>recipients</i> is <tt>nil</tt>, it
 # performs symmetric encryption.
-# The plain text is specified by a file, a string, or a GPGME::Data object.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
+#
+# - <tt>:sign</tt> If <tt>true</tt>, it performs a combined sign and
+# encrypt operation.
 #
 def GPGME.encrypt(recipients, plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
@@ -180,10 +221,11 @@ end
 # <code>GPGME.each_key</code> iterates over the keyring.
 #
 # The arguments should be specified as follows.
-# All arguments are optional.  If the last argument is a Hash, options
-# will be read from it.
 # 
 # - GPGME.each_key(<i>pattern</i>, <i>secret_only</i>, <i>options</i>)
+#
+# All arguments are optional.  If the last argument is a Hash, options
+# will be read from it.
 #
 # If <i>pattern</i> is <tt>nil</tt>, all available keys are
 # returned.  If <i>secret_only</i> is <tt>true</tt>, the only
@@ -199,8 +241,8 @@ def GPGME.each_key(*args_options) # :yields: key
   end
 end
 
-# :stopdoc:
 module GPGME
+  # :stopdoc:
   private
 
   def split_args(args_options)
@@ -274,8 +316,8 @@ module GPGME
       @io.pos
     end
   end
+  # :startdoc:
 end
-# :startdoc:
 
 module GPGME
   PROTOCOL_NAMES = {
