@@ -1,3 +1,4 @@
+# :stopdoc:
 # Copyright (C) 2003,2006 Daiki Ueno
 
 # This file is a part of Ruby-GPGME.
@@ -16,7 +17,8 @@
 # along with GNU Emacs; see the file COPYING.  If not, write to the    
 # Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
- 
+# :startdoc:
+
 require 'gpgme_n'
 require 'gpgme/constants'
 
@@ -232,6 +234,8 @@ end
 # <i>secret_only</i> is <tt>true</tt>, the only secret keys are
 # returned.
 #
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
+#
 def GPGME.each_key(*args_options) # :yields: key
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
@@ -321,6 +325,7 @@ module GPGME
 end
 
 module GPGME
+  # :stopdoc:
   PROTOCOL_NAMES = {
     PROTOCOL_OpenPGP => :OpenPGP,
     PROTOCOL_CMS => :CMS
@@ -341,6 +346,7 @@ module GPGME
     VALIDITY_FULL => :full,
     VALIDITY_ULTIMATE => :ultimate
   }
+  # :startdoc:
 
   class Error < StandardError
     def initialize(error)
@@ -348,16 +354,27 @@ module GPGME
     end
     attr_reader :error
 
+    # Return the error code.
+    #
     # The error code indicates the type of an error, or the reason why
     # an operation failed.
     def code
       GPGME::gpgme_err_code(@error)
     end
 
+    # Return the error source.
+    #
+    # The error source has not a precisely defined meaning.  Sometimes
+    # it is the place where the error happened, sometimes it is the
+    # place where an error was encoded into an error value.  Usually
+    # the error source will give an indication to where to look for
+    # the problem.  This is not always true, but it is attempted to
+    # achieve this goal.
     def source
       GPGME::gpgme_err_source(@error)
     end
 
+    # Return a description of the error code.
     def message
       GPGME::gpgme_strerror(@error)
     end
@@ -781,13 +798,6 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       raise exc if exc
     end
     alias genkey generate_key
-
-    def generate_key_start(parms, pubkey, seckey)
-      err = GPGME::gpgme_op_genkey_start(self, parms, pubkey, seckey)
-      exc = GPGME::error_to_exception(err)
-      raise exc if exc
-    end
-    alias genkey_start generate_key_start
 
     # Extract the public keys of the recipients.
     def export_keys(recipients)
