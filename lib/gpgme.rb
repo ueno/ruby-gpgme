@@ -348,6 +348,8 @@ module GPGME
     end
     attr_reader :error
 
+    # The error code indicates the type of an error, or the reason why
+    # an operation failed.
     def code
       GPGME::gpgme_err_code(@error)
     end
@@ -553,7 +555,7 @@ module GPGME
   # A context within which all cryptographic operations are performed.
   class Ctx
     # Create a new instance from the given <i>options</i>.
-    # <i>options</i> is a Hash.
+    # <i>options</i> is a Hash whose keys are
     #
     # * <tt>:protocol</tt>  Either <tt>PROTOCOL_OpenPGP</tt> or
     #   <tt>PROTOCOL_CMS</tt>.

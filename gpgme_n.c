@@ -314,42 +314,6 @@ rb_s_gpgme_data_new_from_cbs (VALUE dummy, VALUE rdh, VALUE vcbs,
 }
 
 static VALUE
-rb_s_gpgme_data_release (VALUE dummy, VALUE vdh)
-{
-  gpgme_data_t dh;
-
-  UNWRAP_GPGME_DATA(vdh, dh);
-  if (!dh)
-    rb_raise (rb_eRuntimeError,
-	      "Data has already been released.");
-  gpgme_data_release (dh);
-  DATA_PTR(vdh) = NULL;
-  return Qnil;
-}
-
-static VALUE
-rb_s_gpgme_data_release_and_get_mem (VALUE dummy, VALUE vdh, VALUE rlength)
-{
-  gpgme_data_t dh;
-  char *buffer;
-  VALUE vbuffer;
-  size_t length;
-
-  UNWRAP_GPGME_DATA(vdh, dh);
-  if (!dh)
-    rb_raise (rb_eRuntimeError,
-      "Data has already been released.");
-  buffer = gpgme_data_release_and_get_mem (dh, &length);
-  DATA_PTR(vdh) = NULL;
-  if (buffer == NULL)
-    return Qnil;
-  vbuffer = rb_str_new (buffer, length);
-  free (buffer);
-  rb_ary_push (rlength, UINT2NUM(length));
-  return vbuffer;
-}
-
-static VALUE
 rb_s_gpgme_data_read (VALUE dummy, VALUE vdh, VALUE vlength)
 {
   gpgme_data_t dh;
@@ -426,20 +390,6 @@ rb_s_gpgme_new (VALUE dummy, VALUE rctx)
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     rb_ary_push (rctx, WRAP_GPGME_CTX(ctx));
   return LONG2NUM(err);
-}
-
-static VALUE
-rb_s_gpgme_release (VALUE dummy, VALUE vctx)
-{
-  gpgme_ctx_t ctx;
-
-  UNWRAP_GPGME_CTX(vctx, ctx);
-  if (!ctx)
-    rb_raise (rb_eRuntimeError,
-      "gpgme_ctx_t has already been released.");
-  gpgme_release (ctx);
-  DATA_PTR(vctx) = NULL;
-  return Qnil;
 }
 
 static VALUE
@@ -1591,12 +1541,6 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_data_new_from_cbs",
 			     rb_s_gpgme_data_new_from_cbs, 3);
 
-  /* Destroying Data Buffers */
-  rb_define_module_function (mGPGME, "gpgme_data_release",
-			     rb_s_gpgme_data_release, 1);
-  rb_define_module_function (mGPGME, "gpgme_data_release_and_get_mem",
-			     rb_s_gpgme_data_release_and_get_mem, 2);
-
   /* Manipulating Data Buffers */
   rb_define_module_function (mGPGME, "gpgme_data_read",
 			     rb_s_gpgme_data_read, 2);
@@ -1612,10 +1556,6 @@ Init_gpgme_n (void)
   /* Creating Contexts */
   rb_define_module_function (mGPGME, "gpgme_new",
 			     rb_s_gpgme_new, 1);
-
-  /* Destroying Contexts */
-  rb_define_module_function (mGPGME, "gpgme_release",
-			     rb_s_gpgme_release, 2);
 
   /* Context Attributes */
   rb_define_module_function (mGPGME, "gpgme_set_protocol",
