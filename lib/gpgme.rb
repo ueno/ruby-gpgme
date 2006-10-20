@@ -32,7 +32,6 @@ require 'gpgme/constants'
 # - GPGME.decrypt(<i>cipher</i>, <i>plain</i>, <i>options</i>)
 # - GPGME.decrypt(<i>cipher</i>, <i>options</i>) -> <i>plain</i>
 #
-
 # All arguments except <i>cipher</i> are optional.  <i>cipher</i> is
 # input, and <i>plain</i> is output.  If the last argument is a
 # Hash, options will be read from it.
