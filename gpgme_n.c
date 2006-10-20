@@ -245,7 +245,7 @@ read_cb (void *handle, void *buffer, size_t size)
   vbuffer = rb_funcall (vcbs, rb_intern ("read"), 2, vhook_value,
 			LONG2NUM(size));
   if (NIL_P(vbuffer))
-    return -1;
+    return 0;
   memcpy (buffer, StringValuePtr(vbuffer), RSTRING(vbuffer)->len);
   return RSTRING(vbuffer)->len;
 }
