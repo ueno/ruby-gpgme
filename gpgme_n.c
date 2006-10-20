@@ -133,7 +133,7 @@ rb_s_gpgme_get_engine_info (VALUE dummy, VALUE rinfo)
 	    rb_iv_set (vinfo, "@version", rb_str_new2 (info->version));
 	  if (info->req_version)
 	    rb_iv_set (vinfo, "@req_version", rb_str_new2 (info->req_version));
-	  rb_ary_push (rinfo, vinfo);
+	  rb_ary_store (rinfo, 0, vinfo);
 	}
     }
   return LONG2NUM(err);
@@ -182,7 +182,7 @@ rb_s_gpgme_data_new (VALUE dummy, VALUE rdh)
   gpgme_error_t err = gpgme_data_new (&dh);
 
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rdh, WRAP_GPGME_DATA(dh));
+    rb_ary_store (rdh, 0, WRAP_GPGME_DATA(dh));
   return LONG2NUM(err);
 }  
 
@@ -206,7 +206,7 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
       vdh = WRAP_GPGME_DATA(dh);
       /* Keep a reference to VBUFFER to avoid GC. */
       rb_iv_set (vdh, "@buffer", vbuffer);
-      rb_ary_push (rdh, vdh);
+      rb_ary_store (rdh, 0, vdh);
     }
   return LONG2NUM(err);
 }  
@@ -220,7 +220,7 @@ rb_s_gpgme_data_new_from_file (VALUE dummy, VALUE rdh, VALUE vfilename,
 						StringValueCStr(vfilename),
 						NUM2INT(vcopy));
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rdh, WRAP_GPGME_DATA(dh));
+    rb_ary_store (rdh, 0, WRAP_GPGME_DATA(dh));
   return LONG2NUM(err);
 }
 
@@ -230,7 +230,7 @@ rb_s_gpgme_data_new_from_fd (VALUE dummy, VALUE rdh, VALUE vfd)
   gpgme_data_t dh;
   gpgme_error_t err = gpgme_data_new_from_fd (&dh, NUM2INT(vfd));
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rdh, WRAP_GPGME_DATA(dh));
+    rb_ary_store (rdh, 0, WRAP_GPGME_DATA(dh));
   return LONG2NUM(err);
 }
 
@@ -308,7 +308,7 @@ rb_s_gpgme_data_new_from_cbs (VALUE dummy, VALUE rdh, VALUE vcbs,
       VALUE vdh = WRAP_GPGME_DATA(dh);
       /* Keep a reference to avoid GC. */
       rb_iv_set (vdh, "@cbs_handle", vcbs_handle);
-      rb_ary_push (rdh, vdh);
+      rb_ary_store (rdh, 0, vdh);
     }
   return LONG2NUM(err);
 }
@@ -388,7 +388,7 @@ rb_s_gpgme_new (VALUE dummy, VALUE rctx)
   gpgme_error_t err = gpgme_new (&ctx);
 
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_push (rctx, WRAP_GPGME_CTX(ctx));
+    rb_ary_store (rctx, 0, WRAP_GPGME_CTX(ctx));
   return LONG2NUM(err);
 }
 
@@ -542,8 +542,8 @@ rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
   VALUE vcb = rb_iv_get (vctx, "@passphrase_cb");
 
   /* No need to call gpgme_get_passphrase_cb. */
-  rb_ary_push (rpassfunc, RARRAY(vcb)->ptr[0]);
-  rb_ary_push (rhook_value, RARRAY(vcb)->ptr[1]);
+  rb_ary_store (rpassfunc, 0, RARRAY(vcb)->ptr[0]);
+  rb_ary_store (rhook_value, 0, RARRAY(vcb)->ptr[1]);
   return Qnil;
 }
 
@@ -583,8 +583,8 @@ rb_s_gpgme_get_progress_cb (VALUE dummy, VALUE vctx, VALUE rprogfunc,
 			    VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@progress_cb");
-  rb_ary_push (rprogfunc, RARRAY(vcb)->ptr[0]);
-  rb_ary_push (rhook_value, RARRAY(vcb)->ptr[1]);
+  rb_ary_store (rprogfunc, 0, RARRAY(vcb)->ptr[0]);
+  rb_ary_store (rhook_value, 0, RARRAY(vcb)->ptr[1]);
   return Qnil;
 }
 
@@ -736,7 +736,7 @@ rb_s_gpgme_op_keylist_next (VALUE dummy, VALUE vctx, VALUE rkey)
     {
       VALUE vkey = WRAP_GPGME_KEY(key);
       save_gpgme_key_attrs (vkey, key);
-      rb_ary_push (rkey, vkey);
+      rb_ary_store (rkey, 0, vkey);
     }
   return LONG2NUM(err);
 }
@@ -767,7 +767,7 @@ rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey,
     {
       VALUE vkey = WRAP_GPGME_KEY(key);
       save_gpgme_key_attrs (vkey, key);
-      rb_ary_push (rkey, vkey);
+      rb_ary_store (rkey, 0, vkey);
     }
   return LONG2NUM(err);
 }
@@ -989,7 +989,7 @@ rb_s_gpgme_op_trustlist_next (VALUE dummy, VALUE vctx, VALUE ritem)
       rb_iv_set (vitem, "@validity", rb_str_new2 (item->validity));
       if (item->name)
 	rb_iv_set (vitem, "@name", rb_str_new2 (item->name));
-      rb_ary_push (ritem, vitem);
+      rb_ary_store (ritem, 0, vitem);
     }
   return LONG2NUM(err);
 }
@@ -1455,7 +1455,7 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
   ret = gpgme_wait (ctx, &status, NUM2INT(vhang));
   if (ret)
     {
-      rb_ary_push (rstatus, INT2NUM(status));
+      rb_ary_store (rstatus, 0, INT2NUM(status));
       if (ret != ctx)
 	vctx = WRAP_GPGME_CTX(ret);
       return vctx;
