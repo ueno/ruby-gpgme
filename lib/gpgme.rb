@@ -529,7 +529,7 @@ module GPGME
     end
 
     # Create a new instance from the specified file descriptor.
-    def self.for_fd(fd)
+    def self.from_fd(fd)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_fd(rdh, fd)
       exc = GPGME::error_to_exception(err)
