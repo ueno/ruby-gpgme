@@ -465,6 +465,18 @@ module GPGME
   module_function :error_to_exception
   private :error_to_exception
 
+  class << self
+    alias check_version gpgme_check_version
+    alias pubkey_algo_name gpgme_pubkey_algo_name
+    alias hash_algo_name gpgme_hash_algo_name
+  end
+
+  def engine_check_version
+    err = GPGME::gpgme_engine_check_version
+    exc = GPGME::error_to_exception(err)
+    raise exc if exc
+  end
+
   def engine_info
     rinfo = Array.new
     GPGME::gpgme_get_engine_info(rinfo)
@@ -477,7 +489,24 @@ module GPGME
     BLOCK_SIZE = 4096
 
     # Create a new instance.
-    def self.new
+    #
+    # The created data types depend on <i>arg</i>.  If <i>arg</i> is
+    # <tt>nil</tt>, it creates an instance with an empty buffer.
+    # Otherwise, <i>arg</i> is either a string, an IO, or a Pathname.
+    def self.new(arg = nil, copy = false)
+      if arg.nil?
+        return empty
+      elsif arg.respond_to? :to_str
+        return for_str(arg.to_str, copy)
+      elsif arg.respond_to? :to_io
+        return for_io(arg.to_io)
+      elsif arg.respond_to? :open
+        return for_io(arg.open)
+      end
+    end
+
+    # Create a new instance with an empty buffer.
+    def self.empty
       rdh = Array.new
       err = GPGME::gpgme_data_new(rdh)
       exc = GPGME::error_to_exception(err)
@@ -486,25 +515,21 @@ module GPGME
     end
 
     # Create a new instance with internal buffer.
-    def self.new_from_mem(buf, copy = false)
+    def self.for_str(buf, copy = true)
       rdh = Array.new
-      err = GPGME::gpgme_data_new_from_mem(rdh, buf, buf.length, copy ? 1 : 0)
+      err = GPGME::gpgme_data_new_from_mem(rdh, buf, buf.length)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       rdh[0]
     end
 
-    # Create a new instance from the specified file.
-    def self.new_from_file(filename, copy = false)
-      rdh = Array.new
-      err = GPGME::gpgme_data_new_from_file(rdh, filename, copy ? 1 : 0)
-      exc = GPGME::error_to_exception(err)
-      raise exc if exc
-      rdh[0]
+    # Create a new instance associated with a given IO.
+    def self.for_io(io)
+      new_from_callbacks(IOCallbacks.new(arg))
     end
 
     # Create a new instance from the specified file descriptor.
-    def self.new_from_fd(fd)
+    def self.for_fd(fd)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_fd(rdh, fd)
       exc = GPGME::error_to_exception(err)
@@ -513,7 +538,7 @@ module GPGME
     end
 
     # Create a new instance from the specified callbacks.
-    def self.new_from_callbacks(callbacks, hook_value = nil)
+    def self.for_callbacks(callbacks, hook_value = nil)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_cbs(rdh, callbacks, hook_value)
       exc = GPGME::error_to_exception(err)

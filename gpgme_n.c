@@ -188,7 +188,7 @@ rb_s_gpgme_data_new (VALUE dummy, VALUE rdh)
 
 static VALUE
 rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
-			      VALUE vsize, VALUE vcopy)
+			      VALUE vsize)
 {
   gpgme_data_t dh;
   VALUE vdh;
@@ -198,31 +198,14 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
   if (RSTRING(vbuffer)->len < size)
     rb_raise (rb_eArgError, "argument out of range");
 
-  rb_str_modify (vbuffer);
-  err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size,
-				 NUM2INT(vcopy));
+  err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size, 1);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       vdh = WRAP_GPGME_DATA(dh);
-      /* Keep a reference to VBUFFER to avoid GC. */
-      rb_iv_set (vdh, "@buffer", vbuffer);
       rb_ary_store (rdh, 0, vdh);
     }
   return LONG2NUM(err);
 }  
-
-static VALUE
-rb_s_gpgme_data_new_from_file (VALUE dummy, VALUE rdh, VALUE vfilename,
-			       VALUE vcopy)
-{
-  gpgme_data_t dh;
-  gpgme_error_t err = gpgme_data_new_from_file (&dh,
-						StringValueCStr(vfilename),
-						NUM2INT(vcopy));
-  if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_store (rdh, 0, WRAP_GPGME_DATA(dh));
-  return LONG2NUM(err);
-}
 
 static VALUE
 rb_s_gpgme_data_new_from_fd (VALUE dummy, VALUE rdh, VALUE vfd)
@@ -1533,9 +1516,7 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_data_new",
 			     rb_s_gpgme_data_new, 1);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_mem",
-			     rb_s_gpgme_data_new_from_mem, 4);
-  rb_define_module_function (mGPGME, "gpgme_data_new_from_file",
-			     rb_s_gpgme_data_new_from_file, 3);
+			     rb_s_gpgme_data_new_from_mem, 3);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_fd",
 			     rb_s_gpgme_data_new_from_fd, 2);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_cbs",

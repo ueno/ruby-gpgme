@@ -1,3 +1,5 @@
+require 'gpgme'
+
 module GPGME
   GpgmeError = Error
   GpgmeData = Data
@@ -23,9 +25,6 @@ module GPGME
       seek(0)
     end
   end
-
-  # Deprecated functions.
-  alias gpgme_trust_item_release gpgme_trust_item_unref
 
   def gpgme_data_rewind(dh)
     begin
