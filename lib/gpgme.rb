@@ -252,7 +252,7 @@ module GPGME
   def split_args(args_options)
     if args_options.length > 0 and args_options[-1].respond_to? :to_hash
       args = args_options[0 ... -1]
-      options = args_options[-1]
+      options = args_options[-1].to_hash
     else
       args = args_options
       options = Hash.new
