@@ -19,6 +19,11 @@ require 'gpgme'
 #   puts
 # end
 
+unless ENV['GPG_AGENT_INFO']
+  $stderr.puts("gpg-agent is not running.  See the comment in #{$0}.")
+  exit(1)
+end
+
 plain = 'test test test'
 puts("Plaintext:\n#{plain}")
 

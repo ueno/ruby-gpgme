@@ -19,6 +19,11 @@ require 'gpgme'
 #   puts
 # end
 
+unless ENV['GPG_AGENT_INFO']
+  $stderr.puts("gpg-agent is not running.  See the comment in #{$0}.")
+  exit(1)
+end
+
 GPGME::sign('test test test', $stdout, {:mode => GPGME::SIG_MODE_CLEAR,
-	      # :passphrase_callback => method(:passfunc)
-	    })
+              # :passphrase_callback => method(:passfunc)
+            })
