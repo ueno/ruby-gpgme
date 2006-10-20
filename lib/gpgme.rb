@@ -280,9 +280,9 @@ module GPGME
     if input.kind_of? GPGME::Data
       input
     elsif input.respond_to? :to_str
-      GPGME::Data.new_from_mem(input.to_str)
+      GPGME::Data.for_str(input.to_str)
     elsif input.respond_to? :read
-      GPGME::Data.new_from_callbacks(IOCallbacks.new(input))
+      GPGME::Data.for_callbacks(IOCallbacks.new(input))
     else
       raise ArgumentError, input.inspect
     end
@@ -293,9 +293,9 @@ module GPGME
     if output.kind_of? GPGME::Data
       output
     elsif output.respond_to? :write
-      GPGME::Data.new_from_callbacks(IOCallbacks.new(output))
+      GPGME::Data.for_callbacks(IOCallbacks.new(output))
     elsif !output
-      GPGME::Data.new
+      GPGME::Data.empty
     else
       raise ArgumentError, output.inspect
     end
@@ -525,7 +525,7 @@ module GPGME
 
     # Create a new instance associated with a given IO.
     def self.for_io(io)
-      new_from_callbacks(IOCallbacks.new(arg))
+      for_callbacks(IOCallbacks.new(arg))
     end
 
     # Create a new instance from the specified file descriptor.
