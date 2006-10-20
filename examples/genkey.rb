@@ -20,7 +20,7 @@ require 'gpgme'
 # end
 
 unless ENV['GNUPGHOME']
-  $stderr.write('You are attempting to generate a new key pair and add it to *your* keyring.  Really proceed? (y/n) ')
+  $stderr.write('As GNUPGHOME is not set, the generate key pair will be stored into *your* keyring.  Really proceed? (y/N) ')
   $stderr.flush
   exit(1) unless gets.chomp == 'y'
 end
