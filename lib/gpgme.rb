@@ -280,9 +280,9 @@ module GPGME
     if input.kind_of? GPGME::Data
       input
     elsif input.respond_to? :to_str
-      GPGME::Data.for_str(input.to_str)
+      GPGME::Data.from_str(input.to_str)
     elsif input.respond_to? :read
-      GPGME::Data.for_callbacks(IOCallbacks.new(input))
+      GPGME::Data.from_callbacks(IOCallbacks.new(input))
     else
       raise ArgumentError, input.inspect
     end
@@ -293,7 +293,7 @@ module GPGME
     if output.kind_of? GPGME::Data
       output
     elsif output.respond_to? :write
-      GPGME::Data.for_callbacks(IOCallbacks.new(output))
+      GPGME::Data.from_callbacks(IOCallbacks.new(output))
     elsif !output
       GPGME::Data.empty
     else
@@ -497,11 +497,11 @@ module GPGME
       if arg.nil?
         return empty
       elsif arg.respond_to? :to_str
-        return for_str(arg.to_str, copy)
+        return from_str(arg.to_str, copy)
       elsif arg.respond_to? :to_io
-        return for_io(arg.to_io)
+        return from_io(arg.to_io)
       elsif arg.respond_to? :open
-        return for_io(arg.open)
+        return from_io(arg.open)
       end
     end
 
@@ -515,7 +515,7 @@ module GPGME
     end
 
     # Create a new instance with internal buffer.
-    def self.for_str(buf, copy = true)
+    def self.from_str(buf, copy = true)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_mem(rdh, buf, buf.length)
       exc = GPGME::error_to_exception(err)
@@ -524,8 +524,8 @@ module GPGME
     end
 
     # Create a new instance associated with a given IO.
-    def self.for_io(io)
-      for_callbacks(IOCallbacks.new(arg))
+    def self.from_io(io)
+      from_callbacks(IOCallbacks.new(arg))
     end
 
     # Create a new instance from the specified file descriptor.
@@ -538,7 +538,7 @@ module GPGME
     end
 
     # Create a new instance from the specified callbacks.
-    def self.for_callbacks(callbacks, hook_value = nil)
+    def self.from_callbacks(callbacks, hook_value = nil)
       rdh = Array.new
       err = GPGME::gpgme_data_new_from_cbs(rdh, callbacks, hook_value)
       exc = GPGME::error_to_exception(err)
