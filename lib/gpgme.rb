@@ -227,9 +227,10 @@ end
 # All arguments are optional.  If the last argument is a Hash, options
 # will be read from it.
 #
-# If <i>pattern</i> is <tt>nil</tt>, all available keys are
-# returned.  If <i>secret_only</i> is <tt>true</tt>, the only
-# secret keys are returned.
+# <i>pattern</i> is a string or <tt>nil</tt>.  If <i>pattern</i> is
+# <tt>nil</tt>, all available keys are returned.  If
+# <i>secret_only</i> is <tt>true</tt>, the only secret keys are
+# returned.
 #
 def GPGME.each_key(*args_options) # :yields: key
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
