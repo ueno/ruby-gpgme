@@ -585,7 +585,7 @@ module GPGME
       GPGME::gpgme_data_seek(self, offset, IO::SEEK_SET)
     end
 
-    # Write _length_ bytes from _buffer_ into the data object.
+    # Write <i>length</i> bytes from <i>buffer</i> into the data object.
     def write(buffer, length = buffer.length)
       GPGME::gpgme_data_write(self, buffer, length)
     end
@@ -595,7 +595,8 @@ module GPGME
       GPGME::gpgme_data_get_encoding(self)
     end
 
-    # Set the encoding to a given _encoding_ of the underlying data object.
+    # Set the encoding to a given <i>encoding</i> of the underlying
+    # data object.
     def encoding=(encoding)
       err = GPGME::gpgme_data_set_encoding(self, encoding)
       exc = GPGME::error_to_exception(err)
