@@ -56,10 +56,10 @@ def GPGME.decrypt(cipher, *args_options, &block)
     ctx.decrypt_verify(cipher_data, plain_data)
   rescue GPGME::Error::UnsupportedAlgorithm => exc
     exc.algorithm = ctx.decrypt_result.unsupported_algorithm
-    raise
+    raise exc
   rescue GPGME::Error::WrongKeyUsage => exc
     exc.key_usage = ctx.decrypt_result.wrong_key_usage
-    raise
+    raise exc
   end
 
   verify_result = ctx.verify_result
@@ -169,7 +169,7 @@ def GPGME.sign(plain, *args_options)
     ctx.sign(plain_data, sig_data, mode)
   rescue GPGME::Error::UnusableSecretKey => exc
     exc.keys = ctx.sign_result.invalid_signers
-    raise
+    raise exc
   end
 
   unless sig
@@ -211,13 +211,18 @@ def GPGME.encrypt(recipients, plain, *args_options)
   plain_data = input_data(plain)
   cipher_data = output_data(cipher)
   begin
-    ctx.encrypt(recipient_keys, plain_data, cipher_data)
+    if options[:sign]
+      ctx.add_signer(find_keys(options[:signers]), true) if options[:signers]
+      ctx.encrypt_sign(recipient_keys, plain_data, cipher_data)
+    else
+      ctx.encrypt(recipient_keys, plain_data, cipher_data)
+    end
   rescue GPGME::Error::UnusablePublicKey => exc
     exc.keys = ctx.encrypt_result.invalid_recipients
-    raise
+    raise exc
   rescue GPGME::Error::UnusableSecretKey => exc
     exc.keys = ctx.sign_result.invalid_signers
-    raise
+    raise exc
   end
 
   unless cipher
