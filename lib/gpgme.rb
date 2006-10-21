@@ -163,6 +163,9 @@ def GPGME.sign(plain, *args_options)
   ctx = GPGME::Ctx.new(options)
   ctx.add_signer(find_keys(options[:signers]), true) if options[:signers]
   mode = options[:mode] || GPGME::SIG_MODE_NORMAL
+  if mode.kind_of? Symbol
+    mode = GPGME::SIG_MODE_NAMES.invert[mode]
+  end
   plain_data = input_data(plain)
   sig_data = output_data(sig)
   begin
@@ -337,11 +340,7 @@ module GPGME
       @io.pos
     end
   end
-  # :startdoc:
-end
 
-module GPGME
-  # :stopdoc:
   PROTOCOL_NAMES = {
     PROTOCOL_OpenPGP => :OpenPGP,
     PROTOCOL_CMS => :CMS
@@ -362,8 +361,16 @@ module GPGME
     VALIDITY_FULL => :full,
     VALIDITY_ULTIMATE => :ultimate
   }
-  # :startdoc:
 
+  SIG_MODE_NAMES = {
+    SIG_MODE_CLEAR => :clear,
+    SIG_MODE_DETACH => :detach,
+    SIG_MODE_NORMAL => :normal
+  }
+  # :startdoc:
+end
+
+module GPGME
   class Error < StandardError
     def initialize(error)
       @error = error
