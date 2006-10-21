@@ -200,6 +200,8 @@ end
 #
 # - <tt>:sign</tt> If <tt>true</tt>, it performs a combined sign and
 # encrypt operation.
+# - <tt>:signers</tt> Signing keys.  If specified, it is an array
+#   whose elements are a GPGME::Key object or a string.
 #
 def GPGME.encrypt(recipients, plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
