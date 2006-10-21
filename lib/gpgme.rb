@@ -52,9 +52,15 @@ def GPGME.decrypt(cipher, *args_options, &block)
   ctx = GPGME::Ctx.new(options)
   cipher_data = input_data(cipher)
   plain_data = output_data(plain)
-  err = GPGME::gpgme_op_decrypt_verify(ctx, cipher_data, plain_data)
-  exc = GPGME::error_to_exception(err)
-  raise exc if exc
+  begin
+    ctx.decrypt_verify(cipher_data, plain_data)
+  rescue GPGME::Error::UnsupportedAlgorithm => exc
+    exc.algorithm = ctx.decrypt_result.unsupported_algorithm
+    raise
+  rescue GPGME::Error::WrongKeyUsage => exc
+    exc.key_usage = ctx.decrypt_result.wrong_key_usage
+    raise
+  end
 
   verify_result = ctx.verify_result
   if verify_result && block_given?
@@ -110,11 +116,7 @@ def GPGME.verify(sig, *args_options, &block) # :yields: signature
     signed_text_data = nil
     plain_data = output_data(plain)
   end
-  err = GPGME::gpgme_op_verify(ctx, sig_data, signed_text_data,
-                               plain_data)
-  exc = GPGME::error_to_exception(err)
-  raise exc if exc
-
+  ctx.verify(sig_data, signed_text_data, plain_data)
   ctx.verify_result.signatures.each do |signature|
     yield signature
   end
@@ -163,9 +165,12 @@ def GPGME.sign(plain, *args_options)
   mode = options[:mode] || GPGME::SIG_MODE_NORMAL
   plain_data = input_data(plain)
   sig_data = output_data(sig)
-  err = GPGME::gpgme_op_sign(ctx, plain_data, sig_data, mode)
-  exc = GPGME::error_to_exception(err)
-  raise exc if exc
+  begin
+    ctx.sign(plain_data, sig_data, mode)
+  rescue GPGME::Error::UnusableSecretKey => exc
+    exc.keys = ctx.sign_result.invalid_signers
+    raise
+  end
 
   unless sig
     sig_data.seek(0, IO::SEEK_SET)
@@ -205,10 +210,15 @@ def GPGME.encrypt(recipients, plain, *args_options)
   ctx = GPGME::Ctx.new(options)
   plain_data = input_data(plain)
   cipher_data = output_data(cipher)
-  err = GPGME::gpgme_op_encrypt(ctx, recipient_keys, 0, plain_data,
-                                cipher_data)
-  exc = GPGME::error_to_exception(err)
-  raise exc if exc
+  begin
+    ctx.encrypt(recipient_keys, plain_data, cipher_data)
+  rescue GPGME::Error::UnusablePublicKey => exc
+    exc.keys = ctx.encrypt_result.invalid_recipients
+    raise
+  rescue GPGME::Error::UnusableSecretKey => exc
+    exc.keys = ctx.sign_result.invalid_signers
+    raise
+  end
 
   unless cipher
     cipher_data.seek(0, IO::SEEK_SET)
@@ -380,8 +390,12 @@ module GPGME
 
     class General < self; end
     class InvalidValue < self; end
-    class UnusablePublicKey < self; end
-    class UnusableSecretKey < self; end
+    class UnusablePublicKey < self
+      attr_accessor :keys
+    end
+    class UnusableSecretKey < self
+      attr_accessor :keys
+    end
     class NoData < self; end
     class Conflict < self; end
     class NotImplemented < self; end
@@ -390,7 +404,9 @@ module GPGME
     class Canceled < self; end
     class InvalidEngine < self; end
     class AmbiguousName < self; end
-    class WrongKeyUsage < self; end
+    class WrongKeyUsage < self
+      attr_accessor :key_usage
+    end
     class CertificateRevoked < self; end
     class CertificateExpired < self; end
     class NoCRLKnown < self; end
@@ -398,7 +414,9 @@ module GPGME
     class NoSecretKey < self; end
     class MissingCertificate < self; end
     class BadCertificateChain < self; end
-    class UnsupportedAlgorithm < self; end
+    class UnsupportedAlgorithm < self
+      attr_accessor :algorithm
+    end
     class BadSignature < self; end
     class NoPublicKey < self; end
   end
@@ -854,6 +872,13 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     # Decrypt the ciphertext and return the plaintext.
     def decrypt(cipher, plain = Data.new)
       err = GPGME::gpgme_op_decrypt(self, cipher, plain)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+      plain
+    end
+
+    def decrypt_verify(cipher, plain = Data.new)
+      err = GPGME::gpgme_op_decrypt_verify(self, cipher, plain)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       plain
