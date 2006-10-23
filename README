@@ -45,4 +45,4 @@ the lowest level API.
  ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
  End
 
-However, the highest level API is sufficient for typical use cases.
+However, the highest level API would be sufficient for typical use cases.
