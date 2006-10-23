@@ -46,3 +46,11 @@ the lowest level API.
  End
 
 However, the highest level API would be sufficient for typical use cases.
+
+* Author
+
+Daiki Ueno <ueno@unixuser.org>
+
+* License
+
+GPL
