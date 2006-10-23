@@ -206,7 +206,8 @@ end
 def GPGME.clearsign(plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
   args, options = split_args(args_options)
-  GPGME.sign(plain, *args, options.merge({:mode => GPGME::SIG_MODE_CLEAR}))
+  args.push(options.merge({:mode => GPGME::SIG_MODE_CLEAR}))
+  GPGME.sign(plain, *args)
 end
 
 # call-seq:
@@ -237,7 +238,8 @@ end
 def GPGME.detach_sign(plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
   args, options = split_args(args_options)
-  GPGME.sign(plain, *args, options.merge({:mode => GPGME::SIG_MODE_DETACH}))
+  args.push(options.merge({:mode => GPGME::SIG_MODE_DETACH}))
+  GPGME.sign(plain, *args)
 end
 
 # call-seq:
