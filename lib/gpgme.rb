@@ -163,9 +163,6 @@ def GPGME.sign(plain, *args_options)
   ctx = GPGME::Ctx.new(options)
   ctx.add_signer(find_keys(options[:signers]), true) if options[:signers]
   mode = options[:mode] || GPGME::SIG_MODE_NORMAL
-  if mode.kind_of? Symbol
-    mode = GPGME::SIG_MODE_NAMES.invert[mode]
-  end
   plain_data = input_data(plain)
   sig_data = output_data(sig)
   begin
@@ -179,6 +176,68 @@ def GPGME.sign(plain, *args_options)
     sig_data.seek(0, IO::SEEK_SET)
     sig_data.read
   end
+end
+
+# call-seq:
+#   GPGME.clearsign(plain, sig=nil, options=Hash.new)
+#
+# <code>GPGME.clearsign</code> creates a cleartext signature of the plaintext.
+#
+# The arguments should be specified as follows.
+# 
+# - GPGME.clearsign(<i>plain</i>, <i>sig</i>, <i>options</i>)
+# - GPGME.clearsign(<i>plain</i>, <i>options</i>) -> <i>sig</i>
+#
+# All arguments except <i>plain</i> are optional.  <i>plain</i> is
+# input and <i>sig</i> is output.  If the last argument is a Hash,
+# options will be read from it.
+#
+# An input argument is specified by an IO like object (which responds
+# to <code>read</code>), a string, or a GPGME::Data object.
+#
+# An output argument is specified by an IO like object (which responds
+# to <code>write</code>) or a GPGME::Data object.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
+#
+# - <tt>:signers</tt> Signing keys.  If specified, it is an array
+#   whose elements are a GPGME::Key object or a string.
+#
+def GPGME.clearsign(plain, *args_options)
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
+  args, options = split_args(args_options)
+  GPGME.sign(plain, *args, options.merge({:mode => GPGME::SIG_MODE_CLEAR}))
+end
+
+# call-seq:
+#   GPGME.detach_sign(plain, sig=nil, options=Hash.new)
+#
+# <code>GPGME.detach_sign</code> creates a detached signature of the plaintext.
+#
+# The arguments should be specified as follows.
+# 
+# - GPGME.detach_sign(<i>plain</i>, <i>sig</i>, <i>options</i>)
+# - GPGME.detach_sign(<i>plain</i>, <i>options</i>) -> <i>sig</i>
+#
+# All arguments except <i>plain</i> are optional.  <i>plain</i> is
+# input and <i>sig</i> is output.  If the last argument is a Hash,
+# options will be read from it.
+#
+# An input argument is specified by an IO like object (which responds
+# to <code>read</code>), a string, or a GPGME::Data object.
+#
+# An output argument is specified by an IO like object (which responds
+# to <code>write</code>) or a GPGME::Data object.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
+#
+# - <tt>:signers</tt> Signing keys.  If specified, it is an array
+#   whose elements are a GPGME::Key object or a string.
+#
+def GPGME.detach_sign(plain, *args_options)
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
+  args, options = split_args(args_options)
+  GPGME.sign(plain, *args, options.merge({:mode => GPGME::SIG_MODE_DETACH}))
 end
 
 # call-seq:
@@ -360,12 +419,6 @@ module GPGME
     VALIDITY_MARGINAL => :marginal,
     VALIDITY_FULL => :full,
     VALIDITY_ULTIMATE => :ultimate
-  }
-
-  SIG_MODE_NAMES = {
-    SIG_MODE_CLEAR => :clear,
-    SIG_MODE_DETACH => :detach,
-    SIG_MODE_NORMAL => :normal
   }
   # :startdoc:
 end

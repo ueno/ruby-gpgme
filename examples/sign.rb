@@ -24,6 +24,6 @@ unless ENV['GPG_AGENT_INFO']
   exit(1)
 end
 
-GPGME::sign('test test test', $stdout, {:mode => GPGME::SIG_MODE_CLEAR,
-              # :passphrase_callback => method(:passfunc)
-            })
+GPGME::clearsign('test test test', $stdout, {
+                   # :passphrase_callback => method(:passfunc)
+                 })
