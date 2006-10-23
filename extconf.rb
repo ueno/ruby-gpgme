@@ -5,11 +5,7 @@ unless find_executable('gpgme-config')
   exit(1)
 end
 
-if thread = with_config('thread')
-  thread = "--thread=#{thread}"
-end
-
-$CFLAGS += ' ' << `gpgme-config #{thread} --cflags`.chomp
-$libs += ' ' << `gpgme-config #{thread} --libs`.chomp
+$CFLAGS += ' ' << `gpgme-config --cflags`.chomp
+$libs += ' ' << `gpgme-config --libs`.chomp
 
 create_makefile ('gpgme_n')
