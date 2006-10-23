@@ -33,7 +33,7 @@ In the lowest level API
  GPGME::gpgme_op_sign(ctx, plain, sig, GPGME::SIG_MODE_CLEAR)
  End
 
-As you see, it is hard to write the code in the lowest API.  The
+As you see, it is hard to write a program in the lowest API.  The
 medium level API looks object-oriented and is a bit easier to use than
 the lowest level API.
 
