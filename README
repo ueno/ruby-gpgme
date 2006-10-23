@@ -1,0 +1,48 @@
+* What's this?
+
+Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
+
+* Requirements
+
+- Ruby 1.8 or later
+- GPGME 1.1.2 or later
+
+* Features
+
+Ruby-GPGME provides 3 levels of API.  The highest level API is close
+to the command line interface of `gpg'.  The lowest level API is close
+to the C interface of GPGME.  For example, to create a cleartext
+signature of the plaintext from stdin
+
+In the highest level API
+
+ $ eval `gpg-agent --daemon`
+ $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
+
+In the lowest level API
+
+ $ eval `gpg-agent --daemon`
+ $ ruby -rgpgme -e <<End  
+ ret = Array.new
+ GPGME::gpgme_new(ret)
+ ctx = ret.shift
+ GPGME::gpgme_data_new_from_fd(ret, 0)
+ plain = ret.shift
+ GPGME::gpgme_data_new_from_fd(ret, 1)
+ sig = ret.shift
+ GPGME::gpgme_op_sign(ctx, plain, sig, GPGME::SIG_MODE_CLEAR)
+ End
+
+As you see, it is hard to write the code in the lowest API.  The
+medium level API looks object-oriented and is a bit easier to use than
+the lowest level API.
+
+ $ eval `gpg-agent --daemon`
+ $ ruby -rgpgme -e <<End  
+ ctx = GPGME::Ctx.new
+ plain = GPGME::Data.from_io($stdin)
+ sig = GPGME::Data.from_io($stdout)
+ ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
+ End
+
+However, the highest level API is sufficient for typical use cases.
