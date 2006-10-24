@@ -25,6 +25,10 @@ Or
 
  $ ruby -rgpgme -e 'puts GPGME.clearsign($stdin)'
 
+Or
+
+ $ ruby -rgpgme -e 'puts GPGME.clearsign("a string read from stdin")'
+
 This API would be sufficient for typical use cases.
 
 ** The lowest level API
