@@ -36,6 +36,26 @@ Boston, MA 02110-1301, USA.  */
 #include "gpgme.h"
 #include <errno.h>
 
+#define RUBY_GPGME_WORKAROUND_KEYLIST_NEXT
+
+#ifdef RUBY_GPGME_WORKAROUND_KEYLIST_NEXT
+#define CHECK_KEYLIST_IN_PROGRESS(vctx)					\
+  if (rb_iv_get (vctx, "ruby_gpgme_keylist_in_progress") != Qtrue)	\
+    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE))
+#define CHECK_KEYLIST_NOT_IN_PROGRESS(vctx)				\
+  if (rb_iv_get (vctx, "ruby_gpgme_keylist_in_progress") == Qtrue)	\
+    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE))
+#define SET_KEYLIST_IN_PROGRESS(vctx)				\
+  rb_iv_set (vctx, "ruby_gpgme_keylist_in_progress", Qtrue)
+#define RESET_KEYLIST_IN_PROGRESS(vctx)				\
+  rb_iv_set (vctx, "ruby_gpgme_keylist_in_progress", Qfalse)
+#else
+#define CHECK_KEYLIST_IN_PROGRESS(vctx)
+#define CHECK_KEYLIST_NOT_IN_PROGRESS(vctx)
+#define SET_KEYLIST_IN_PROGRESS(vctx)
+#define RESET_KEYLIST_IN_PROGRESS(vctx)
+#endif
+
 /* StringValuePtr is not available in 1.6. */
 #ifndef StringValuePtr
 #define StringValuePtr(str) RSTRING(str)->ptr
@@ -590,8 +610,7 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   gpgme_ctx_t ctx;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
@@ -599,7 +618,7 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 				StringValueCStr(vpattern),
 				NUM2INT(vsecret_only));
   if (gpgme_err_code (err) == GPG_ERR_NO_ERROR)
-    rb_iv_set (vctx, "gpgme_op_keylist_start", Qtrue);
+    SET_KEYLIST_IN_PROGRESS(vctx);
   return LONG2NUM(err);
 }
 
@@ -611,8 +630,7 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   const char **pattern = NULL;
   int i, err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
@@ -627,7 +645,7 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 
   err = gpgme_op_keylist_ext_start (ctx, pattern, NUM2INT(vsecret_only), 0);
   if (gpgme_err_code (err) == GPG_ERR_NO_ERROR)
-    rb_iv_set (vctx, "gpgme_op_keylist_start", Qtrue);
+    SET_KEYLIST_IN_PROGRESS(vctx);
   if (pattern)
     xfree (pattern);
   return LONG2NUM(err);
@@ -723,8 +741,7 @@ rb_s_gpgme_op_keylist_next (VALUE dummy, VALUE vctx, VALUE rkey)
   gpgme_key_t key;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") != Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
@@ -744,13 +761,12 @@ rb_s_gpgme_op_keylist_end (VALUE dummy, VALUE vctx)
   gpgme_ctx_t ctx;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") != Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
   err = gpgme_op_keylist_end (ctx);
-  rb_iv_set (vctx, "gpgme_op_keylist_start", Qfalse);
+  RESET_KEYLIST_IN_PROGRESS(vctx);
   return LONG2NUM(err);
 }
 
@@ -802,8 +818,7 @@ rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
   gpgme_data_t pubkey = NULL, seckey = NULL;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!NIL_P(vpubkey))
@@ -823,8 +838,7 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
   gpgme_data_t pubkey = NULL, seckey = NULL;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!NIL_P(vpubkey))
@@ -844,8 +858,7 @@ rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved,
   gpgme_data_t keydata;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vkeydata, keydata);
@@ -863,8 +876,7 @@ rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   gpgme_data_t keydata;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vkeydata, keydata);
@@ -881,8 +893,7 @@ rb_s_gpgme_op_import (VALUE dummy, VALUE vctx, VALUE vkeydata)
   gpgme_data_t keydata;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vkeydata, keydata);
@@ -898,8 +909,7 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
   gpgme_data_t keydata;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vkeydata, keydata);
@@ -955,8 +965,7 @@ rb_s_gpgme_op_delete (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_secret)
   gpgme_key_t key;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_KEY(vkey, key);
@@ -973,8 +982,7 @@ rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
   gpgme_key_t key;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_KEY(vkey, key);
@@ -990,8 +998,7 @@ rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   gpgme_ctx_t ctx;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   err = gpgme_op_trustlist_start (ctx, StringValueCStr(vpattern),
@@ -1007,8 +1014,7 @@ rb_s_gpgme_op_trustlist_next (VALUE dummy, VALUE vctx, VALUE ritem)
   gpgme_error_t err;
   VALUE vitem;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
@@ -1035,8 +1041,7 @@ rb_s_gpgme_op_trustlist_end (VALUE dummy, VALUE vctx)
   gpgme_ctx_t ctx;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
@@ -1051,8 +1056,7 @@ rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vcipher, cipher);
@@ -1070,8 +1074,7 @@ rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vcipher, cipher);
@@ -1107,8 +1110,7 @@ rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vsig, sig);
@@ -1129,8 +1131,7 @@ rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig,
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vsig, sig);
@@ -1195,8 +1196,7 @@ rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vcipher, cipher);
@@ -1214,8 +1214,7 @@ rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vcipher, cipher);
@@ -1271,8 +1270,7 @@ rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   gpgme_data_t plain, sig;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vplain, plain);
@@ -1290,8 +1288,7 @@ rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   gpgme_data_t plain, sig;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   UNWRAP_GPGME_DATA(vplain, plain);
@@ -1356,8 +1353,7 @@ rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   /* If RECP is `NULL', symmetric rather than public key encryption is
@@ -1388,8 +1384,7 @@ rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp,
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   /* If RECP is `NULL', symmetric rather than public key encryption is
@@ -1419,8 +1414,7 @@ rb_s_gpgme_op_encrypt_result (VALUE dummy, VALUE vctx)
   gpgme_invalid_key_t invalid_key;
   VALUE vresult, vinvalid_recipients;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
 
@@ -1449,8 +1443,7 @@ rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   /* If RECP is `NULL', symmetric rather than public key encryption is
@@ -1481,8 +1474,7 @@ rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
 
-  if (rb_iv_get (vctx, "gpgme_op_keylist_start") == Qtrue)
-    return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE));
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   /* If RECP is `NULL', symmetric rather than public key encryption is
