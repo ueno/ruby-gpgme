@@ -7,19 +7,30 @@ Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 - Ruby 1.8 or later
 - GPGME 1.1.2 or later
 
-* Features
+* API
 
 Ruby-GPGME provides 3 levels of API.  The highest level API is close
-to the command line interface of `gpg'.  The lowest level API is close
-to the C interface of GPGME.  For example, to create a cleartext
-signature of the plaintext from stdin
+to the command line interface of GnuPG.  The lowest level API is close
+to the C interface of GPGME.
 
-In the highest level API
+** The highest level API
+
+For example, it can be written in the highest level API to create a
+cleartext signature of the plaintext from stdin.
 
  $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
 
-In the lowest level API
+Or
+
+ $ ruby -rgpgme -e 'puts GPGME.clearsign($stdin)'
+
+This API would be sufficient for typical use cases.
+
+** The lowest level API
+
+On the other hand, the same example can be rewritten in the lowest
+level API.
 
  $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e <<End  
@@ -33,9 +44,14 @@ In the lowest level API
  GPGME::gpgme_op_sign(ctx, plain, sig, GPGME::SIG_MODE_CLEAR)
  End
 
-As you see, it is hard to write a program in the lowest API.  The
-medium level API looks object-oriented and is a bit easier to use than
-the lowest level API.
+As you see, it is much harder to write a program in this API than the
+highest level API.  However, if you are already familier with the C
+interface of GPGME and/or want to control detailed behavior of
+GPGME, it might be useful.
+
+** The intermediate API
+
+There is also intermediate level API which looks object-oriented.
 
  $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e <<End  
@@ -45,8 +61,5 @@ the lowest level API.
  ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
  End
 
-However, the highest level API would be sufficient for typical use cases.
-
-* License
-
-GPL
+It is easier to use than the lowest level API though, you should first
+consult the highest level API.
