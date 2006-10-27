@@ -6,7 +6,21 @@ Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
 - Ruby 1.8 or later
 - GPGME 1.1.2 or later
-- gpg-agent (recommended)
+- gpg-agent (optional, but recommended)
+
+* Installation
+
+ $ ruby extconf.rb
+ $ make
+ $ make install
+
+* Examples
+
+ examples/genkey.rb	Generate a key pair in your keyring.
+ examples/keylist.rb	List your keyring like gpg --list-keys.
+ examples/roundtrip.rb  Encrypt and decrypt a plain text.
+ examples/sign.rb	Create a clear text signature.
+ examples/verify.rb	Verify a clear text signature given from stdin.
 
 * API
 
