@@ -6,6 +6,7 @@ Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
 - Ruby 1.8 or later
 - GPGME 1.1.2 or later
+- gpg-agent (recommended)
 
 * API
 
@@ -15,26 +16,20 @@ to the C interface of GPGME.
 
 ** The highest level API
 
-For example, it can be written in the highest level API to create a
-cleartext signature of the plaintext from stdin.
+It can be written in the highest level API to create a cleartext
+signature of the plaintext from stdin.
 
  $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
 
-Or
+ $ ruby -rgpgme -e 'p GPGME.clearsign($stdin)'
 
- $ ruby -rgpgme -e 'puts GPGME.clearsign($stdin)'
-
-Or
-
- $ ruby -rgpgme -e 'puts GPGME.clearsign("a string read from stdin")'
-
-This API would be sufficient for typical use cases.
+ $ ruby -rgpgme -e 'GPGME.clearsign("a string", $stdout)'
 
 ** The lowest level API
 
 On the other hand, the same example can be rewritten in the lowest
-level API.
+level API as follows.
 
  $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e <<End  
@@ -48,14 +43,16 @@ level API.
  GPGME::gpgme_op_sign(ctx, plain, sig, GPGME::SIG_MODE_CLEAR)
  End
 
-As you see, it is much harder to write a program in this API than the
+As you see, it's much harder to write a program in this API than the
 highest level API.  However, if you are already familier with the C
-interface of GPGME and/or want to control detailed behavior of
-GPGME, it might be useful.
+interface of GPGME and/or want to control detailed behavior of GPGME,
+it might be useful.
 
-** The intermediate API
+** The mid level API
 
-There is also intermediate level API which looks object-oriented.
+There is another API which looks "object-oriented."  It is easier to
+use than the lowest level API though, you should first consult the
+highest level API.
 
  $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e <<End  
@@ -64,6 +61,3 @@ There is also intermediate level API which looks object-oriented.
  sig = GPGME::Data.from_io($stdout)
  ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
  End
-
-It is easier to use than the lowest level API though, you should first
-consult the highest level API.
