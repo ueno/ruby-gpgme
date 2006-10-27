@@ -58,9 +58,9 @@ it might be useful.
 
 ** The mid level API
 
-There is another API which looks "object-oriented."  It is easier to
-use than the lowest level API though, you should first consult the
-highest level API.
+There is another API which looks object-oriented.  It's easier to use
+than the lowest level API though, you should first consult the highest
+level API.
 
  $ ruby -rgpgme -e <<End  
  ctx = GPGME::Ctx.new
