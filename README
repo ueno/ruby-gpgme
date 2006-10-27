@@ -31,21 +31,15 @@ to the C interface of GPGME.
 ** The highest level API
 
 It can be written in the highest level API to create a cleartext
-signature of the plaintext from stdin.
+signature of the plaintext from stdin as follows.
 
- $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
-
- $ ruby -rgpgme -e 'p GPGME.clearsign($stdin)'
-
- $ ruby -rgpgme -e 'GPGME.clearsign("a string", $stdout)'
 
 ** The lowest level API
 
 On the other hand, the same example can be rewritten in the lowest
 level API as follows.
 
- $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e <<End  
  ret = Array.new
  GPGME::gpgme_new(ret)
@@ -68,7 +62,6 @@ There is another API which looks "object-oriented."  It is easier to
 use than the lowest level API though, you should first consult the
 highest level API.
 
- $ eval `gpg-agent --daemon`
  $ ruby -rgpgme -e <<End  
  ctx = GPGME::Ctx.new
  plain = GPGME::Data.from_io($stdin)
