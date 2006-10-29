@@ -44,7 +44,7 @@ require 'gpgme/constants'
 #
 # <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
 #
-def GPGME.decrypt(cipher, *args_options, &block)
+def GPGME.decrypt(cipher, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
   args, options = split_args(args_options)
   plain = args[0]
@@ -102,10 +102,10 @@ end
 #
 # <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
 #
-def GPGME.verify(sig, *args_options, &block) # :yields: signature
+def GPGME.verify(sig, *args_options) # :yields: signature
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
-  signed_text, plain = args[0]
+  signed_text, plain = args
 
   ctx = GPGME::Ctx.new(options)
   sig_data = input_data(sig)
@@ -161,7 +161,7 @@ def GPGME.sign(plain, *args_options)
   sig = args[0]
 
   ctx = GPGME::Ctx.new(options)
-  ctx.add_signer(find_keys(options[:signers]), true) if options[:signers]
+  ctx.add_signer(resolve_keys(options[:signers]), true) if options[:signers]
   mode = options[:mode] || GPGME::SIG_MODE_NORMAL
   plain_data = input_data(plain)
   sig_data = output_data(sig)
@@ -260,6 +260,12 @@ end
 # or a GPGME::Key object.  If <i>recipients</i> is <tt>nil</tt>, it
 # performs symmetric encryption.
 #
+# An input argument is specified by an IO like object (which responds
+# to <code>read</code>), a string, or a GPGME::Data object.
+#
+# An output argument is specified by an IO like object (which responds
+# to <code>write</code>) or a GPGME::Data object.
+#
 # <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
 #
 # - <tt>:sign</tt> If <tt>true</tt>, it performs a combined sign and
@@ -271,14 +277,16 @@ def GPGME.encrypt(recipients, plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
   cipher = args[0]
-  recipient_keys = recipients ? find_keys(recipients, false) : nil
+  recipient_keys = recipients ? resolve_keys(recipients, false) : nil
 
   ctx = GPGME::Ctx.new(options)
   plain_data = input_data(plain)
   cipher_data = output_data(cipher)
   begin
     if options[:sign]
-      ctx.add_signer(find_keys(options[:signers]), true) if options[:signers]
+      if options[:signers]
+        ctx.add_signer(resolve_keys(options[:signers]), true)
+      end
       ctx.encrypt_sign(recipient_keys, plain_data, cipher_data)
     else
       ctx.encrypt(recipient_keys, plain_data, cipher_data)
@@ -298,13 +306,13 @@ def GPGME.encrypt(recipients, plain, *args_options)
 end
 
 # call-seq:
-#   GPGME.each_key(pattern=nil, secret_only=false, options=Hash.new)
+#   GPGME.list_keys(pattern=nil, secret_only=false, options=Hash.new){|key| ...}
 #
-# <code>GPGME.each_key</code> iterates over the keyring.
+# <code>GPGME.list_keys</code> iterates over the key ring.
 #
 # The arguments should be specified as follows.
 # 
-# - GPGME.each_key(<i>pattern</i>, <i>secret_only</i>, <i>options</i>)
+# - GPGME.list_keys(<i>pattern</i>, <i>secret_only</i>, <i>options</i>)
 #
 # All arguments are optional.  If the last argument is a Hash, options
 # will be read from it.
@@ -316,14 +324,83 @@ end
 #
 # <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
 #
-def GPGME.each_key(*args_options) # :yields: key
+def GPGME.list_keys(*args_options) # :yields: key
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
-  pattern, secret_only = args[0]
+  pattern, secret_only = args
   ctx = GPGME::Ctx.new
-  ctx.each_key(pattern, secret_only || false) do |key|
-    yield key
+  if block_given?  
+    ctx.each_key(pattern, secret_only || false) do |key|
+      yield key
+    end
+  else
+    ctx.keys(pattern, secret_only || false)
   end
+end
+
+# call-seq:
+#   GPGME.export(pattern)
+#
+# <code>GPGME.export</code> extracts public keys from the key ring.
+#
+# The arguments should be specified as follows.
+# 
+# - GPGME.export(<i>pattern</i>, <i>options</i>) -> <i>keydata</i>
+# - GPGME.export(<i>pattern</i>, <i>keydata</i>, <i>options</i>)
+#
+# All arguments are optional.  If the last argument is a Hash, options
+# will be read from it.
+#
+# <i>pattern</i> is a string or <tt>nil</tt>.  If <i>pattern</i> is
+# <tt>nil</tt>, all available public keys are returned.
+# <i>keydata</i> is output.
+#
+# An output argument is specified by an IO like object (which responds
+# to <code>write</code>) or a GPGME::Data object.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
+#
+def GPGME.export(*args_options)
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
+  args, options = split_args(args_options)
+  pattern, key = args[0]
+  key_data = output_data(key)
+  ctx = GPGME::Ctx.new(options)
+  ctx.export_keys(pattern, key_data)
+
+  unless key
+    key_data.seek(0, IO::SEEK_SET)
+    key_data.read
+  end
+end
+
+# call-seq:
+#   GPGME.import(keydata)
+#
+# <code>GPGME.import</code> adds the keys to the key ring.
+#
+# The arguments should be specified as follows.
+# 
+# - GPGME.import(<i>keydata</i>, <i>options</i>)
+#
+# All arguments are optional.  If the last argument is a Hash, options
+# will be read from it.
+#
+# <i>keydata</i> is input.
+#
+# An input argument is specified by an IO like object (which responds
+# to <code>read</code>), a string, or a GPGME::Data object.
+#
+# <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
+#
+def GPGME.import(*args_options)
+  raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
+  args, options = split_args(args_options)
+  key = args[0]
+  key_data = input_data(key)
+  ctx = GPGME::Ctx.new(options)
+  ctx.import_keys(key_data)
+  ctx.import_result
 end
 
 module GPGME
@@ -342,7 +419,7 @@ module GPGME
   end
   module_function :split_args
 
-  def find_keys(keys_or_names, secret_only)
+  def resolve_keys(keys_or_names, secret_only)
     ctx = GPGME::Ctx.new
     keys = Array.new
     keys_or_names.each do |key_or_name|
@@ -354,7 +431,7 @@ module GPGME
     end
     keys
   end
-  module_function :find_keys
+  module_function :resolve_keys
 
   def input_data(input)
     if input.kind_of? GPGME::Data
@@ -861,6 +938,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
 	loop do
 	  yield keylist_next
 	end
+        keys
       rescue EOFError
 	# The last key in the list has already been returned.
       ensure
@@ -912,8 +990,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     alias genkey generate_key
 
     # Extract the public keys of the recipients.
-    def export_keys(recipients)
-      keydata = Data.new
+    def export_keys(recipients, keydata = Data.new)
       err = GPGME::gpgme_op_export(self, recipients, keydata)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -928,6 +1005,10 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       raise exc if exc
     end
     alias import import_keys
+
+    def import_result
+      GPGME::gpgme_op_import_result(self)
+    end
 
     # Delete the key from the key ring.
     # If allow_secret is false, only public keys are deleted,
