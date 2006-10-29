@@ -1,23 +1,98 @@
-# :stopdoc:
-# Copyright (C) 2003,2006 Daiki Ueno
+=begin rdoc
+= What's this?
 
-# This file is a part of Ruby-GPGME.
+Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
-# This program is free software; you can redistribute it and/or modify 
-# it under the terms of the GNU General Public License as published by 
-# the Free Software Foundation; either version 2, or (at your option)  
-# any later version.                                                   
+= Requirements
 
-# This program is distributed in the hope that it will be useful,      
-# but WITHOUT ANY WARRANTY; without even the implied warranty of       
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the        
-# GNU General Public License for more details.                         
+- Ruby 1.8 or later
+- GPGME 1.1.2 or later http://www.gnupg.org/(en)/related_software/gpgme/index.html
+- gpg-agent (optional, but recommended)
 
-# You should have received a copy of the GNU General Public License    
-# along with GNU Emacs; see the file COPYING.  If not, write to the    
-# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
-# Boston, MA 02110-1301, USA.
-# :startdoc:
+= Installation
+
+ $ ruby extconf.rb
+ $ make
+ $ make install
+
+= Examples
+
+<tt>examples/genkey.rb</tt>::	Generate a key pair in your keyring.
+<tt>examples/keylist.rb</tt>::	List your keyring like gpg --list-keys.
+<tt>examples/roundtrip.rb</tt>::  Encrypt and decrypt a plain text.
+<tt>examples/sign.rb</tt>::	Create a clear text signature.
+<tt>examples/verify.rb</tt>::	Verify a clear text signature given from stdin.
+
+= API
+
+Ruby-GPGME provides 3 levels of API.  The highest level API is close
+to the command line interface of GnuPG.  The lowest level API is close
+to the C interface of GPGME.
+
+== The highest level API
+
+It can be written in the highest level API to create a cleartext
+signature of the plaintext from stdin as follows.
+
+ $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
+
+== The lowest level API
+
+On the other hand, the same example can be rewritten in the lowest
+level API as follows.
+
+ $ ruby -rgpgme -e <<End  
+ ret = Array.new
+ GPGME::gpgme_new(ret)
+ ctx = ret.shift
+ GPGME::gpgme_data_new_from_fd(ret, 0)
+ plain = ret.shift
+ GPGME::gpgme_data_new_from_fd(ret, 1)
+ sig = ret.shift
+ GPGME::gpgme_op_sign(ctx, plain, sig, GPGME::SIG_MODE_CLEAR)
+ End
+
+As you see, it's much harder to write a program in this API than the
+highest level API.  However, if you are already familier with the C
+interface of GPGME and/or want to control detailed behavior of GPGME,
+it might be useful.
+
+== The mid level API
+
+There is another API which looks object-oriented.  It's easier to use
+than the lowest level API though, you should first consult the highest
+level API.
+
+ $ ruby -rgpgme -e <<End  
+ ctx = GPGME::Ctx.new
+ plain = GPGME::Data.from_io($stdin)
+ sig = GPGME::Data.from_io($stdout)
+ ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
+ End
+
+= License
+
+Copyright (C) 2003,2006 Daiki Ueno
+
+This file is a part of Ruby-GPGME.
+
+This program is free software; you can redistribute it and/or modify 
+it under the terms of the GNU General Public License as published by 
+the Free Software Foundation; either version 2, or (at your option)  
+any later version.                                                   
+
+This program is distributed in the hope that it will be useful,      
+but WITHOUT ANY WARRANTY; without even the implied warranty of       
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the        
+GNU General Public License for more details.                         
+
+You should have received a copy of the GNU General Public License    
+along with GNU Emacs; see the file COPYING.  If not, write to the    
+Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+Boston, MA 02110-1301, USA.
+=end
+module GPGME
+end
 
 require 'gpgme_n'
 require 'gpgme/constants'
