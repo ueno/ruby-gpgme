@@ -1663,7 +1663,7 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_op_genkey_start",
 			     rb_s_gpgme_op_genkey_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export",
-			     rb_s_gpgme_op_export, 3);
+			     rb_s_gpgme_op_export, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_start",
 			     rb_s_gpgme_op_export_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_import",

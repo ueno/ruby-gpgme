@@ -1066,7 +1066,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
 
     # Extract the public keys of the recipients.
     def export_keys(recipients, keydata = Data.new)
-      err = GPGME::gpgme_op_export(self, recipients, keydata)
+      err = GPGME::gpgme_op_export(self, recipients, 0, keydata)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       keydata
