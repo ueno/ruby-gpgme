@@ -215,7 +215,7 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
   size_t size = NUM2UINT(vsize);
   gpgme_error_t err;
 
-  if (RSTRING(vbuffer)->len < size)
+  if (RSTRING_LEN(vbuffer) < size)
     rb_raise (rb_eArgError, "argument out of range");
 
   err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size, 1);
@@ -249,8 +249,8 @@ read_cb (void *handle, void *buffer, size_t size)
 			LONG2NUM(size));
   if (NIL_P(vbuffer))
     return 0;
-  memcpy (buffer, StringValuePtr(vbuffer), RSTRING(vbuffer)->len);
-  return RSTRING(vbuffer)->len;
+  memcpy (buffer, StringValuePtr(vbuffer), RSTRING_LEN(vbuffer));
+  return RSTRING_LEN(vbuffer);
 }
 
 static ssize_t
