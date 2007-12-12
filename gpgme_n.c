@@ -1,5 +1,5 @@
 /* gpgme_n.c -- low level interface to GPGME
-   Copyright (C) 2003,2006 Daiki Ueno
+   Copyright (C) 2003,2006,2007 Daiki Ueno
 
 This file is a part of Ruby-GPGME.
 
@@ -1785,6 +1785,10 @@ Init_gpgme_n (void)
 		   INT2FIX(GPG_ERR_DECRYPT_FAILED));
   rb_define_const (mGPGME, "GPG_ERR_BAD_PASSPHRASE",
 		   INT2FIX(GPG_ERR_BAD_PASSPHRASE));
+  rb_define_const (mGPGME, "GPG_ERR_KEY_EXPIRED",
+		   INT2FIX(GPG_ERR_KEY_EXPIRED));
+  rb_define_const (mGPGME, "GPG_ERR_SIG_EXPIRED",
+		   INT2FIX(GPG_ERR_SIG_EXPIRED));
   rb_define_const (mGPGME, "GPG_ERR_CANCELED",
 		   INT2FIX(GPG_ERR_CANCELED));
   rb_define_const (mGPGME, "GPG_ERR_INV_ENGINE",
