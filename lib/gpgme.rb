@@ -235,7 +235,7 @@ def GPGME.sign(plain, *args_options)
   sig = args[0]
 
   ctx = GPGME::Ctx.new(options)
-  ctx.add_signer(resolve_keys(options[:signers]), true) if options[:signers]
+  ctx.add_signer(*resolve_keys(options[:signers], true)) if options[:signers]
   mode = options[:mode] || GPGME::SIG_MODE_NORMAL
   plain_data = input_data(plain)
   sig_data = output_data(sig)
@@ -359,7 +359,7 @@ def GPGME.encrypt(recipients, plain, *args_options)
   begin
     if options[:sign]
       if options[:signers]
-        ctx.add_signer(resolve_keys(options[:signers]), true)
+        ctx.add_signer(*resolve_keys(options[:signers], true))
       end
       ctx.encrypt_sign(recipient_keys, plain_data, cipher_data)
     else
@@ -500,7 +500,7 @@ module GPGME
       if key_or_name.kind_of? Key
         keys << key_or_name
       elsif key_or_name.kind_of? String
-        keys += ctx.keys(key_or_name)
+        keys += ctx.keys(key_or_name, secret_only)
       end
     end
     keys
