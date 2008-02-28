@@ -186,15 +186,16 @@ def GPGME.verify(sig, *args_options) # :yields: signature
   sig_data = input_data(sig)
   if signed_text
     signed_text_data = input_data(signed_text)
+    plain_data = nil
   else
     signed_text_data = nil
+    plain_data = output_data(plain)
   end
-  plain_data = output_data(plain)
   ctx.verify(sig_data, signed_text_data, plain_data)
   ctx.verify_result.signatures.each do |signature|
     yield signature
   end
-  unless plain
+  if !signed_text && !plain
     plain_data.seek(0, IO::SEEK_SET)
     plain_data.read
   end
