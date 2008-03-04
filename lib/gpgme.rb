@@ -1172,7 +1172,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     def encrypt_result
-      GPGME::gpgme_encrypt_result(self)
+      GPGME::gpgme_op_encrypt_result(self)
     end
 
     def encrypt_sign(recp, plain, cipher = Data.new, flags = 0)
