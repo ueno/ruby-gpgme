@@ -16,7 +16,7 @@ require 'gpgme'
 #     (0 ... $_.length).each do |i| $_[i] = ?0 end if $_
 #     system('stty echo')
 #   end
-#   puts
+#   $stderr.puts
 # end
 
 unless ENV['GPG_AGENT_INFO']
