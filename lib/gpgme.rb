@@ -344,9 +344,11 @@ end
 # <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
 #
 # - <tt>:sign</tt> If <tt>true</tt>, it performs a combined sign and
-# encrypt operation.
+#   encrypt operation.
 # - <tt>:signers</tt> Signing keys.  If specified, it is an array
 #   whose elements are a GPGME::Key object or a string.
+# - <tt>:always_trust</tt> Setting this to <tt>true</tt> specifies all
+#   the recipients should be trusted.
 #
 def GPGME.encrypt(recipients, plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
@@ -358,13 +360,17 @@ def GPGME.encrypt(recipients, plain, *args_options)
   plain_data = input_data(plain)
   cipher_data = output_data(cipher)
   begin
+    flags = 0
+    if options[:always_trust]
+      flags |= GPGME::ENCRYPT_ALWAYS_TRUST
+    end
     if options[:sign]
       if options[:signers]
         ctx.add_signer(*resolve_keys(options[:signers], true))
       end
-      ctx.encrypt_sign(recipient_keys, plain_data, cipher_data)
+      ctx.encrypt_sign(recipient_keys, plain_data, cipher_data, flags)
     else
-      ctx.encrypt(recipient_keys, plain_data, cipher_data)
+      ctx.encrypt(recipient_keys, plain_data, cipher_data, flags)
     end
   rescue GPGME::Error::UnusablePublicKey => exc
     exc.keys = ctx.encrypt_result.invalid_recipients
