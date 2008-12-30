@@ -28,7 +28,7 @@ plain = 'test test test'
 puts("Plaintext:\n#{plain}")
 
 # Perform symmetric encryption on PLAIN.
-cipher = GPGME::encrypt(nil, plain, {:armor => true
+cipher = GPGME::encrypt(nil, plain, {:armor => true,
 			  # :passphrase_callback => method(:passfunc)
 			})
 puts("Ciphertext:\n#{cipher}")
