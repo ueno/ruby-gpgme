@@ -958,7 +958,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #      (0 ... $_.length).each do |i| $_[i] = ?0 end if $_
     #      system('stty echo')
     #    end
-    #    puts
+    #    $stderr.puts
     #  end
     #
     #  ctx.set_passphrase_callback(method(:passfunc))
