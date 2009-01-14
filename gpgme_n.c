@@ -23,12 +23,12 @@ Boston, MA 02110-1301, USA.  */
    (See "lib/gpgme.rb").  If you are about to edit this file, you may
    want to check out the translation rules:
 
-1. Each symbol defined in this module is either a class, a module
+1. Each symbol defined in this file is either a class, a module
    function, or a constant.  _No instance methods are defined here_.
 
-2. Each symbol defined in this module follows the same naming
-   convention as the GPGME API.  That is, symbol names are followed by
-   `gpgme_' for functions, and `GPGME_' or `GPG_' for constants.
+2. Each symbol defined in this file follows the same naming convention
+   as the GPGME API.  That is, symbol names are followed by `gpgme_'
+   for functions, and `GPGME_' or `GPG_' for constants.
 
 3. Output arguments are wrapped in arrays.  For example, the first
    argument of `gpgme_data_new' has the type `gpgme_data_t *', and to
