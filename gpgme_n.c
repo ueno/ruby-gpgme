@@ -18,19 +18,23 @@ along with GNU Emacs; see the file COPYING.  If not, write to the
 Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 Boston, MA 02110-1301, USA.  */
 
-/* This file is (semi) automatically generated, though it was written
-   by hand.  There are simple rules to edit this file.
+/* While this file was written by hand, it is (semi) automatically
+   generated.  High-level functions are written in Ruby instead of C
+   (See "lib/gpgme.rb").  If you are about to edit this file, you may
+   want to check out the translation rules:
 
-1. Each symbol exported from this module is either a class, a module
-   function, or a constant.  No instance methods are defined here.
-2. Each symbol exported from this module follows the same naming
-   convention as the GPGME API.  That is, symbol names are followed
-   by `gpgme_' for functions are followed by `GPGME_' or `GPG_' for
-   constants.
-3. Output arguments are wrapped in arrays.  For example, the 1st
-   argument of `gpgme_data_new' has type `gpgme_data_t *' to store the
-   newly created gpgme_data_t object.  The corresponding ruby
-   interface uses an empty array to passing it to the caller.  */
+1. Each symbol defined in this module is either a class, a module
+   function, or a constant.  _No instance methods are defined here_.
+
+2. Each symbol defined in this module follows the same naming
+   convention as the GPGME API.  That is, symbol names are followed by
+   `gpgme_' for functions, and `GPGME_' or `GPG_' for constants.
+
+3. Output arguments are wrapped in arrays.  For example, the first
+   argument of `gpgme_data_new' has the type `gpgme_data_t *', and to
+   be used to hold a newly created gpgme_data_t object.  The
+   corresponding Ruby interface expects an array (empty for typical
+   cases) for that.  */
 
 #include "ruby.h"
 #include "gpgme.h"
