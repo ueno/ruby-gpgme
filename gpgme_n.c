@@ -1,5 +1,5 @@
 /* gpgme_n.c -- low level interface to GPGME
-   Copyright (C) 2003,2006,2007 Daiki Ueno
+   Copyright (C) 2003,2006,2007,2008,2009 Daiki Ueno
 
 This file is a part of Ruby-GPGME.
 
@@ -1187,6 +1187,11 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
       rb_iv_set (vsignature, "@validity", INT2FIX(signature->validity));
       rb_iv_set (vsignature, "@validity_reason",
 		 LONG2NUM(signature->validity_reason));
+#ifdef GPGME_STATUS_PKA_TRUST_BAD /* PKA related fields were added in 1.1.1. */
+      rb_iv_set (vsignature, "@pka_trust", INT2FIX(signature->pka_trust));
+      rb_iv_set (vsignature, "@pka_address",
+		 rb_str_new2 (signature->pka_address));
+#endif
       rb_ary_push (vsignatures, vsignature);
     }
   return vverify_result;
@@ -2144,6 +2149,12 @@ Init_gpgme_n (void)
 		   INT2FIX(GPGME_STATUS_TRUNCATED));
   rb_define_const (mGPGME, "GPGME_STATUS_ERROR",
 		   INT2FIX(GPGME_STATUS_ERROR));
+#ifdef GPGME_STATUS_PKA_TRUST_BAD /* These status were added in 1.1.1. */
+  rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_BAD",
+		   INT2FIX(GPGME_STATUS_PKA_TRUST_BAD));
+  rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_GOOD",
+		   INT2FIX(GPGME_STATUS_PKA_TRUST_GOOD));
+#endif
 
   /* The available keylist mode flags.  */
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_LOCAL",
@@ -2152,6 +2163,10 @@ Init_gpgme_n (void)
 		   INT2FIX(GPGME_KEYLIST_MODE_EXTERN));
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIGS",
 		   INT2FIX(GPGME_KEYLIST_MODE_SIGS));
+#ifdef GPGME_KEYLIST_MODE_SIG_NOTATIONS /* This flag was added in 1.1.1. */
+  rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIG_NOTATIONS",
+		   INT2FIX(GPGME_KEYLIST_MODE_SIG_NOTATIONS));
+#endif
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_VALIDATE",
 		   INT2FIX(GPGME_KEYLIST_MODE_VALIDATE));
 

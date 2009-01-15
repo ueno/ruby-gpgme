@@ -72,7 +72,7 @@ level API.
 
 = License
 
-Copyright (C) 2003,2006 Daiki Ueno
+Copyright (C) 2003,2006,2007,2008,2009 Daiki Ueno
 
 This file is a part of Ruby-GPGME.
 
