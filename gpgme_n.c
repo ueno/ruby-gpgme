@@ -2149,7 +2149,7 @@ Init_gpgme_n (void)
 		   INT2FIX(GPGME_STATUS_TRUNCATED));
   rb_define_const (mGPGME, "GPGME_STATUS_ERROR",
 		   INT2FIX(GPGME_STATUS_ERROR));
-#ifdef GPGME_STATUS_PKA_TRUST_BAD /* These status were added in 1.1.1. */
+#ifdef GPGME_STATUS_PKA_TRUST_BAD /* These status codes were added in 1.1.1. */
   rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_BAD",
 		   INT2FIX(GPGME_STATUS_PKA_TRUST_BAD));
   rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_GOOD",
