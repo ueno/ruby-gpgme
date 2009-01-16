@@ -164,6 +164,18 @@ rb_s_gpgme_get_engine_info (VALUE dummy, VALUE rinfo)
 }
 
 static VALUE
+rb_s_gpgme_set_engine_info (VALUE dummy, VALUE vproto, VALUE vfile_name,
+			    VALUE vhome_dir)
+{
+  gpgme_error_t err = gpgme_set_engine_info (NUM2INT(vproto),
+					     NIL_P(vfile_name) ? NULL :
+					     StringValueCStr(vfile_name),
+					     NIL_P(vhome_dir) ? NULL :
+					     StringValueCStr(vhome_dir));
+  return LONG2NUM(err);
+}
+
+static VALUE
 rb_s_gpgme_pubkey_algo_name (VALUE dummy, VALUE valgo)
 {
   const char *name = gpgme_pubkey_algo_name (NUM2INT(valgo));
@@ -1187,7 +1199,8 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
       rb_iv_set (vsignature, "@validity", INT2FIX(signature->validity));
       rb_iv_set (vsignature, "@validity_reason",
 		 LONG2NUM(signature->validity_reason));
-#ifdef GPGME_STATUS_PKA_TRUST_BAD /* PKA related fields were added in 1.1.1. */
+      /* PKA related fields were added in 1.1.1. */
+#ifdef GPGME_STATUS_PKA_TRUST_BAD
       rb_iv_set (vsignature, "@pka_trust", INT2FIX(signature->pka_trust));
       rb_iv_set (vsignature, "@pka_address",
 		 rb_str_new2 (signature->pka_address));
@@ -1541,6 +1554,8 @@ Init_gpgme_n (void)
 			     rb_s_gpgme_engine_check_version, 1);
   rb_define_module_function (mGPGME, "gpgme_get_engine_info",
 			     rb_s_gpgme_get_engine_info, 1);
+  rb_define_module_function (mGPGME, "gpgme_set_engine_info",
+			     rb_s_gpgme_set_engine_info, 3);
 
   rb_define_module_function (mGPGME, "gpgme_pubkey_algo_name",
 			     rb_s_gpgme_pubkey_algo_name, 1);
@@ -2149,7 +2164,8 @@ Init_gpgme_n (void)
 		   INT2FIX(GPGME_STATUS_TRUNCATED));
   rb_define_const (mGPGME, "GPGME_STATUS_ERROR",
 		   INT2FIX(GPGME_STATUS_ERROR));
-#ifdef GPGME_STATUS_PKA_TRUST_BAD /* These status codes were added in 1.1.1. */
+  /* These status codes have been available since 1.1.1. */
+#ifdef GPGME_STATUS_PKA_TRUST_BAD
   rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_BAD",
 		   INT2FIX(GPGME_STATUS_PKA_TRUST_BAD));
   rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_GOOD",
@@ -2163,7 +2179,8 @@ Init_gpgme_n (void)
 		   INT2FIX(GPGME_KEYLIST_MODE_EXTERN));
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIGS",
 		   INT2FIX(GPGME_KEYLIST_MODE_SIGS));
-#ifdef GPGME_KEYLIST_MODE_SIG_NOTATIONS /* This flag was added in 1.1.1. */
+  /* This flag was added in 1.1.1. */
+#ifdef GPGME_KEYLIST_MODE_SIG_NOTATIONS
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIG_NOTATIONS",
 		   INT2FIX(GPGME_KEYLIST_MODE_SIG_NOTATIONS));
 #endif
