@@ -722,6 +722,7 @@ module GPGME
     exc = GPGME::error_to_exception(err)
     raise exc if exc
   end
+  module_function :engine_check_version
 
   # Return a list of info structures of enabled engines.
   def engine_info
