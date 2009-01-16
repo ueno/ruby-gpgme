@@ -715,18 +715,34 @@ module GPGME
     alias hash_algo_name gpgme_hash_algo_name
   end
 
-  def engine_check_version
-    err = GPGME::gpgme_engine_check_version
+  # Verify that the engine implementing the protocol <i>proto</i> is
+  # installed in the system.
+  def engine_check_version(proto)
+    err = GPGME::gpgme_engine_check_version(proto)
     exc = GPGME::error_to_exception(err)
     raise exc if exc
   end
 
+  # Return a list of info structures of enabled engines.
   def engine_info
     rinfo = Array.new
     GPGME::gpgme_get_engine_info(rinfo)
     rinfo
   end
   module_function :engine_info
+
+  # Change the default configuration of the crypto engine implementing
+  # protocol <i>proto</i>.
+  #
+  # <i>file_name</i> is the file name of the executable program
+  # implementing the protocol.
+  # <i>home_dir</i> is the directory name of the configuration directory.
+  def set_engine_info(proto, file_name, home_dir)
+    err = GPGME::gpgme_set_engine_info(proto, file_name, home_dir)
+    exc = GPGME::error_to_exception(err)
+    raise exc if exc
+  end
+  module_function :set_engine_info
 
   # A class for managing data buffers.
   class Data
