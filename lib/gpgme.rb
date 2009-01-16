@@ -851,7 +851,7 @@ module GPGME
   class EngineInfo
     private_class_method :new
     
-    attr_reader :protocol, :file_name, :version, :req_version
+    attr_reader :protocol, :file_name, :version, :req_version, :home_dir
     alias required_version req_version
   end
 
@@ -1395,7 +1395,9 @@ validity=#{VALIDITY_NAMES[validity]}, signatures=#{signatures.inspect}>"
   class Signature
     private_class_method :new
 
-    attr_reader :summary, :fpr, :status, :notations
+    attr_reader :summary, :fpr, :status, :notations, :wrong_key_usage
+    attr_reader :validity, :validity_reason
+    attr_reader :pka_trust, :pka_address
     alias fingerprint fpr
 
     def timestamp
