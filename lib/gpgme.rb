@@ -1182,7 +1182,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     def sign_result
-      GPGME::gpgme_sign_result(self)
+      GPGME::gpgme_op_sign_result(self)
     end
 
     # Encrypt the plaintext in the data object for the recipients and
