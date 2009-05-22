@@ -73,5 +73,5 @@ if keys.empty?
   exit(1)
 end
 
-$stderr.puts("Editing #{keys.first.inspect}")
+$stderr.puts(keys.first.inspect)
 ctx.edit_key(keys.first, method(:editfunc))
