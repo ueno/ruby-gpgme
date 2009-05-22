@@ -1100,7 +1100,63 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@edit_cb", vcb);
 
-  err = gpgme_op_edit (ctx, key, edit_cb, (void *)vcb, out);
+  err = gpgme_op_edit_start (ctx, key, edit_cb, (void *)vcb, out);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
+		    VALUE veditfunc, VALUE vhook_value, VALUE vout)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t key;
+  gpgme_data_t out = NULL;
+  void *hook_value = NULL;
+  VALUE vcb;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  UNWRAP_GPGME_KEY(vkey, key);
+  if (!NIL_P(vout))
+    UNWRAP_GPGME_DATA(vout, out);
+
+  vcb = rb_ary_new ();
+  rb_ary_push (vcb, veditfunc);
+  rb_ary_push (vcb, vhook_value);
+  /* Keep a reference to avoid GC. */
+  rb_iv_set (vctx, "@card_edit_cb", vcb);
+
+  err = gpgme_op_card_edit (ctx, key, edit_cb, (void *)vcb, out);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
+			       VALUE veditfunc, VALUE vhook_value, VALUE vout)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t key;
+  gpgme_data_t out = NULL;
+  void *hook_value = NULL;
+  VALUE vcb;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  UNWRAP_GPGME_KEY(vkey, key);
+  if (!NIL_P(vout))
+    UNWRAP_GPGME_DATA(vout, out);
+
+  vcb = rb_ary_new ();
+  rb_ary_push (vcb, veditfunc);
+  rb_ary_push (vcb, vhook_value);
+  /* Keep a reference to avoid GC. */
+  rb_iv_set (vctx, "@card_edit_cb", vcb);
+
+  err = gpgme_op_card_edit_start (ctx, key, edit_cb, (void *)vcb, out);
   return LONG2NUM(err);
 }
 
@@ -1798,9 +1854,13 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_op_delete_start",
 			     rb_s_gpgme_op_delete_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_edit",
-			     rb_s_gpgme_op_edit, 3);
+			     rb_s_gpgme_op_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_edit_start",
-			     rb_s_gpgme_op_edit_start, 3);
+			     rb_s_gpgme_op_edit_start, 5);
+  rb_define_module_function (mGPGME, "gpgme_op_card_edit",
+			     rb_s_gpgme_op_edit, 5);
+  rb_define_module_function (mGPGME, "gpgme_op_card_edit_start",
+			     rb_s_gpgme_op_edit_start, 5);
 
   /* Trust Item Management */
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_start",
