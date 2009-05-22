@@ -1043,7 +1043,7 @@ edit_cb (void *hook, gpgme_status_code_t status, const char *args, int fd)
   veditfunc = RARRAY(vcb)->ptr[0];
   vhook_value = RARRAY(vcb)->ptr[1];
 
-  rb_funcall (veditfunc, rb_intern ("call"), vhook_value, INT2FIX(status),
+  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(status),
 	      rb_str_new2 (args), INT2NUM(fd));
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
