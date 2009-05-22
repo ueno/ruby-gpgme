@@ -1118,6 +1118,23 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
     alias delete delete_key
 
+    # Edit attributes of the key in the local key ring.
+    def edit_key(key, editfunc, hook_value = nil, out = Data.new)
+      err = GPGME::gpgme_op_edit(self, key, editfunc, hook_value, out)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+    end
+    alias edit edit_key
+
+    # Edit attributes of the key on the card.
+    def edit_card_key(key, editfunc, hook_value = nil, out = Data.new)
+      err = GPGME::gpgme_op_card_edit(self, key, editfunc, hook_value, out)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+    end
+    alias edit_card edit_card_key
+    alias card_edit edit_card_key
+
     # Decrypt the ciphertext and return the plaintext.
     def decrypt(cipher, plain = Data.new)
       err = GPGME::gpgme_op_decrypt(self, cipher, plain)
