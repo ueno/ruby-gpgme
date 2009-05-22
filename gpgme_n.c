@@ -40,9 +40,9 @@ Boston, MA 02110-1301, USA.  */
 #include "gpgme.h"
 #include <errno.h>
 
-#define RUBY_GPGME_WORKAROUND_KEYLIST_NEXT
-
-#ifdef RUBY_GPGME_WORKAROUND_KEYLIST_NEXT
+/* Define this if you use GPGME 1.1.2 and earlier.
+   https://bugs.g10code.com/gnupg/issue715 */
+#ifdef RUBY_GPGME_NEED_WORKAROUND_KEYLIST_NEXT
 #define CHECK_KEYLIST_IN_PROGRESS(vctx)					\
   if (rb_iv_get (vctx, "ruby_gpgme_keylist_in_progress") != Qtrue)	\
     return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE))
