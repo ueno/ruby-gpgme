@@ -81,27 +81,27 @@ Boston, MA 02110-1301, USA.  */
 #endif
 
 #define WRAP_GPGME_DATA(dh)					\
-  Data_Wrap_Struct(cData, 0, gpgme_data_release, dh)	\
+  Data_Wrap_Struct(cData, 0, gpgme_data_release, dh)
 /* `gpgme_data_t' is typedef'ed as `struct gpgme_data *'. */
 #define UNWRAP_GPGME_DATA(vdh, dh)				\
   Data_Get_Struct(vdh, struct gpgme_data, dh);
 
 #define WRAP_GPGME_CTX(ctx)					\
-  Data_Wrap_Struct(cCtx, 0, gpgme_release, ctx)		\
+  Data_Wrap_Struct(cCtx, 0, gpgme_release, ctx)
 /* `gpgme_ctx_t' is typedef'ed as `struct gpgme_context *'. */
 #define UNWRAP_GPGME_CTX(vctx, ctx)				\
   Data_Get_Struct(vctx, struct gpgme_context, ctx)
 
 #define WRAP_GPGME_KEY(key)					\
-  Data_Wrap_Struct(cKey, 0, gpgme_key_release, key)	\
+  Data_Wrap_Struct(cKey, 0, gpgme_key_unref, key)
 /* `gpgme_key_t' is typedef'ed as `struct _gpgme_key *'. */
 #define UNWRAP_GPGME_KEY(vkey, key)				\
   Data_Get_Struct(vkey, struct _gpgme_key, key)
 
 #define WRAP_GPGME_TRUST_ITEM(item)					  \
-  Data_Wrap_Struct(cTrustItem, 0, gpgme_trust_item_unref, item)	  \
+  Data_Wrap_Struct(cTrustItem, 0, gpgme_trust_item_unref, item)
 /* `gpgme_trust_item_t' is typedef'ed as `struct _gpgme_trust_item *'. */
-#define UNWRAP_GPGME_TRUST_ITEM(vitem, item)				  \
+#define UNWRAP_GPGME_TRUST_ITEM(vitem, item)			\
   Data_Get_Struct(vitem, struct _gpgme_trust_item, item)
 
 static VALUE cEngineInfo,
