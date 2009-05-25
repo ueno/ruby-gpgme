@@ -220,11 +220,6 @@ rb_s_gpgme_data_new (VALUE dummy, VALUE rdh)
   gpgme_data_t dh;
   gpgme_error_t err = gpgme_data_new (&dh);
 
-  if (gpgme_err_code(err) == GPG_ERR_ENOMEM)
-    {
-      rb_gc ();
-      err = gpgme_data_new (&dh);
-    }
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     rb_ary_store (rdh, 0, WRAP_GPGME_DATA(dh));
   return LONG2NUM(err);
@@ -243,11 +238,6 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
     rb_raise (rb_eArgError, "argument out of range");
 
   err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size, 1);
-  if (gpgme_err_code(err) == GPG_ERR_ENOMEM)
-    {
-      rb_gc ();
-      err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size, 1);
-    }
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       vdh = WRAP_GPGME_DATA(dh);
@@ -261,11 +251,6 @@ rb_s_gpgme_data_new_from_fd (VALUE dummy, VALUE rdh, VALUE vfd)
 {
   gpgme_data_t dh;
   gpgme_error_t err = gpgme_data_new_from_fd (&dh, NUM2INT(vfd));
-  if (gpgme_err_code(err) == GPG_ERR_ENOMEM)
-    {
-      rb_gc ();
-      err = gpgme_data_new_from_fd (&dh, NUM2INT(vfd));
-    }
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     rb_ary_store (rdh, 0, WRAP_GPGME_DATA(dh));
   return LONG2NUM(err);
@@ -340,11 +325,6 @@ rb_s_gpgme_data_new_from_cbs (VALUE dummy, VALUE rdh, VALUE vcbs,
   rb_ary_push (vcbs_handle, vhandle);
 
   err = gpgme_data_new_from_cbs (&dh, &cbs, (void*)vcbs_handle);
-  if (gpgme_err_code(err) == GPG_ERR_ENOMEM)
-    {
-      rb_gc ();
-      err = gpgme_data_new_from_cbs (&dh, &cbs, (void*)vcbs_handle);
-    }
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       VALUE vdh = WRAP_GPGME_DATA(dh);
@@ -429,11 +409,6 @@ rb_s_gpgme_new (VALUE dummy, VALUE rctx)
   gpgme_ctx_t ctx;
   gpgme_error_t err = gpgme_new (&ctx);
 
-  if (gpgme_err_code(err) == GPG_ERR_ENOMEM)
-    {
-      rb_gc ();
-      err = gpgme_new (&ctx);
-    }
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     rb_ary_store (rctx, 0, WRAP_GPGME_CTX(ctx));
   return LONG2NUM(err);
