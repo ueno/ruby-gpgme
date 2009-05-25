@@ -67,3 +67,8 @@ level API.
  sig = GPGME::Data.from_io($stdout)
  ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
  End
+
+* License
+
+The library itself is licensed under LGPLv2.1+.  See the file
+COPYING.LESSER and each file for copyright and warranty information.
