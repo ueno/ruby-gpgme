@@ -810,26 +810,6 @@ rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey,
 }
 
 static VALUE
-rb_s_gpgme_key_ref (VALUE dummy, VALUE vkey)
-{
-  gpgme_key_t key;
-  
-  UNWRAP_GPGME_KEY(vkey, key);
-  gpgme_key_ref (key);
-  return Qnil;
-}
-
-static VALUE
-rb_s_gpgme_key_unref (VALUE dummy, VALUE vkey)
-{
-  gpgme_key_t key;
-
-  UNWRAP_GPGME_KEY(vkey, key);
-  gpgme_key_unref (key);
-  return Qnil;
-}
-
-static VALUE
 rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
 		      VALUE vseckey)
 {
@@ -1806,10 +1786,6 @@ Init_gpgme_n (void)
 			     rb_s_gpgme_op_keylist_end, 1);
   rb_define_module_function (mGPGME, "gpgme_get_key",
 			     rb_s_gpgme_get_key, 4);
-  rb_define_module_function (mGPGME, "gpgme_key_ref",
-			     rb_s_gpgme_key_ref, 1);
-  rb_define_module_function (mGPGME, "gpgme_key_unref",
-			     rb_s_gpgme_key_unref, 1);
   rb_define_module_function (mGPGME, "gpgme_op_genkey",
 			     rb_s_gpgme_op_genkey, 4);
   rb_define_module_function (mGPGME, "gpgme_op_genkey_start",
