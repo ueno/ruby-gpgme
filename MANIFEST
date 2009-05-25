@@ -2,6 +2,7 @@ lib/gpgme.rb
 lib/gpgme/compat.rb
 lib/gpgme/constants.rb
 COPYING
+COPYING.LESSER
 README
 extconf.rb
 gpgme_n.c
@@ -10,3 +11,4 @@ examples/keylist.rb
 examples/roundtrip.rb
 examples/sign.rb
 examples/verify.rb
+examples/edit.rb

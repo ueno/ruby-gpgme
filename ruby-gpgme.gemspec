@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.date = '2009-05-25'
   s.email = 'ueno@unixuser.org'
   s.extensions = ['extconf.rb']
-  s.files = ['COPYING', 'MANIFEST', 'Makefile', 'README',
+  s.files = ['COPYING', 'COPYING.LESSER', 'MANIFEST', 'Makefile', 'README',
              'extconf.rb', 'gpgme_n.c', 'lib/gpgme.rb', 'lib/gpgme/compat.rb',
              'lib/gpgme/constants.rb', 'examples/sign.rb', 'examples/genkey.rb',
              'examples/keylist.rb', 'examples/verify.rb',
