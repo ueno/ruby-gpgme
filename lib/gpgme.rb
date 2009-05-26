@@ -123,29 +123,30 @@ def GPGME.decrypt(cipher, *args_options)
   args, options = split_args(args_options)
   plain = args[0]
 
-  ctx = GPGME::Ctx.new(options)
-  cipher_data = input_data(cipher)
-  plain_data = output_data(plain)
-  begin
-    ctx.decrypt_verify(cipher_data, plain_data)
-  rescue GPGME::Error::UnsupportedAlgorithm => exc
-    exc.algorithm = ctx.decrypt_result.unsupported_algorithm
-    raise exc
-  rescue GPGME::Error::WrongKeyUsage => exc
-    exc.key_usage = ctx.decrypt_result.wrong_key_usage
-    raise exc
-  end
-
-  verify_result = ctx.verify_result
-  if verify_result && block_given?
-    verify_result.signatures.each do |signature|
-      yield signature
+  GPGME::Ctx.new(options) do |ctx|
+    cipher_data = input_data(cipher)
+    plain_data = output_data(plain)
+    begin
+      ctx.decrypt_verify(cipher_data, plain_data)
+    rescue GPGME::Error::UnsupportedAlgorithm => exc
+      exc.algorithm = ctx.decrypt_result.unsupported_algorithm
+      raise exc
+    rescue GPGME::Error::WrongKeyUsage => exc
+      exc.key_usage = ctx.decrypt_result.wrong_key_usage
+      raise exc
     end
-  end
 
-  unless plain
-    plain_data.seek(0, IO::SEEK_SET)
-    plain_data.read
+    verify_result = ctx.verify_result
+    if verify_result && block_given?
+      verify_result.signatures.each do |signature|
+        yield signature
+      end
+    end
+
+    unless plain
+      plain_data.seek(0, IO::SEEK_SET)
+      plain_data.read
+    end
   end
 end
 
@@ -181,22 +182,23 @@ def GPGME.verify(sig, *args_options) # :yields: signature
   args, options = split_args(args_options)
   signed_text, plain = args
 
-  ctx = GPGME::Ctx.new(options)
-  sig_data = input_data(sig)
-  if signed_text
-    signed_text_data = input_data(signed_text)
-    plain_data = nil
-  else
-    signed_text_data = nil
-    plain_data = output_data(plain)
-  end
-  ctx.verify(sig_data, signed_text_data, plain_data)
-  ctx.verify_result.signatures.each do |signature|
-    yield signature
-  end
-  if !signed_text && !plain
-    plain_data.seek(0, IO::SEEK_SET)
-    plain_data.read
+  GPGME::Ctx.new(options) do |ctx|
+    sig_data = input_data(sig)
+    if signed_text
+      signed_text_data = input_data(signed_text)
+      plain_data = nil
+    else
+      signed_text_data = nil
+      plain_data = output_data(plain)
+    end
+    ctx.verify(sig_data, signed_text_data, plain_data)
+    ctx.verify_result.signatures.each do |signature|
+      yield signature
+    end
+    if !signed_text && !plain
+      plain_data.seek(0, IO::SEEK_SET)
+      plain_data.read
+    end
   end
 end
 
@@ -234,21 +236,22 @@ def GPGME.sign(plain, *args_options)
   args, options = split_args(args_options)
   sig = args[0]
 
-  ctx = GPGME::Ctx.new(options)
-  ctx.add_signer(*resolve_keys(options[:signers], true)) if options[:signers]
-  mode = options[:mode] || GPGME::SIG_MODE_NORMAL
-  plain_data = input_data(plain)
-  sig_data = output_data(sig)
-  begin
-    ctx.sign(plain_data, sig_data, mode)
-  rescue GPGME::Error::UnusableSecretKey => exc
-    exc.keys = ctx.sign_result.invalid_signers
-    raise exc
-  end
+  GPGME::Ctx.new(options) do |ctx|
+    ctx.add_signer(*resolve_keys(options[:signers], true)) if options[:signers]
+    mode = options[:mode] || GPGME::SIG_MODE_NORMAL
+    plain_data = input_data(plain)
+    sig_data = output_data(sig)
+    begin
+      ctx.sign(plain_data, sig_data, mode)
+    rescue GPGME::Error::UnusableSecretKey => exc
+      exc.keys = ctx.sign_result.invalid_signers
+      raise exc
+    end
 
-  unless sig
-    sig_data.seek(0, IO::SEEK_SET)
-    sig_data.read
+    unless sig
+      sig_data.seek(0, IO::SEEK_SET)
+      sig_data.read
+    end
   end
 end
 
@@ -355,33 +358,34 @@ def GPGME.encrypt(recipients, plain, *args_options)
   cipher = args[0]
   recipient_keys = recipients ? resolve_keys(recipients, false) : nil
 
-  ctx = GPGME::Ctx.new(options)
-  plain_data = input_data(plain)
-  cipher_data = output_data(cipher)
-  begin
-    flags = 0
-    if options[:always_trust]
-      flags |= GPGME::ENCRYPT_ALWAYS_TRUST
-    end
-    if options[:sign]
-      if options[:signers]
-        ctx.add_signer(*resolve_keys(options[:signers], true))
+  GPGME::Ctx.new(options) do |ctx|
+    plain_data = input_data(plain)
+    cipher_data = output_data(cipher)
+    begin
+      flags = 0
+      if options[:always_trust]
+        flags |= GPGME::ENCRYPT_ALWAYS_TRUST
       end
-      ctx.encrypt_sign(recipient_keys, plain_data, cipher_data, flags)
-    else
-      ctx.encrypt(recipient_keys, plain_data, cipher_data, flags)
+      if options[:sign]
+        if options[:signers]
+          ctx.add_signer(*resolve_keys(options[:signers], true))
+        end
+        ctx.encrypt_sign(recipient_keys, plain_data, cipher_data, flags)
+      else
+        ctx.encrypt(recipient_keys, plain_data, cipher_data, flags)
+      end
+    rescue GPGME::Error::UnusablePublicKey => exc
+      exc.keys = ctx.encrypt_result.invalid_recipients
+      raise exc
+    rescue GPGME::Error::UnusableSecretKey => exc
+      exc.keys = ctx.sign_result.invalid_signers
+      raise exc
     end
-  rescue GPGME::Error::UnusablePublicKey => exc
-    exc.keys = ctx.encrypt_result.invalid_recipients
-    raise exc
-  rescue GPGME::Error::UnusableSecretKey => exc
-    exc.keys = ctx.sign_result.invalid_signers
-    raise exc
-  end
 
-  unless cipher
-    cipher_data.seek(0, IO::SEEK_SET)
-    cipher_data.read
+    unless cipher
+      cipher_data.seek(0, IO::SEEK_SET)
+      cipher_data.read
+    end
   end
 end
 
@@ -408,13 +412,14 @@ def GPGME.list_keys(*args_options) # :yields: key
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
   pattern, secret_only = args
-  ctx = GPGME::Ctx.new
-  if block_given?  
-    ctx.each_key(pattern, secret_only || false) do |key|
-      yield key
+  GPGME::Ctx.new do |ctx|
+    if block_given?  
+      ctx.each_key(pattern, secret_only || false) do |key|
+        yield key
+      end
+    else
+      ctx.keys(pattern, secret_only || false)
     end
-  else
-    ctx.keys(pattern, secret_only || false)
   end
 end
 
@@ -445,12 +450,13 @@ def GPGME.export(*args_options)
   args, options = split_args(args_options)
   pattern, key = args[0]
   key_data = output_data(key)
-  ctx = GPGME::Ctx.new(options)
-  ctx.export_keys(pattern, key_data)
+  GPGME::Ctx.new(options) do |ctx|
+    ctx.export_keys(pattern, key_data)
 
-  unless key
-    key_data.seek(0, IO::SEEK_SET)
-    key_data.read
+    unless key
+      key_data.seek(0, IO::SEEK_SET)
+      key_data.read
+    end
   end
 end
 
@@ -478,9 +484,10 @@ def GPGME.import(*args_options)
   args, options = split_args(args_options)
   key = args[0]
   key_data = input_data(key)
-  ctx = GPGME::Ctx.new(options)
-  ctx.import_keys(key_data)
-  ctx.import_result
+  GPGME::Ctx.new(options) do |ctx|
+    ctx.import_keys(key_data)
+    ctx.import_result
+  end
 end
 
 module GPGME
@@ -500,13 +507,14 @@ module GPGME
   module_function :split_args
 
   def resolve_keys(keys_or_names, secret_only)
-    ctx = GPGME::Ctx.new
     keys = Array.new
     keys_or_names.each do |key_or_name|
       if key_or_name.kind_of? Key
         keys << key_or_name
       elsif key_or_name.kind_of? String
-        keys += ctx.keys(key_or_name, secret_only)
+        GPGME::Ctx.new do |ctx|
+          keys += ctx.keys(key_or_name, secret_only)
+        end
       end
     end
     keys
@@ -904,7 +912,15 @@ module GPGME
                                       options[:progress_callback_value])
         end
       end
-      ctx
+      if block_given?
+        begin
+          yield ctx
+        ensure
+          GPGME::gpgme_release(ctx)
+        end
+      else
+        ctx
+      end
     end
 
     # Set the <i>protocol</i> used within this context.

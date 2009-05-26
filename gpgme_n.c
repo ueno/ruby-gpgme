@@ -420,12 +420,27 @@ rb_s_gpgme_new (VALUE dummy, VALUE rctx)
 }
 
 static VALUE
+rb_s_gpgme_release (VALUE dummy, VALUE vctx)
+{
+  gpgme_ctx_t ctx;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  gpgme_release (ctx);
+  DATA_PTR(vctx) = NULL;
+  return Qnil;
+}
+
+static VALUE
 rb_s_gpgme_set_protocol (VALUE dummy, VALUE vctx, VALUE vproto)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   err = gpgme_set_protocol (ctx, NUM2INT(vproto));
   return LONG2NUM(err);
 }
@@ -437,6 +452,8 @@ rb_s_gpgme_get_protocol (VALUE dummy, VALUE vctx)
   gpgme_protocol_t proto;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   proto = gpgme_get_protocol (ctx);
   return INT2FIX(proto);
 }
@@ -447,6 +464,8 @@ rb_s_gpgme_set_armor (VALUE dummy, VALUE vctx, VALUE vyes)
   gpgme_ctx_t ctx;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   gpgme_set_armor (ctx, NUM2INT(vyes));
 
   return Qnil;
@@ -459,6 +478,8 @@ rb_s_gpgme_get_armor (VALUE dummy, VALUE vctx)
   int yes;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   yes = gpgme_get_armor (ctx);
   return INT2FIX(yes);
 }
@@ -469,6 +490,8 @@ rb_s_gpgme_set_textmode (VALUE dummy, VALUE vctx, VALUE vyes)
   gpgme_ctx_t ctx;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   gpgme_set_textmode (ctx, NUM2INT(vyes));
   return Qnil;
 }     
@@ -480,6 +503,8 @@ rb_s_gpgme_get_textmode (VALUE dummy, VALUE vctx)
   int yes;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   yes = gpgme_get_textmode (ctx);
   return INT2FIX(yes);
 }     
@@ -490,6 +515,8 @@ rb_s_gpgme_set_include_certs (VALUE dummy, VALUE vctx, VALUE vnr_of_certs)
   gpgme_ctx_t ctx;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   gpgme_set_include_certs (ctx, NUM2INT(vnr_of_certs));
   return Qnil;
 }
@@ -501,6 +528,8 @@ rb_s_gpgme_get_include_certs (VALUE dummy, VALUE vctx)
   gpgme_error_t err;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   err = gpgme_get_include_certs (ctx);
   return LONG2NUM(err);
 }
@@ -512,6 +541,8 @@ rb_s_gpgme_set_keylist_mode (VALUE dummy, VALUE vctx, VALUE vmode)
   gpgme_error_t err;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   err = gpgme_set_keylist_mode (ctx, NUM2INT(vmode));
   return LONG2NUM(err);
 }
@@ -523,6 +554,8 @@ rb_s_gpgme_get_keylist_mode (VALUE dummy, VALUE vctx)
   int mode;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   mode = gpgme_get_keylist_mode (ctx);
   return INT2FIX(mode);
 }
@@ -558,6 +591,8 @@ rb_s_gpgme_set_passphrase_cb (VALUE dummy, VALUE vctx, VALUE vpassfunc,
   rb_iv_set (vctx, "@passphrase_cb", vcb);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   gpgme_set_passphrase_cb (ctx, passphrase_cb, (void*)vcb);
   return Qnil;
 }
@@ -600,6 +635,8 @@ rb_s_gpgme_set_progress_cb (VALUE dummy, VALUE vctx, VALUE vprogfunc,
   rb_iv_set (vctx, "@progress_cb", vcb);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   gpgme_set_progress_cb (ctx, progress_cb, (void*)vcb);
 
   return Qnil;
@@ -622,6 +659,8 @@ rb_s_gpgme_set_locale (VALUE dummy, VALUE vctx, VALUE vcategory, VALUE vvalue)
   gpgme_error_t err;
   
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   err = gpgme_set_locale (ctx, NUM2INT(vcategory), StringValueCStr(vvalue));
   return LONG2NUM(err);
@@ -637,6 +676,8 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   err = gpgme_op_keylist_start (ctx, NIL_P(vpattern) ? NULL :
 				StringValueCStr(vpattern),
@@ -657,6 +698,8 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   if (!NIL_P(vpattern))
     {
@@ -768,6 +811,8 @@ rb_s_gpgme_op_keylist_next (VALUE dummy, VALUE vctx, VALUE rkey)
   CHECK_KEYLIST_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   err = gpgme_op_keylist_next (ctx, &key);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
@@ -788,6 +833,8 @@ rb_s_gpgme_op_keylist_end (VALUE dummy, VALUE vctx)
   CHECK_KEYLIST_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   err = gpgme_op_keylist_end (ctx);
   RESET_KEYLIST_IN_PROGRESS(vctx);
@@ -803,6 +850,8 @@ rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey,
   gpgme_key_t key;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   err = gpgme_get_key (ctx, StringValueCStr(vfpr), &key, NUM2INT(vsecret));
 
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
@@ -825,6 +874,8 @@ rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   if (!NIL_P(vpubkey))
     UNWRAP_GPGME_DATA(vpubkey, pubkey);
   if (!NIL_P(vseckey))
@@ -845,6 +896,8 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   if (!NIL_P(vpubkey))
     UNWRAP_GPGME_DATA(vpubkey, pubkey);
   if (!NIL_P(vseckey))
@@ -865,6 +918,8 @@ rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_export (ctx, StringValueCStr(vpattern), NUM2UINT(vreserved),
@@ -883,6 +938,8 @@ rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_export_start (ctx, StringValueCStr(vpattern),
@@ -900,6 +957,8 @@ rb_s_gpgme_op_import (VALUE dummy, VALUE vctx, VALUE vkeydata)
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_import (ctx, keydata);
@@ -916,6 +975,8 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_import_start (ctx, keydata);
@@ -931,6 +992,8 @@ rb_s_gpgme_op_import_result (VALUE dummy, VALUE vctx)
   VALUE vresult, vimports;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_import_result (ctx);
   vresult = rb_class_new_instance (0, NULL, cImportResult);
@@ -972,6 +1035,8 @@ rb_s_gpgme_op_delete (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_secret)
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
 
   err = gpgme_op_delete (ctx, key, NUM2INT(vallow_secret));
@@ -989,6 +1054,8 @@ rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
 
   err = gpgme_op_delete_start (ctx, key, NUM2INT(vallow_secret));
@@ -1022,6 +1089,8 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
@@ -1050,6 +1119,8 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
@@ -1078,6 +1149,8 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
@@ -1106,6 +1179,8 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
@@ -1130,6 +1205,8 @@ rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   err = gpgme_op_trustlist_start (ctx, StringValueCStr(vpattern),
 				  NUM2INT(vmax_level));
   return LONG2NUM(err);
@@ -1146,6 +1223,8 @@ rb_s_gpgme_op_trustlist_next (VALUE dummy, VALUE vctx, VALUE ritem)
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   err = gpgme_op_trustlist_next (ctx, &item);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
@@ -1173,6 +1252,8 @@ rb_s_gpgme_op_trustlist_end (VALUE dummy, VALUE vctx)
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   err = gpgme_op_trustlist_end (ctx);
   return LONG2NUM(err);
@@ -1188,6 +1269,8 @@ rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
@@ -1206,6 +1289,8 @@ rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
@@ -1221,6 +1306,8 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
   VALUE vresult;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_decrypt_result (ctx);
   vresult = rb_class_new_instance (0, NULL, cDecryptResult);
@@ -1242,6 +1329,8 @@ rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vsig, sig);
   if (!NIL_P(vsigned_text))
     UNWRAP_GPGME_DATA(vsigned_text, signed_text);
@@ -1263,6 +1352,8 @@ rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vsig, sig);
   if (!NIL_P(vsigned_text))
     UNWRAP_GPGME_DATA(vsigned_text, signed_text);
@@ -1282,6 +1373,8 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
   VALUE vverify_result, vsignatures = rb_ary_new ();
   
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   verify_result = gpgme_op_verify_result (ctx);
   vverify_result = rb_class_new_instance(0, NULL, cVerifyResult);
@@ -1334,6 +1427,8 @@ rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
@@ -1352,6 +1447,8 @@ rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
@@ -1365,6 +1462,8 @@ rb_s_gpgme_signers_clear (VALUE dummy, VALUE vctx)
   gpgme_ctx_t ctx;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   gpgme_signers_clear (ctx);
   return Qnil;
 }
@@ -1377,6 +1476,8 @@ rb_s_gpgme_signers_add (VALUE dummy, VALUE vctx, VALUE vkey)
   gpgme_error_t err;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
 
   err = gpgme_signers_add (ctx, key);
@@ -1390,6 +1491,8 @@ rb_s_gpgme_signers_enum (VALUE dummy, VALUE vctx, VALUE vseq)
   gpgme_key_t key;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   key = gpgme_signers_enum (ctx, NUM2INT(vseq));
   if (!key)
@@ -1408,6 +1511,8 @@ rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vsig, sig);
 
@@ -1426,6 +1531,8 @@ rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vsig, sig);
 
@@ -1443,6 +1550,8 @@ rb_s_gpgme_op_sign_result (VALUE dummy, VALUE vctx)
   VALUE vresult, vinvalid_signers, vsignatures;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_sign_result (ctx);
   vresult = rb_class_new_instance (0, NULL, cSignResult);
@@ -1491,6 +1600,8 @@ rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   /* If RECP is `NULL', symmetric rather than public key encryption is
      performed. */
   if (!NIL_P(vrecp))
@@ -1522,6 +1633,8 @@ rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   /* If RECP is `NULL', symmetric rather than public key encryption is
      performed. */
   if (!NIL_P(vrecp))
@@ -1552,6 +1665,8 @@ rb_s_gpgme_op_encrypt_result (VALUE dummy, VALUE vctx)
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_encrypt_result (ctx);
   vresult = rb_class_new_instance (0, NULL, cEncryptResult);
@@ -1581,6 +1696,8 @@ rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   /* If RECP is `NULL', symmetric rather than public key encryption is
      performed. */
   if (!NIL_P(vrecp))
@@ -1612,6 +1729,8 @@ rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
   /* If RECP is `NULL', symmetric rather than public key encryption is
      performed. */
   if (!NIL_P(vrecp))
@@ -1641,7 +1760,11 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
   /* The CTX argument can be `NULL'.  In that case, `gpgme_wait' waits
      for any context to complete its operation. */
   if (!NIL_P(vctx))
-    UNWRAP_GPGME_CTX(vctx, ctx);
+    {
+      UNWRAP_GPGME_CTX(vctx, ctx);
+      if (!ctx)
+	rb_raise (rb_eArgError, "released ctx");
+    }
 
   ret = gpgme_wait (ctx, &status, NUM2INT(vhang));
   if (ret)
@@ -1747,6 +1870,8 @@ Init_gpgme_n (void)
   /* Creating Contexts */
   rb_define_module_function (mGPGME, "gpgme_new",
 			     rb_s_gpgme_new, 1);
+  rb_define_module_function (mGPGME, "gpgme_release",
+			     rb_s_gpgme_release, 1);
 
   /* Context Attributes */
   rb_define_module_function (mGPGME, "gpgme_set_protocol",
