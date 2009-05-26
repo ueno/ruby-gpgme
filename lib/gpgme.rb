@@ -237,7 +237,7 @@ def GPGME.sign(plain, *args_options)
   sig = args[0]
 
   GPGME::Ctx.new(options) do |ctx|
-    ctx.add_signer(*resolve_keys(options[:signers], true)) if options[:signers]
+    ctx.add_signer(*resolve_keys(options[:signers], true, [:sign])) if options[:signers]
     mode = options[:mode] || GPGME::SIG_MODE_NORMAL
     plain_data = input_data(plain)
     sig_data = output_data(sig)
@@ -356,7 +356,7 @@ def GPGME.encrypt(recipients, plain, *args_options)
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
   cipher = args[0]
-  recipient_keys = recipients ? resolve_keys(recipients, false) : nil
+  recipient_keys = recipients ? resolve_keys(recipients, false, [:encrypt]) : nil
 
   GPGME::Ctx.new(options) do |ctx|
     plain_data = input_data(plain)
@@ -368,7 +368,7 @@ def GPGME.encrypt(recipients, plain, *args_options)
       end
       if options[:sign]
         if options[:signers]
-          ctx.add_signer(*resolve_keys(options[:signers], true))
+          ctx.add_signer(*resolve_keys(options[:signers], true, [:sign]))
         end
         ctx.encrypt_sign(recipient_keys, plain_data, cipher_data, flags)
       else
@@ -506,14 +506,17 @@ module GPGME
   end
   module_function :split_args
 
-  def resolve_keys(keys_or_names, secret_only)
+  def resolve_keys(keys_or_names, secret_only, purposes = Array.new)
     keys = Array.new
     keys_or_names.each do |key_or_name|
       if key_or_name.kind_of? Key
         keys << key_or_name
       elsif key_or_name.kind_of? String
         GPGME::Ctx.new do |ctx|
-          keys += ctx.keys(key_or_name, secret_only)
+          key = ctx.keys(key_or_name, secret_only).find {|k|
+            k.usable_for?(purposes)
+          }
+          keys << key if key
         end
       end
     end
@@ -1262,6 +1265,14 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       caps
     end
 
+    def usable_for?(purposes)
+      unless purposes.kind_of? Array
+        purposes = [purposes]
+      end
+      return false if [:revoked, :expired, :disabled, :invalid].include? trust
+      return (purposes - capability).empty?
+    end
+
     def secret?
       @secret == 1
     end
@@ -1320,6 +1331,14 @@ capability=%s, subkeys=%s, uids=%s>",
       caps << :certify if @can_certify
       caps << :authenticate if @can_authenticate
       caps
+    end
+
+    def usable_for?(purposes)
+      unless purposes.kind_of? Array
+        purposes = [purposes]
+      end
+      return false if [:revoked, :expired, :disabled, :invalid].include? trust
+      return (purposes - capability).empty?
     end
 
     def secret?
