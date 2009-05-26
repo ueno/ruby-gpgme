@@ -80,6 +80,11 @@
 #define RARRAY_PTR(a) RARRAY(a)->ptr
 #endif
 
+/* RSTRING_LEN is not available in 1.8.5. */
+#ifndef RSTRING_LEN
+#define RSTRING_LEN(a) RSTRING(a)->len
+#endif
+
 #define WRAP_GPGME_DATA(dh)					\
   Data_Wrap_Struct(cData, 0, gpgme_data_release, dh)
 /* `gpgme_data_t' is typedef'ed as `struct gpgme_data *'. */
