@@ -4,6 +4,7 @@ lib/gpgme/constants.rb
 COPYING
 COPYING.LESSER
 README
+THANKS
 extconf.rb
 gpgme_n.c
 examples/genkey.rb
