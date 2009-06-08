@@ -1082,7 +1082,6 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   gpgme_ctx_t ctx;
   gpgme_key_t key;
   gpgme_data_t out = NULL;
-  void *hook_value = NULL;
   VALUE vcb;
   gpgme_error_t err;
 
@@ -1112,7 +1111,6 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   gpgme_ctx_t ctx;
   gpgme_key_t key;
   gpgme_data_t out = NULL;
-  void *hook_value = NULL;
   VALUE vcb;
   gpgme_error_t err;
 
@@ -1142,7 +1140,6 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   gpgme_ctx_t ctx;
   gpgme_key_t key;
   gpgme_data_t out = NULL;
-  void *hook_value = NULL;
   VALUE vcb;
   gpgme_error_t err;
 
@@ -1172,7 +1169,6 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   gpgme_ctx_t ctx;
   gpgme_key_t key;
   gpgme_data_t out = NULL;
-  void *hook_value = NULL;
   VALUE vcb;
   gpgme_error_t err;
 
@@ -1939,9 +1935,9 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_op_edit_start",
 			     rb_s_gpgme_op_edit_start, 5);
   rb_define_module_function (mGPGME, "gpgme_op_card_edit",
-			     rb_s_gpgme_op_edit, 5);
+			     rb_s_gpgme_op_card_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_card_edit_start",
-			     rb_s_gpgme_op_edit_start, 5);
+			     rb_s_gpgme_op_card_edit_start, 5);
 
   /* Trust Item Management */
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_start",
