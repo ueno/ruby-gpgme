@@ -266,8 +266,8 @@ read_cb (void *handle, void *buffer, size_t size)
 {
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer;
 
-  vcbs = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+  vcbs = (RARRAY_PTR(vcb))[0];
+  vhook_value = (RARRAY_PTR(vcb))[1];
 
   vbuffer = rb_funcall (vcbs, rb_intern ("read"), 2, vhook_value,
 			LONG2NUM(size));
@@ -282,8 +282,8 @@ write_cb (void *handle, const void *buffer, size_t size)
 {
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnwrite;
 
-  vcbs = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+  vcbs = (RARRAY_PTR(vcb))[0];
+  vhook_value = (RARRAY_PTR(vcb))[1];
   vbuffer = rb_str_new (buffer, size);
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
@@ -297,8 +297,8 @@ seek_cb (void *handle, off_t offset, int whence)
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vpos;
   ID id_seek = rb_intern ("seek");
 
-  vcbs = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+  vcbs = (RARRAY_PTR(vcb))[0];
+  vhook_value = (RARRAY_PTR(vcb))[1];
 
   if (rb_respond_to (vcbs, id_seek))
     {
@@ -566,8 +566,8 @@ passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info,
 {
   VALUE vcb = (VALUE)hook, vpassfunc, vhook_value;
 
-  vpassfunc = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+  vpassfunc = (RARRAY_PTR(vcb))[0];
+  vhook_value = (RARRAY_PTR(vcb))[1];
 
   rb_funcall (vpassfunc, rb_intern ("call"), 5,
 	      vhook_value,
@@ -604,8 +604,8 @@ rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
   VALUE vcb = rb_iv_get (vctx, "@passphrase_cb");
 
   /* No need to call gpgme_get_passphrase_cb. */
-  rb_ary_store (rpassfunc, 0, RARRAY(vcb)->ptr[0]);
-  rb_ary_store (rhook_value, 0, RARRAY(vcb)->ptr[1]);
+  rb_ary_store (rpassfunc, 0, (RARRAY_PTR(vcb))[0]);
+  rb_ary_store (rhook_value, 0, (RARRAY_PTR(vcb))[1]);
   return Qnil;
 }
 
@@ -614,8 +614,8 @@ progress_cb (void *hook, const char *what, int type, int current, int total)
 {
   VALUE vcb = (VALUE)hook, vprogfunc, vhook_value;
 
-  vprogfunc = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+  vprogfunc = (RARRAY_PTR(vcb))[0];
+  vhook_value = (RARRAY_PTR(vcb))[1];
 
   rb_funcall (vprogfunc, rb_intern ("call"), 5, vhook_value,
 	      rb_str_new2 (what), INT2NUM(type), INT2NUM(current),
@@ -647,8 +647,8 @@ rb_s_gpgme_get_progress_cb (VALUE dummy, VALUE vctx, VALUE rprogfunc,
 			    VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@progress_cb");
-  rb_ary_store (rprogfunc, 0, RARRAY(vcb)->ptr[0]);
-  rb_ary_store (rhook_value, 0, RARRAY(vcb)->ptr[1]);
+  rb_ary_store (rprogfunc, 0, (RARRAY_PTR(vcb))[0]);
+  rb_ary_store (rhook_value, 0, (RARRAY_PTR(vcb))[1]);
   return Qnil;
 }
 
@@ -1067,8 +1067,9 @@ edit_cb (void *hook, gpgme_status_code_t status, const char *args, int fd)
 {
   VALUE vcb = (VALUE)hook, veditfunc, vhook_value;
 
-  veditfunc = RARRAY(vcb)->ptr[0];
-  vhook_value = RARRAY(vcb)->ptr[1];
+
+  veditfunc = (RARRAY_PTR(vcb))[0];
+  vhook_value = (RARRAY_PTR(vcb))[1];
 
   rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(status),
 	      rb_str_new2 (args), INT2NUM(fd));
