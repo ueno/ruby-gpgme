@@ -1,8 +1,8 @@
 Gem::Specification.new do |s|
   s.name = 'ruby-gpgme'
-  s.version = '1.0.6'
+  s.version = '1.0.7'
   s.authors = ['Daiki Ueno']
-  s.date = '2009-06-08'
+  s.date = '2009-07-25'
   s.email = 'ueno@unixuser.org'
   s.extensions = ['extconf.rb']
   s.files = ['COPYING', 'COPYING.LESSER', 'MANIFEST', 'Makefile', 'README',
