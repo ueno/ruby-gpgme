@@ -10,6 +10,10 @@ Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
 * Installation
 
+ $ gem install ruby-gpgme
+
+or
+
  $ ruby extconf.rb
  $ make
  $ make install
@@ -24,16 +28,28 @@ Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
 * API
 
-Ruby-GPGME provides 3 levels of API.  The highest level API is close
-to the command line interface of GnuPG.  The lowest level API is close
-to the C interface of GPGME.
+Ruby-GPGME provides three levels of API.  The highest level API is
+close to the command line interface of GnuPG.  The mid level API looks
+object-oriented (or rubyish).  The lowest level API is close to the C
+interface of GPGME.
 
 ** The highest level API
 
-For example, to create a cleartext signature of the plaintext from stdin
-can be written as follows.
+For example, to create a cleartext signature of the plaintext from
+stdin and write the result to stdout can be written as follows.
 
  $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
+
+** The mid level API
+
+The same example can be rewritten in the mid level API as follows.
+
+ $ ruby -rgpgme -e <<End  
+ ctx = GPGME::Ctx.new
+ plain = GPGME::Data.from_io($stdin)
+ sig = GPGME::Data.from_io($stdout)
+ ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
+ End
 
 ** The lowest level API
 
@@ -52,21 +68,8 @@ The same example can be rewritten in the lowest level API as follows.
 
 As you see, it's much harder to write a program in this API than the
 highest level API.  However, if you are already familier with the C
-interface of GPGME and/or want to control detailed behavior of GPGME,
-it might be useful.
-
-** The mid level API
-
-There is another API which looks object-oriented.  It's easier to use
-than the lowest level API though, you should first consult the highest
-level API.
-
- $ ruby -rgpgme -e <<End  
- ctx = GPGME::Ctx.new
- plain = GPGME::Data.from_io($stdin)
- sig = GPGME::Data.from_io($stdout)
- ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
- End
+interface of GPGME and want to control detailed behavior of GPGME, it
+might be useful.
 
 * License
 
