@@ -11,6 +11,10 @@ Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
 = Installation
 
+ $ gem install ruby-gpgme
+
+or
+
  $ ruby extconf.rb
  $ make
  $ make install
@@ -25,9 +29,10 @@ Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
 = API
 
-Ruby-GPGME provides 3 levels of API.  The highest level API is close
-to the command line interface of GnuPG.  The lowest level API is close
-to the C interface of GPGME.
+Ruby-GPGME provides three levels of API.  The highest level API is
+close to the command line interface of GnuPG.  The mid level API looks
+object-oriented (or rubyish).  The lowest level API is close to the C
+interface of GPGME.
 
 == The highest level API
 
@@ -36,10 +41,20 @@ signature of the plaintext from stdin as follows.
 
  $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
 
+== The mid level API
+
+The same example can be rewritten in the mid level API as follows.
+
+ $ ruby -rgpgme -e <<End  
+ ctx = GPGME::Ctx.new
+ plain = GPGME::Data.from_io($stdin)
+ sig = GPGME::Data.from_io($stdout)
+ ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
+ End
+
 == The lowest level API
 
-On the other hand, the same example can be rewritten in the lowest
-level API as follows.
+The same example can be rewritten in the lowest level API as follows.
 
  $ ruby -rgpgme -e <<End  
  ret = Array.new
@@ -53,22 +68,9 @@ level API as follows.
  End
 
 As you see, it's much harder to write a program in this API than the
-highest level API.  However, if you are already familier with the C
+higher level API.  However, if you are already familier with the C
 interface of GPGME and/or want to control detailed behavior of GPGME,
 it might be useful.
-
-== The mid level API
-
-There is another API which looks object-oriented.  It's easier to use
-than the lowest level API though, you should first consult the highest
-level API.
-
- $ ruby -rgpgme -e <<End  
- ctx = GPGME::Ctx.new
- plain = GPGME::Data.from_io($stdin)
- sig = GPGME::Data.from_io($stdout)
- ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
- End
 
 = License
 
@@ -656,6 +658,7 @@ module GPGME
     end
     class BadSignature < self; end
     class NoPublicKey < self; end
+    class InvalidVersion < self; end
   end
 
   def error_to_exception(err)   # :nodoc:
@@ -892,6 +895,15 @@ module GPGME
     #   progress_callback.
     #
     def self.new(options = Hash.new)
+      version = nil
+      if options.kind_of?(String)
+        version = options
+      elsif options.include?(:version)
+        version = options[:version]
+      end
+      unless GPGME::gpgme_check_version(version)
+        raise Error::InvalidVersion.new
+      end
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)
       exc = GPGME::error_to_exception(err)
