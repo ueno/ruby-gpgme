@@ -908,7 +908,7 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
 }
 
 static VALUE
-rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved,
+rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
 		      VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
@@ -922,14 +922,14 @@ rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vreserved,
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  err = gpgme_op_export (ctx, StringValueCStr(vpattern), NUM2UINT(vreserved),
+  err = gpgme_op_export (ctx, StringValueCStr(vpattern), NUM2UINT(vmode),
 			 keydata);
   return LONG2NUM(err);
 }
 
 static VALUE
 rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-			    VALUE vreserved, VALUE vkeydata)
+			    VALUE vmode, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
@@ -943,7 +943,105 @@ rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_export_start (ctx, StringValueCStr(vpattern),
-			       NUM2UINT(vreserved), keydata);
+			       NUM2UINT(vmode), keydata);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
+			  VALUE vkeydata)
+{
+  gpgme_ctx_t ctx;
+  gpgme_data_t keydata;
+  gpgme_error_t err;
+  const char **pattern;
+  int i;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  pattern = ALLOC_N(char, RARRAY_LEN(vpattern));
+  for (i = 0; i < RARRAY_LEN(vpattern); i++)
+    pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+
+  err = gpgme_op_export_ext (ctx, pattern, NUM2UINT(vmode), keydata);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
+			    VALUE vmode, VALUE vkeydata)
+{
+  gpgme_ctx_t ctx;
+  gpgme_data_t keydata;
+  gpgme_error_t err;
+  const char **pattern;
+  int i;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  pattern = ALLOC_N(char, RARRAY_LEN(vpattern));
+  for (i = 0; i < RARRAY_LEN(vpattern); i++)
+    pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+
+  err = gpgme_op_export_ext_start (ctx, pattern, NUM2UINT(vmode), keydata);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
+			   VALUE vmode, VALUE vkeydata)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t *keys;
+  gpgme_data_t keydata;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
+  for (i = 0; i < RARRAY_LEN(vkeys); i++)
+    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
+
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+
+  err = gpgme_op_export_keys (ctx, keys, NUM2UINT(vmode), keydata);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
+				 VALUE vmode, VALUE vkeydata)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t *keys;
+  gpgme_data_t keydata;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
+  for (i = 0; i < RARRAY_LEN(vkeys); i++)
+    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
+
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+
+  err = gpgme_op_export_keys_start (ctx, keys, NUM2UINT(vmode), keydata);
   return LONG2NUM(err);
 }
 
@@ -980,6 +1078,52 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_import_start (ctx, keydata);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t *keys;
+  gpgme_error_t err;
+  int i;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
+  for (i = 0; i < RARRAY_LEN(vkeys); i++)
+    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
+  keys[i] = NULL;
+
+  err = gpgme_op_import_keys (ctx, keys);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t *keys;
+  gpgme_error_t err;
+  int i;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
+  for (i = 0; i < RARRAY_LEN(vkeys); i++)
+    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
+  keys[i] = NULL;
+
+  err = gpgme_op_import_keys_start (ctx, keys);
   return LONG2NUM(err);
 }
 
@@ -1920,11 +2064,23 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_op_export",
 			     rb_s_gpgme_op_export, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_start",
-			     rb_s_gpgme_op_export_start, 3);
+			     rb_s_gpgme_op_export_start, 4);
+  rb_define_module_function (mGPGME, "gpgme_op_export_ext",
+			     rb_s_gpgme_op_export_ext, 4);
+  rb_define_module_function (mGPGME, "gpgme_op_export_ext_start",
+			     rb_s_gpgme_op_export_ext_start, 4);
+  rb_define_module_function (mGPGME, "gpgme_op_export_keys",
+			     rb_s_gpgme_op_export_keys, 4);
+  rb_define_module_function (mGPGME, "gpgme_op_export_keys_start",
+			     rb_s_gpgme_op_export_keys_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_import",
 			     rb_s_gpgme_op_import, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_start",
 			     rb_s_gpgme_op_import_start, 2);
+  rb_define_module_function (mGPGME, "gpgme_op_import_keys",
+			     rb_s_gpgme_op_import_keys, 2);
+  rb_define_module_function (mGPGME, "gpgme_op_import_keys_start",
+			     rb_s_gpgme_op_import_keys_start, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_result",
 			     rb_s_gpgme_op_import_result, 1);
   rb_define_module_function (mGPGME, "gpgme_op_delete",
@@ -2254,6 +2410,11 @@ Init_gpgme_n (void)
 		   INT2FIX(GPGME_PROTOCOL_OpenPGP));
   rb_define_const (mGPGME, "GPGME_PROTOCOL_CMS",
 		   INT2FIX(GPGME_PROTOCOL_CMS));
+  /* This protocol was added in 1.2.0. */
+#ifdef GPGME_PROTOCOL_ASSUAN
+  rb_define_const (mGPGME, "GPGME_PROTOCOL_ASSUAN",
+		   INT2FIX(GPGME_PROTOCOL_ASSUAN))
+#endif
 
   /* gpgme_status_code_t */
   rb_define_const (mGPGME, "GPGME_STATUS_EOF",
@@ -2425,6 +2586,11 @@ Init_gpgme_n (void)
 #endif
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_VALIDATE",
 		   INT2FIX(GPGME_KEYLIST_MODE_VALIDATE));
+  /* This flag was added in 1.2.0. */
+#ifdef GPGME_KEYLIST_MODE_EPHEMERAL
+  rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_EPHEMERAL",
+		   INT2FIX(GPGME_KEYLIST_MODE_EPHEMERAL));
+#endif
 
   /* The available flags for status field of gpgme_import_status_t.  */
   rb_define_const (mGPGME, "GPGME_IMPORT_NEW", INT2FIX(GPGME_IMPORT_NEW));
@@ -2438,4 +2604,9 @@ Init_gpgme_n (void)
   /* The available flags for gpgme_op_encrypt.  */
   rb_define_const (mGPGME, "GPGME_ENCRYPT_ALWAYS_TRUST",
 		   INT2FIX(GPGME_ENCRYPT_ALWAYS_TRUST));
+  /* This flag was added in 1.2.0. */
+#ifdef GPGME_ENCRYPT_NO_ENCRYPT_TO
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_ENCRYPT_TO",
+		   INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
+#endif
 }
