@@ -962,7 +962,7 @@ rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  pattern = ALLOC_N(char, RARRAY_LEN(vpattern));
+  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern));
   for (i = 0; i < RARRAY_LEN(vpattern); i++)
     pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
   UNWRAP_GPGME_DATA(vkeydata, keydata);
@@ -986,7 +986,7 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  pattern = ALLOC_N(char, RARRAY_LEN(vpattern));
+  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern));
   for (i = 0; i < RARRAY_LEN(vpattern); i++)
     pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
   UNWRAP_GPGME_DATA(vkeydata, keydata);
@@ -1003,6 +1003,7 @@ rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
   gpgme_key_t *keys;
   gpgme_data_t keydata;
   gpgme_error_t err;
+  int i;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1028,6 +1029,7 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
   gpgme_key_t *keys;
   gpgme_data_t keydata;
   gpgme_error_t err;
+  int i;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
