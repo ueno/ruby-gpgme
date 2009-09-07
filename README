@@ -1,14 +1,20 @@
-* What's this?
+= Ruby-GPGME
+
+* http://rubyforge.org/projects/ruby-gpgme/
+
+== Description
 
 Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
 
-* Requirements
+WRITE ME: More about Ruby-GPGME...
 
-- Ruby 1.8 or later
-- GPGME 1.1.2 or later
-- gpg-agent (optional, but recommended)
+== Requirements
 
-* Installation
+* Ruby 1.8 or later
+* GPGME 1.1.2 or later
+* gpg-agent (optional, but recommended)
+
+== Installation
 
  $ gem install ruby-gpgme
 
@@ -18,7 +24,7 @@ or
  $ make
  $ make install
 
-* Examples
+== Examples
 
  examples/genkey.rb	Generate a key pair in your keyring.
  examples/keylist.rb	List your keyring like gpg --list-keys.
@@ -26,36 +32,36 @@ or
  examples/sign.rb	Create a clear text signature.
  examples/verify.rb	Verify a clear text signature given from stdin.
 
-* API
+== API
 
 Ruby-GPGME provides three levels of API.  The highest level API is
 close to the command line interface of GnuPG.  The mid level API looks
 object-oriented (or rubyish).  The lowest level API is close to the C
 interface of GPGME.
 
-** The highest level API
+=== The highest level API
 
 For example, to create a cleartext signature of the plaintext from
 stdin and write the result to stdout can be written as follows.
 
  $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
 
-** The mid level API
+=== The mid level API
 
 The same example can be rewritten in the mid level API as follows.
 
- $ ruby -rgpgme -e <<End  
+ $ ruby -rgpgme -e <<End
  ctx = GPGME::Ctx.new
  plain = GPGME::Data.from_io($stdin)
  sig = GPGME::Data.from_io($stdout)
  ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
  End
 
-** The lowest level API
+=== The lowest level API
 
 The same example can be rewritten in the lowest level API as follows.
 
- $ ruby -rgpgme -e <<End  
+ $ ruby -rgpgme -e <<End
  ret = Array.new
  GPGME::gpgme_new(ret)
  ctx = ret.shift
@@ -71,7 +77,7 @@ highest level API.  However, if you are already familier with the C
 interface of GPGME and want to control detailed behavior of GPGME, it
 might be useful.
 
-* License
+== License
 
 The library itself is licensed under LGPLv2.1+.  See the file
 COPYING.LESSER and each file for copyright and warranty information.
