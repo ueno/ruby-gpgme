@@ -1085,7 +1085,7 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
   return LONG2NUM(err);
 }
 
-#ifdef HAVE_GPGME_OP_IMPORT_KEYS
+#ifdef HAVE_GPGME_OP_EXPORT_KEYS
 static VALUE
 rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
 {
@@ -1131,7 +1131,7 @@ rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
   err = gpgme_op_import_keys_start (ctx, keys);
   return LONG2NUM(err);
 }
-#endif	/*HAVE_GPGME_OP_IMPORT_KEYS*/
+#endif	/*HAVE_GPGME_OP_EXPORT_KEYS*/
 
 static VALUE
 rb_s_gpgme_op_import_result (VALUE dummy, VALUE vctx)
@@ -2075,18 +2075,22 @@ Init_gpgme_n (void)
 			     rb_s_gpgme_op_export_ext, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_ext_start",
 			     rb_s_gpgme_op_export_ext_start, 4);
+#ifdef HAVE_GPGME_OP_EXPORT_KEYS
   rb_define_module_function (mGPGME, "gpgme_op_export_keys",
 			     rb_s_gpgme_op_export_keys, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_keys_start",
 			     rb_s_gpgme_op_export_keys_start, 4);
+#endif
   rb_define_module_function (mGPGME, "gpgme_op_import",
 			     rb_s_gpgme_op_import, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_start",
 			     rb_s_gpgme_op_import_start, 2);
+#ifdef HAVE_GPGME_OP_EXPORT_KEYS
   rb_define_module_function (mGPGME, "gpgme_op_import_keys",
 			     rb_s_gpgme_op_import_keys, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_keys_start",
 			     rb_s_gpgme_op_import_keys_start, 2);
+#endif
   rb_define_module_function (mGPGME, "gpgme_op_import_result",
 			     rb_s_gpgme_op_import_result, 1);
   rb_define_module_function (mGPGME, "gpgme_op_delete",
