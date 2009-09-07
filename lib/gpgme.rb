@@ -93,7 +93,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 =end
 module GPGME
-  VERSION = "1.0.7"
+  VERSION = "1.0.8"
 end
 
 require 'gpgme_n'
