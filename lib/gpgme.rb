@@ -743,7 +743,6 @@ module GPGME
   private :error_to_exception
 
   class << self
-    alias check_version gpgme_check_version
     alias pubkey_algo_name gpgme_pubkey_algo_name
     alias hash_algo_name gpgme_hash_algo_name
   end
