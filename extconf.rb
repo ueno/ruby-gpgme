@@ -22,4 +22,6 @@ End
     false
   end
 end
+have_func('gpgme_op_export_keys')
+have_func('gpgme_op_import_keys')
 create_makefile ('gpgme_n')

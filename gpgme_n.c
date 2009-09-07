@@ -995,6 +995,7 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   return LONG2NUM(err);
 }
 
+#ifdef HAVE_GPGME_OP_EXPORT_KEYS
 static VALUE
 rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
 			   VALUE vmode, VALUE vkeydata)
@@ -1046,6 +1047,7 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
   err = gpgme_op_export_keys_start (ctx, keys, NUM2UINT(vmode), keydata);
   return LONG2NUM(err);
 }
+#endif	/*HAVE_GPGME_OP_EXPORT_KEYS*/
 
 static VALUE
 rb_s_gpgme_op_import (VALUE dummy, VALUE vctx, VALUE vkeydata)
@@ -1083,6 +1085,7 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
   return LONG2NUM(err);
 }
 
+#ifdef HAVE_GPGME_OP_IMPORT_KEYS
 static VALUE
 rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
 {
@@ -1128,6 +1131,7 @@ rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
   err = gpgme_op_import_keys_start (ctx, keys);
   return LONG2NUM(err);
 }
+#endif	/*HAVE_GPGME_OP_IMPORT_KEYS*/
 
 static VALUE
 rb_s_gpgme_op_import_result (VALUE dummy, VALUE vctx)

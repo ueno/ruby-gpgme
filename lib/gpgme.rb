@@ -125,6 +125,7 @@ def GPGME.decrypt(cipher, *args_options)
   args, options = split_args(args_options)
   plain = args[0]
 
+  check_version(options)
   GPGME::Ctx.new(options) do |ctx|
     cipher_data = input_data(cipher)
     plain_data = output_data(plain)
@@ -184,6 +185,7 @@ def GPGME.verify(sig, *args_options) # :yields: signature
   args, options = split_args(args_options)
   signed_text, plain = args
 
+  check_version(options)
   GPGME::Ctx.new(options) do |ctx|
     sig_data = input_data(sig)
     if signed_text
@@ -238,6 +240,7 @@ def GPGME.sign(plain, *args_options)
   args, options = split_args(args_options)
   sig = args[0]
 
+  check_version(options)
   GPGME::Ctx.new(options) do |ctx|
     ctx.add_signer(*resolve_keys(options[:signers], true, [:sign])) if options[:signers]
     mode = options[:mode] || GPGME::SIG_MODE_NORMAL
@@ -360,6 +363,7 @@ def GPGME.encrypt(recipients, plain, *args_options)
   cipher = args[0]
   recipient_keys = recipients ? resolve_keys(recipients, false, [:encrypt]) : nil
 
+  check_version(options)
   GPGME::Ctx.new(options) do |ctx|
     plain_data = input_data(plain)
     cipher_data = output_data(cipher)
@@ -414,6 +418,7 @@ def GPGME.list_keys(*args_options) # :yields: key
   raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
   args, options = split_args(args_options)
   pattern, secret_only = args
+  check_version(options)
   GPGME::Ctx.new do |ctx|
     if block_given?  
       ctx.each_key(pattern, secret_only || false) do |key|
@@ -452,6 +457,7 @@ def GPGME.export(*args_options)
   args, options = split_args(args_options)
   pattern, key = args[0]
   key_data = output_data(key)
+  check_version(options)
   GPGME::Ctx.new(options) do |ctx|
     ctx.export_keys(pattern, key_data)
 
@@ -486,6 +492,7 @@ def GPGME.import(*args_options)
   args, options = split_args(args_options)
   key = args[0]
   key_data = input_data(key)
+  check_version(options)
   GPGME::Ctx.new(options) do |ctx|
     ctx.import_keys(key_data)
     ctx.import_result
@@ -507,6 +514,19 @@ module GPGME
     [args, options]
   end
   module_function :split_args
+
+  def check_version(options)
+    version = nil
+    if options.kind_of?(String)
+      version = options
+    elsif options.include?(:version)
+      version = options[:version]
+    end
+    unless GPGME::gpgme_check_version(version)
+      raise Error::InvalidVersion.new
+    end
+  end
+  module_function :check_version
 
   def resolve_keys(keys_or_names, secret_only, purposes = Array.new)
     keys = Array.new
@@ -895,15 +915,6 @@ module GPGME
     #   progress_callback.
     #
     def self.new(options = Hash.new)
-      version = nil
-      if options.kind_of?(String)
-        version = options
-      elsif options.include?(:version)
-        version = options[:version]
-      end
-      unless GPGME::gpgme_check_version(version)
-        raise Error::InvalidVersion.new
-      end
       rctx = Array.new
       err = GPGME::gpgme_new(rctx)
       exc = GPGME::error_to_exception(err)
