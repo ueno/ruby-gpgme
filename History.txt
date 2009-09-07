@@ -1,0 +1,10 @@
+=== 1.0.8 / 2009-09-07
+
+* Follow the ABI changes of GPGME 1.2.
+
+  * Add bindings for gpgme_op_{export,import}_keys_start.
+  * GPGME.{decrypt,verify,sign,encrypt} now calls
+    gpgme_check_version() before creating a context.
+    Fixes Bug#26829 reported by Sam Hall.
+
+* Use Hoe for packaging contributed by Kouhei Sutou.
