@@ -516,7 +516,7 @@ module GPGME
   end
   module_function :split_args
 
-  def check_version(options)
+  def check_version(options = nil)
     version = nil
     if options.kind_of?(String)
       version = options
