@@ -1099,6 +1099,8 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     def get_key(fingerprint, secret = false)
       rkey = Array.new
       err = GPGME::gpgme_get_key(self, fingerprint, rkey, secret ? 1 : 0)
+      # if the key is not found, we get GPG_ERR_EOF
+      return nil if err == GPG_ERR_EOF
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       rkey[0]
@@ -1501,7 +1503,7 @@ validity=#{VALIDITY_NAMES[validity]}, signatures=#{signatures.inspect}>"
 	"Signature made from revoked key #{from}"
       when GPGME::GPG_ERR_BAD_SIGNATURE
 	"Bad signature from #{from}"
-      when GPGME::GPG_ERR_NO_ERROR
+      when GPGME::GPG_ERR_NO_PUBKEY
 	"No public key for #{from}"
       end
     end
