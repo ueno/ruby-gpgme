@@ -29,7 +29,7 @@ unless ENV['GNUPGHOME']
   $stderr.flush
   exit(1) unless gets.chomp == 'y'
 end
-  
+
 def progfunc(hook, what, type, current, total)
   $stderr.write("#{what}: #{current}/#{total}\r")
   $stderr.flush
