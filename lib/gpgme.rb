@@ -819,7 +819,7 @@ module GPGME
 
     # Create a new instance associated with a given IO.
     def self.from_io(io)
-      from_callbacks(IOCallbacks.new(arg))
+      from_callbacks(IOCallbacks.new(io))
     end
 
     # Create a new instance from the specified file descriptor.
