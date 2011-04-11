@@ -89,6 +89,25 @@ module GPGME
       end
     end
 
+    ##
+    # DEPRECATED use GPGME::Key.find
+    def resolve_keys(keys_or_names, secret_only, purposes = Array.new)
+      keys = Array.new
+      keys_or_names.each do |key_or_name|
+        if key_or_name.kind_of? Key
+          keys << key_or_name
+        elsif key_or_name.kind_of? String
+          GPGME::Ctx.new do |ctx|
+            key = ctx.keys(key_or_name, secret_only).find {|k|
+              k.usable_for?(purposes)
+            }
+            keys << key if key
+          end
+        end
+      end
+      keys
+    end
+
     private
 
     def split_args(args_options)
@@ -112,23 +131,6 @@ module GPGME
       unless GPGME::gpgme_check_version(version)
         raise Error::InvalidVersion.new
       end
-    end
-
-    def resolve_keys(keys_or_names, secret_only, purposes = Array.new)
-      keys = Array.new
-      keys_or_names.each do |key_or_name|
-        if key_or_name.kind_of? Key
-          keys << key_or_name
-        elsif key_or_name.kind_of? String
-          GPGME::Ctx.new do |ctx|
-            key = ctx.keys(key_or_name, secret_only).find {|k|
-              k.usable_for?(purposes)
-            }
-            keys << key if key
-          end
-        end
-      end
-      keys
     end
 
     def input_data(input)

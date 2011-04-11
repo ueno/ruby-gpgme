@@ -1,5 +1,7 @@
 module GPGME
-  # A public or secret key.
+
+  ##
+  # A ruby representation of a public or a secret key.
   class Key
     private_class_method :new
 
@@ -7,32 +9,48 @@ module GPGME
     attr_reader :issuer_serial, :issuer_name, :chain_id
     attr_reader :subkeys, :uids
 
-    def trust
-      return :revoked if @revoked == 1
-      return :expired if @expired == 1
-      return :disabled if @disabled == 1
-      return :invalid if @invalid == 1
-    end
+    include KeyCommon
 
-    def capability
-      caps = Array.new
-      caps << :encrypt if @can_encrypt
-      caps << :sign if @can_sign
-      caps << :certify if @can_certify
-      caps << :authenticate if @can_authenticate
-      caps
-    end
+    ##
+    # Returns an array of {GPGME::Key} objects that match the parameters.
+    # * +secret+ set to +:secret+ to get only secret keys, or to +:public+ to
+    #   get only public keys.
+    # * +keys_or_names+ an array or an item that can be either {GPGME::Key}
+    #   elements, or string identifiers like the email or the sha. Leave
+    #   blank to get all.
+    # * +purposes+ get only keys that are usable for any of these purposes.
+    #   See {GPGME::Key} for a list of possible key capabilities.
+    #
+    # @example
+    #   GPGME::Key.find :secret # => first secret key found
+    #
+    # @example
+    #   GPGME::Key.find(:public, "mrsimo@example.com")
+    #   # => return only public keys that match mrsimo@example.com
+    #
+    # @example
+    #   GPGME::Key.find(:public, "mrsimo@example.com", :sign)
+    #   # => return the public keys that match mrsimo@exampl.com and are
+    #   #    capable of signing
+    def self.find(secret, keys_or_names = nil, purposes = [])
+      secret = (secret == :secret)
+      keys_or_names = [""] if keys_or_names.nil? || keys_or_names.empty?
+      keys_or_names = [keys_or_names].flatten
+      purposes      = [purposes].flatten.compact.uniq
 
-    def usable_for?(purposes)
-      unless purposes.kind_of? Array
-        purposes = [purposes]
+      keys = []
+      keys_or_names.each do |key_or_name|
+        case key_or_name
+        when Key then keys << key_or_name
+        when String
+          GPGME::Ctx.new do |ctx|
+            keys += ctx.keys(key_or_name, secret).select do |k|
+              k.usable_for?(purposes)
+            end
+          end
+        end
       end
-      return false if [:revoked, :expired, :disabled, :invalid].include? trust
-      return (purposes - capability).empty?
-    end
-
-    def secret?
-      @secret == 1
+      keys
     end
 
     def inspect
