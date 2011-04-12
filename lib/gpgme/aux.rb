@@ -3,7 +3,10 @@ module GPGME
   # Only purpose is to clean the root GPGME module.
   module Aux
 
-    # Verify that the engine implementing the protocol <i>proto</i> is
+    ##
+    # TODO method not used anywhere, is it part of the public API?
+    #
+    # Verify that the engine implementing the protocol +proto+ is
     # installed in the system.
     def engine_check_version(proto)
       err = GPGME::gpgme_engine_check_version(proto)
@@ -11,26 +14,38 @@ module GPGME
       raise exc if exc
     end
 
+    ##
+    # TODO method not used anywhere, is it part of the public API?
+    #
     # Return a list of info structures of enabled engines.
     def engine_info
-      rinfo = Array.new
+      rinfo = []
       GPGME::gpgme_get_engine_info(rinfo)
       rinfo
     end
 
-    # Change the default configuration of the crypto engine implementing
-    # protocol <i>proto</i>.
+    ##
+    # TODO method not used anywhere, is it part of the public API?
     #
-    # <i>file_name</i> is the file name of the executable program
-    # implementing the protocol.
-    # <i>home_dir</i> is the directory name of the configuration directory.
+    # Change the default configuration of the crypto engine implementing
+    # protocol +proto+.
+    #
+    # * +file_name+ is the file name of the executable program
+    # implementing the protocol
+    # * +home_dir+ is the directory name of the configuration directory
     def set_engine_info(proto, file_name, home_dir)
       err = GPGME::gpgme_set_engine_info(proto, file_name, home_dir)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
 
-    def error_to_exception(err)   # :nodoc:
+    ##
+    # TODO consider moving somewhere else so that it doesn't appear
+    # in the documentation.
+    #
+    # Auxiliary method used by all the library to generate exceptions
+    # from error codes returned by the C extension.
+    def error_to_exception(err)
       case GPGME::gpgme_err_code(err)
       when GPG_ERR_EOF
         EOFError.new
@@ -89,27 +104,11 @@ module GPGME
       end
     end
 
-    ##
-    # DEPRECATED use GPGME::Key.find
-    def resolve_keys(keys_or_names, secret_only, purposes = Array.new)
-      keys = Array.new
-      keys_or_names.each do |key_or_name|
-        if key_or_name.kind_of? Key
-          keys << key_or_name
-        elsif key_or_name.kind_of? String
-          GPGME::Ctx.new do |ctx|
-            key = ctx.keys(key_or_name, secret_only).find {|k|
-              k.usable_for?(purposes)
-            }
-            keys << key if key
-          end
-        end
-      end
-      keys
-    end
-
     private
 
+    ##
+    # DEPCRECATED ideally use consistent parameters that don't need this kind
+    # of method.
     def split_args(args_options)
       if args_options.length > 0 and args_options[-1].respond_to? :to_hash
         args = args_options[0 ... -1]
@@ -121,6 +120,9 @@ module GPGME
       [args, options]
     end
 
+    ##
+    # TODO find out what it does, can't seem to find a proper parameter that
+    # returns something other than nil.
     def check_version(options = nil)
       version = nil
       if options.kind_of?(String)
@@ -130,30 +132,6 @@ module GPGME
       end
       unless GPGME::gpgme_check_version(version)
         raise Error::InvalidVersion.new
-      end
-    end
-
-    def input_data(input)
-      if input.kind_of? GPGME::Data
-        input
-      elsif input.respond_to? :to_str
-        GPGME::Data.from_str(input.to_str)
-      elsif input.respond_to? :read
-        GPGME::Data.from_callbacks(IOCallbacks.new(input))
-      else
-        raise ArgumentError, input.inspect
-      end
-    end
-
-    def output_data(output)
-      if output.kind_of? GPGME::Data
-        output
-      elsif output.respond_to? :write
-        GPGME::Data.from_callbacks(IOCallbacks.new(output))
-      elsif !output
-        GPGME::Data.empty
-      else
-        raise ArgumentError, output.inspect
       end
     end
 

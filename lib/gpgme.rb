@@ -7,11 +7,12 @@ require 'gpgme/ctx'
 require 'gpgme/data'
 require 'gpgme/error'
 require 'gpgme/io_callbacks'
+require 'gpgme/key_common'
 require 'gpgme/key'
+require 'gpgme/sub_key'
 require 'gpgme/key_sig'
 require 'gpgme/misc'
 require 'gpgme/signature'
-require 'gpgme/sub_key'
 require 'gpgme/user_id'
 
 module GPGME
@@ -78,8 +79,8 @@ module GPGME
 
       check_version(options)
       GPGME::Ctx.new(options) do |ctx|
-        cipher_data = input_data(cipher)
-        plain_data = output_data(plain)
+        cipher_data = Data.new(cipher)
+        plain_data = Data.new(plain)
         begin
           ctx.decrypt_verify(cipher_data, plain_data)
         rescue GPGME::Error::UnsupportedAlgorithm => exc
@@ -137,15 +138,16 @@ module GPGME
       args, options = split_args(args_options)
       signed_text, plain = args
 
-      check_version(options)
+      check_version(options) # TODO no idea what it does
+
       GPGME::Ctx.new(options) do |ctx|
-        sig_data = input_data(sig)
+        sig_data = Data.new(sig)
         if signed_text
-          signed_text_data = input_data(signed_text)
+          signed_text_data = Data.new(signed_text)
           plain_data = nil
         else
           signed_text_data = nil
-          plain_data = output_data(plain)
+          plain_data = Data.new(plain)
         end
         ctx.verify(sig_data, signed_text_data, plain_data)
         ctx.verify_result.signatures.each do |signature|
@@ -195,10 +197,13 @@ module GPGME
 
       check_version(options)
       GPGME::Ctx.new(options) do |ctx|
-        ctx.add_signer(*resolve_keys(options[:signers], true, [:sign])) if options[:signers]
+        if options[:signers]
+          signers = Key.find(:secret, options[:signers], :sign)
+          ctx.add_signer(*signers)
+        end
         mode = options[:mode] || GPGME::SIG_MODE_NORMAL
-        plain_data = input_data(plain)
-        sig_data = output_data(sig)
+        plain_data = Data.new(plain)
+        sig_data = Data.new(sig)
         begin
           ctx.sign(plain_data, sig_data, mode)
         rescue GPGME::Error::UnusableSecretKey => exc
@@ -306,10 +311,13 @@ module GPGME
     #  * +:output+ if specified, it will write the output into it. It will be
     #    converted to a GPGME::Data object, so it could be a file for example.
     #
-    # @example returns string that can be later encrypted
-    #  GPGME.encrypt "Hello world!"
+    # @return [GPGME::Data] a {GPGME::Data} object that can be read.
     #
-    # @example string that can be encrypted by someone@example.com.
+    # @example returns a {GPGME::Data} that can be later encrypted
+    #  encrypted = GPGME.encrypt "Hello world!"
+    #  encrypted.read # => Encrypted stuff
+    #
+    # @example to be decrypted by someone@example.com.
     #  GPGME.encrypt "Hello", :recipients => "someone@example.com"
     #
     # @example If I didn't trust any of my keys by default
@@ -329,29 +337,25 @@ module GPGME
     # @raise [GPGME::Error::General] when trying to encrypt with a key that is
     #   not trusted, and +:always_trust+ wasn't specified
     #
-    #
-    def encrypt(recipients, plain, *args_options)
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
-      args, options = split_args(args_options)
-      cipher = args[0]
-      recipient_keys = recipients ? resolve_keys(recipients, false, [:encrypt]) : nil
+    def encrypt(plain, options = {})
+      check_version(options) # TODO what does it do?
 
-      check_version(options)
       GPGME::Ctx.new(options) do |ctx|
-        plain_data = input_data(plain)
-        cipher_data = output_data(cipher)
+        plain_data  = Data.new(plain)
+        cipher_data = Data.new(options[:output])
+        keys        = Key.find(:public, options[:recipients])
+
         begin
           flags = 0
-          if options[:always_trust]
-            flags |= GPGME::ENCRYPT_ALWAYS_TRUST
-          end
+          flags |= GPGME::ENCRYPT_ALWAYS_TRUST if options[:always_trust]
           if options[:sign]
             if options[:signers]
-              ctx.add_signer(*resolve_keys(options[:signers], true, [:sign]))
+              signers = Key.find(:secret, options[:signers], :sign)
+              ctx.add_signer(*signers)
             end
-            ctx.encrypt_sign(recipient_keys, plain_data, cipher_data, flags)
+            ctx.encrypt_sign(keys, plain_data, cipher_data, flags)
           else
-            ctx.encrypt(recipient_keys, plain_data, cipher_data, flags)
+            ctx.encrypt(keys, plain_data, cipher_data, flags)
           end
         rescue GPGME::Error::UnusablePublicKey => exc
           exc.keys = ctx.encrypt_result.invalid_recipients
@@ -361,10 +365,8 @@ module GPGME
           raise exc
         end
 
-        unless cipher
-          cipher_data.seek(0, IO::SEEK_SET)
-          cipher_data.read
-        end
+        cipher_data.seek(0)
+        cipher_data
       end
     end
 
@@ -431,7 +433,7 @@ module GPGME
       raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
       args, options = split_args(args_options)
       pattern, key = args[0]
-      key_data = output_data(key)
+      key_data = Data.new(key)
       check_version(options)
       GPGME::Ctx.new(options) do |ctx|
         ctx.export_keys(pattern, key_data)
@@ -467,7 +469,7 @@ module GPGME
       raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
       args, options = split_args(args_options)
       key = args[0]
-      key_data = input_data(key)
+      key_data = Data.new(key)
       check_version(options)
       GPGME::Ctx.new(options) do |ctx|
         ctx.import_keys(key_data)
