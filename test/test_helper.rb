@@ -9,15 +9,24 @@ require 'gpgme'
 
 require File.dirname(__FILE__) + "/support/resources"
 
+def import_keys
+  GPGME.import KEY[:public]
+  GPGME.import KEY[:private]
+end
+
+def remove_keys
+  GPGME::Ctx.new do |ctx|
+    GPGME.list_keys(KEY[:sha]).each do |key|
+      ctx.delete_key key, true
+    end
+  end
+end
+
 # Import a key pair at the beginning to be used throughout the tests
 puts "Importing keys..."
-GPGME.import KEY[:public]
-GPGME.import KEY[:private]
+import_keys
 
 # Remove the tests key at the end of test execution
 MiniTest::Unit.after_tests do
-  GPGME::Ctx.new do |ctx|
-    key = GPGME.list_keys(KEY[:sha]).first
-    ctx.delete_key key, true
-  end
+  remove_keys
 end

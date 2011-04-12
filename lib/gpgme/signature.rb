@@ -7,6 +7,12 @@ module GPGME
     attr_reader :pka_trust, :pka_address
     alias fingerprint fpr
 
+    ##
+    # TODO empty method to be implemented, would be nice to match examples.
+    def valid?
+
+    end
+
     def timestamp
       Time.at(@timestamp)
     end

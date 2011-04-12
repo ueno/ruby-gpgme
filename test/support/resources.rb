@@ -69,6 +69,36 @@ fj2kn5Dz3CwR
 -----END PGP MESSAGE-----
 RUBY
 
+signed_text = <<-RUBY
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v1.4.11 (Darwin)
+
+hIwDOjWUQEvcRp8BBACVwaLjM0apXE3Dt4ZEayS5I0WSwArrxGFDuOlzZ7YmnTm3
+Ozk89dXevPEA2ps2dDGoTFpPMH91Bls3Bum2VjBS6d4eyg4G9Ykvu4ouVoUQmzOQ
+YIuTdnTEYml6t4/NYRBQzkay9d+UvmrNG9G/jEFOd9inY5nA30Mgj2iLLd+5VtLA
+NAEXIYfK+AOFtJZ80QN5mmufXY+Ova6gIy7sJyTDWaYX/borKiY2gvcPuXknLZ4L
+cEuPJnlRZWqwnkrsJNR4Txaj+T5uKeLc7JPTHTU3eusfgca7fu6ZYfGeNVaIf4Ah
+FxU9u02KAl2WChPw96gk9T/cgI7mjBAHNG1tcSyjea/iKkCmBkYLFqTDtJhGRxcV
+0glzD48VZQxQKldBdQvvRabZowI92c8+tYS1vGBX6U/vVxAj1NsQoOTL+/luJsQp
+stYLBU9ZBC+nhpinlQssnHkPsi6Wrmpz/UdljydUF300qrvl1rRou/fUtU/GdcUa
+iHVABhk=
+=//EB
+-----END PGP MESSAGE-----
+RUBY
+
+unavailable = <<-RUBY
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v1.4.11 (Darwin)
+
+hIwDlCBoTwSpYjABA/9pn3d5xYasfQYquQzLwI0ASVuvuofjJZrYyKEYLEPHPaFn
+SJOMJRFJh4lC6UfGs7xktX0bONwsdGo0EaIP6H5W+WFW0W2VCxyqLLorCWa/XFi8
+Nr/2iVyj5s3QSfXGXDmnlRCf9PiAiBPPy2DzYgD3KLXMZH2hAxUtJmouuIgVWdJG
+AYKArJ8pJFbrtrIiPuNIjj0yhiNGx65GIfnF32fulpgzLbyWymlpkrzRRO6sz2wl
+EEdpZ6VKsLuoOb9Ou+hD6CLC3Izzmw==
+=bsMi
+-----END PGP MESSAGE-----
+RUBY
+
 KEY = {
   :sha => 'CDC1295F',
   :public => public_key,
@@ -77,5 +107,7 @@ KEY = {
 
 TEXT = {
   :plain => "Hi there",
-  :encrypted => encrypted_text.chomp
+  :encrypted => encrypted_text.chomp,
+  :unavailable => unavailable.chomp, # Created with a temporary key that's been removed.
+  :signed => signed_text.chomp
 }
