@@ -20,24 +20,24 @@ module GPGME
   extend Aux
 
   PROTOCOL_NAMES = {
-    PROTOCOL_OpenPGP => :OpenPGP,
-    PROTOCOL_CMS => :CMS
+    PROTOCOL_OpenPGP  => :OpenPGP,
+    PROTOCOL_CMS      => :CMS
   }
 
   KEYLIST_MODE_NAMES = {
-    KEYLIST_MODE_LOCAL => :local,
-    KEYLIST_MODE_EXTERN => :extern,
-    KEYLIST_MODE_SIGS => :sigs,
+    KEYLIST_MODE_LOCAL    => :local,
+    KEYLIST_MODE_EXTERN   => :extern,
+    KEYLIST_MODE_SIGS     => :sigs,
     KEYLIST_MODE_VALIDATE => :validate
   }
 
   VALIDITY_NAMES = {
-    VALIDITY_UNKNOWN => :unknown,
-    VALIDITY_UNDEFINED => :undefined,
-    VALIDITY_NEVER => :never,
-    VALIDITY_MARGINAL => :marginal,
-    VALIDITY_FULL => :full,
-    VALIDITY_ULTIMATE => :ultimate
+    VALIDITY_UNKNOWN    => :unknown,
+    VALIDITY_UNDEFINED  => :undefined,
+    VALIDITY_NEVER      => :never,
+    VALIDITY_MARGINAL   => :marginal,
+    VALIDITY_FULL       => :full,
+    VALIDITY_ULTIMATE   => :ultimate
   }
 
   class << self
@@ -97,7 +97,7 @@ module GPGME
     #  GPGME.encrypt "Hello", :sign => true, :signers => "extra@example.com"
     #
     # @example writing to a file instead
-    #  file = File.new("signed.sec","wa")
+    #  file = File.open("signed.sec","w+")
     #  GPGME.encrypt "Hello", :output => file # output written to signed.sec
     #
     # @raise [GPGME::Error::General] when trying to encrypt with a key that is
@@ -166,7 +166,7 @@ module GPGME
     #   GPGME.decrypt encrypted_data
     #
     # @example Output to file
-    #   file = File.new("decrypted.txt")
+    #   file = File.open("decrypted.txt", "w+")
     #   GPGME.decrypt encrypted_data, :output => file
     #
     # @example Verifying signatures
@@ -241,7 +241,7 @@ module GPGME
     #  GPGME.sign "Hi there"
     #
     # @example outputing to a file
-    #  file = File.new("text.sign")
+    #  file = File.open("text.sign", "w+")
     #  GPGME.sign "Hi there", :options => file
     #
     # @example doing a detached signature
@@ -397,71 +397,53 @@ module GPGME
 
     # Exports a key
     #
-    #   GPGME.export(pattern)
+    #   GPGME.export pattern, options
     #
-    # <code>GPGME.export</code> extracts public keys from the key ring.
+    # @param pattern
+    #   Identifier of the key to export.
     #
-    # The arguments should be specified as follows.
+    # @param [Hash] options
+    #   * +:output+ specify where to write the key to. It will be converted to
+    #     a {GPGME::Data}, so it could be a file
     #
-    # - GPGME.export(<i>pattern</i>, <i>options</i>) -> <i>keydata</i>
-    # - GPGME.export(<i>pattern</i>, <i>keydata</i>, <i>options</i>)
+    # @return [GPGME::Data] the exported key.
     #
-    # All arguments are optional.  If the last argument is a Hash, options
-    # will be read from it.
+    # @example
+    #   key = GPGME.export "mrsimo@example.com"
     #
-    # <i>pattern</i> is a string or <tt>nil</tt>.  If <i>pattern</i> is
-    # <tt>nil</tt>, all available public keys are returned.
-    # <i>keydata</i> is output.
+    # @example writing to a file
+    #   out = File.open("my.key", "w+")
+    #   GPGME.export "mrsimo@example.com", :output => out
     #
-    # An output argument is specified by an IO like object (which responds
-    # to <code>write</code>) or a GPGME::Data object.
-    #
-    # <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
-    #
-    def export(*args_options)
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
-      args, options = split_args(args_options)
-      pattern, key = args[0]
-      key_data = Data.new(key)
+    def export(pattern, options = {})
       check_version(options)
-      GPGME::Ctx.new(options) do |ctx|
-        ctx.export_keys(pattern, key_data)
 
-        unless key
-          key_data.seek(0, IO::SEEK_SET)
-          key_data.read
-        end
+      output = Data.new(options[:output])
+
+      GPGME::Ctx.new(options) do |ctx|
+        ctx.export_keys(pattern, output)
       end
+
+      key_data.seek(0)
+      key_data
     end
 
     # Imports a key
     #
-    #   GPGME.import(keydata)
+    #   GPGME.import keydata, options
     #
-    # <code>GPGME.import</code> adds the keys to the key ring.
+    # @param keydata
+    #   The key to import. It will be converted to a {GPGME::Data} object,
+    #   so could be a file for example.
     #
-    # The arguments should be specified as follows.
+    # @example
+    #   GPGME.import(File.open("my.key"))
     #
-    # - GPGME.import(<i>keydata</i>, <i>options</i>)
-    #
-    # All arguments are optional.  If the last argument is a Hash, options
-    # will be read from it.
-    #
-    # <i>keydata</i> is input.
-    #
-    # An input argument is specified by an IO like object (which responds
-    # to <code>read</code>), a string, or a GPGME::Data object.
-    #
-    # <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
-    #
-    def import(*args_options)
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
-      args, options = split_args(args_options)
-      key = args[0]
-      key_data = Data.new(key)
+    def import(keydata, options = {})
       check_version(options)
+
       GPGME::Ctx.new(options) do |ctx|
-        ctx.import_keys(key_data)
+        ctx.import_keys(Data.new(keydata))
         ctx.import_result
       end
     end
