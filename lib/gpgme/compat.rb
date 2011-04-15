@@ -1,5 +1,8 @@
 require 'gpgme'
 
+# TODO: Find why is this needed. I guess the name compat means it's just
+# backwards compatibility. Consider removing?
+
 module GPGME
   GpgmeError = Error
   GpgmeData = Data

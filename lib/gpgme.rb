@@ -1,6 +1,11 @@
 $:.push File.expand_path("../..", __FILE__) # C extension is in the root
 
+
 require 'gpgme_n'
+
+# TODO without this call one can't GPGME::Ctx.new :\
+GPGME::gpgme_check_version(nil)
+
 require 'gpgme/constants'
 require 'gpgme/aux'
 require 'gpgme/ctx'
@@ -359,42 +364,6 @@ module GPGME
       GPGME.sign text, options.merge(:mode => GPGME::SIG_MODE_DETACH)
     end
 
-    # Lists all the keys available
-    #
-    #   GPGME.list_keys(pattern=nil, secret_only=false, options=Hash.new){|key| ...}
-    #
-    # <code>GPGME.list_keys</code> iterates over the key ring.
-    #
-    # The arguments should be specified as follows.
-    #
-    # - GPGME.list_keys(<i>pattern</i>, <i>secret_only</i>, <i>options</i>)
-    #
-    # All arguments are optional.  If the last argument is a Hash, options
-    # will be read from it.
-    #
-    # <i>pattern</i> is a string or <tt>nil</tt>.  If <i>pattern</i> is
-    # <tt>nil</tt>, all available keys are returned.  If
-    # <i>secret_only</i> is <tt>true</tt>, the only secret keys are
-    # returned.
-    #
-    # <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
-    #
-    def list_keys(*args_options) # :yields: key
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
-      args, options = split_args(args_options)
-      pattern, secret_only = args
-      check_version(options)
-      GPGME::Ctx.new do |ctx|
-        if block_given?
-          ctx.each_key(pattern, secret_only || false) do |key|
-            yield key
-          end
-        else
-          ctx.keys(pattern, secret_only || false)
-        end
-      end
-    end
-
     # Exports a key
     #
     #   GPGME.export pattern, options
@@ -447,5 +416,60 @@ module GPGME
         ctx.import_result
       end
     end
+
+    ##
+    # Verify that the engine implementing the protocol +proto+ is installed in
+    # the system. Can be one of +PROTOCOL_OpenPGP+ or +PROTOCOL_CMS+.
+    #
+    # @return [Boolean] true if the engine is installed.
+    #
+    # @example
+    #   GPGME.engine_check_version(GPGME::PROTOCOL_OpenPGP) # => true
+    #
+    def engine_check_version(proto)
+      err = GPGME::gpgme_engine_check_version(proto)
+      exc = GPGME::error_to_exception(err)
+      !exc
+    end
+
+    ##
+    # Return an array of {GPGME::EngineInfo} structures of enabled engines.
+    #
+    # @example
+    #   GPGME.engine_info.first
+    #   # => #<GPGME::EngineInfo:0x00000100d4fbd8
+    #          @file_name="/usr/local/bin/gpg",
+    #          @protocol=0,
+    #          @req_version="1.3.0",
+    #          @version="1.4.11">
+    #
+    def engine_info
+      rinfo = []
+      GPGME::gpgme_get_engine_info(rinfo)
+      rinfo
+    end
+
+    ##
+    # Change the default configuration of the crypto engine implementing
+    # protocol +proto+.
+    #
+    # @param proto
+    #   Can be one of +PROTOCOL_OpenPGP+ or +PROTOCOL_CMS+.
+    #
+    # @param file_name
+    #   The file name of the executable program implementing the protocol.
+    #
+    # @param home_dir
+    #   The directory name of the configuration directory.
+    #
+    # @example
+    #   TODO how do we use this?
+    #
+    def set_engine_info(proto, file_name, home_dir)
+      err = GPGME::gpgme_set_engine_info(proto, file_name, home_dir)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+    end
+
   end
 end

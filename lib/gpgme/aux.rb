@@ -4,45 +4,6 @@ module GPGME
   module Aux
 
     ##
-    # TODO method not used anywhere, is it part of the public API?
-    #
-    # Verify that the engine implementing the protocol +proto+ is
-    # installed in the system.
-    def engine_check_version(proto)
-      err = GPGME::gpgme_engine_check_version(proto)
-      exc = GPGME::error_to_exception(err)
-      raise exc if exc
-    end
-
-    ##
-    # TODO method not used anywhere, is it part of the public API?
-    #
-    # Return a list of info structures of enabled engines.
-    def engine_info
-      rinfo = []
-      GPGME::gpgme_get_engine_info(rinfo)
-      rinfo
-    end
-
-    ##
-    # TODO method not used anywhere, is it part of the public API?
-    #
-    # Change the default configuration of the crypto engine implementing
-    # protocol +proto+.
-    #
-    # * +file_name+ is the file name of the executable program
-    # implementing the protocol
-    # * +home_dir+ is the directory name of the configuration directory
-    def set_engine_info(proto, file_name, home_dir)
-      err = GPGME::gpgme_set_engine_info(proto, file_name, home_dir)
-      exc = GPGME::error_to_exception(err)
-      raise exc if exc
-    end
-
-    ##
-    # TODO consider moving somewhere else so that it doesn't appear
-    # in the documentation.
-    #
     # Auxiliary method used by all the library to generate exceptions
     # from error codes returned by the C extension.
     def error_to_exception(err)
@@ -105,20 +66,6 @@ module GPGME
     end
 
     private
-
-    ##
-    # DEPCRECATED ideally use consistent parameters that don't need this kind
-    # of method.
-    def split_args(args_options)
-      if args_options.length > 0 and args_options[-1].respond_to? :to_hash
-        args = args_options[0 ... -1]
-        options = args_options[-1].to_hash
-      else
-        args = args_options
-        options = Hash.new
-      end
-      [args, options]
-    end
 
     ##
     # TODO find out what it does, can't seem to find a proper parameter that
