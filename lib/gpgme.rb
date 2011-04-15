@@ -53,7 +53,7 @@ module GPGME
     ##
     # Encrypts an element
     #
-    #  GPGME.encrypt something
+    #  GPGME.encrypt something, options
     #
     # Will return a {GPGME::Data} element which can then be read.
     #
@@ -117,7 +117,7 @@ module GPGME
         begin
           if options[:sign]
             if options[:signers]
-              signers = Key.find(:secret, options[:signers], :sign)
+              signers = Key.find(:public, options[:signers], :sign)
               ctx.add_signer(*signers)
             end
             ctx.encrypt_sign(keys, plain_data, cipher_data, flags)
@@ -211,184 +211,152 @@ module GPGME
       plain_data
     end
 
-    # Verifies a previously signed element
+    ##
+    # Creates a signature of a text
     #
-    #   GPGME.verify(sig, signed_text=nil, plain=nil, options=Hash.new){|signature| ...}
+    #   GPGME.sign text, options
     #
-    # <code>GPGME.verify</code> verifies a signature.
+    # Must have the appropiate key to be able to decrypt, of course. Returns
+    # a {GPGME::Data} object which can then be read.
     #
-    # The arguments should be specified as follows.
+    # @param text
+    #   The object that will be signed. Must be something that can be converted
+    #   to {GPGME::Data}.
     #
-    # - GPGME.verify(<i>sig</i>, <i>signed_text</i>, <i>plain</i>, <i>options</i>)
-    # - GPGME.verify(<i>sig</i>, <i>signed_text</i>, <i>options</i>) -> <i>plain</i>
+    # @param [Hash] options
+    #  Optional parameters.
+    #  * +:signer+ sign identifier to sign the text with. Will use the first
+    #   key it finds if none specified.
+    #  * +:output+ if specified, it will write the output into it. It will be
+    #    converted to a {GPGME::Data} object, so it could be a file for example.
+    #  * +:mode+ Desired type of signature. Options are:
+    #   - +GPGME::SIG_MODE_NORMAL+ for a normal signature. The default one if
+    #     not specified.
+    #   - +GPGME::SIG_MODE_DETACH+ for a detached signature
+    #   - +GPGME::SIG_MODE_CLEAR+ for a cleartext signature
     #
-    # All arguments except <i>sig</i> are optional.  <i>sig</i> and
-    # <i>signed_text</i> are input.  <i>plain</i> is output.  If the last
-    # argument is a Hash, options will be read from it.
+    # @return [GPGME::Data] a {GPGME::Data} that can be read.
     #
-    # An input argument is specified by an IO like object (which responds
-    # to <code>read</code>), a string, or a GPGME::Data object.
+    # @example normal sign
+    #  GPGME.sign "Hi there"
     #
-    # An output argument is specified by an IO like object (which responds
-    # to <code>write</code>) or a GPGME::Data object.
+    # @example outputing to a file
+    #  file = File.new("text.sign")
+    #  GPGME.sign "Hi there", :options => file
     #
-    # If <i>sig</i> is a detached signature, then the signed text should
-    # be provided in <i>signed_text</i> and <i>plain</i> should be
-    # <tt>nil</tt>.  Otherwise, if <i>sig</i> is a normal (or cleartext)
-    # signature, <i>signed_text</i> should be <tt>nil</tt>.
+    # @example doing a detached signature
+    #  GPGME.sign "Hi there", :mode => GPGME::SIG_MODE_DETACH
     #
-    # <i>options</i> are same as <code>GPGME::Ctx.new()</code>.
+    # @example specifying the signer
+    #  GPGME.sign "Hi there", :signer => "mrsimo@example.com"
     #
-    def verify(sig, *args_options) # :yields: signature
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 3
-      args, options = split_args(args_options)
-      signed_text, plain = args
-
+    # @raise [GPGME::Error::UnusableSecretKey] TODO don't know
+    def sign(text, options = {})
       check_version(options) # TODO no idea what it does
 
-      GPGME::Ctx.new(options) do |ctx|
-        sig_data = Data.new(sig)
-        if signed_text
-          signed_text_data = Data.new(signed_text)
-          plain_data = nil
-        else
-          signed_text_data = nil
-          plain_data = Data.new(plain)
-        end
-        ctx.verify(sig_data, signed_text_data, plain_data)
-        ctx.verify_result.signatures.each do |signature|
-          yield signature
-        end
-        if !signed_text && !plain
-          plain_data.seek(0, IO::SEEK_SET)
-          plain_data.read
-        end
-      end
-    end
+      plain  = Data.new(text)
+      output = Data.new(options[:output])
+      mode   = options[:mode] || GPGME::SIG_MODE_NORMAL
 
-    # Signs an element
-    #
-    #   GPGME.sign(plain, sig=nil, options=Hash.new)
-    #
-    # <code>GPGME.sign</code> creates a signature of the plaintext.
-    #
-    # The arguments should be specified as follows.
-    #
-    # - GPGME.sign(<i>plain</i>, <i>sig</i>, <i>options</i>)
-    # - GPGME.sign(<i>plain</i>, <i>options</i>) -> <i>sig</i>
-    #
-    # All arguments except <i>plain</i> are optional.  <i>plain</i> is
-    # input and <i>sig</i> is output.  If the last argument is a Hash,
-    # options will be read from it.
-    #
-    # An input argument is specified by an IO like object (which responds
-    # to <code>read</code>), a string, or a GPGME::Data object.
-    #
-    # An output argument is specified by an IO like object (which responds
-    # to <code>write</code>) or a GPGME::Data object.
-    #
-    # <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
-    #
-    # - <tt>:signers</tt> Signing keys.  If specified, it is an array
-    #   whose elements are a GPGME::Key object or a string.
-    # - <tt>:mode</tt> Desired type of a signature.  Either
-    #   <tt>GPGME::SIG_MODE_NORMAL</tt> for a normal signature,
-    #   <tt>GPGME::SIG_MODE_DETACH</tt> for a detached signature, or
-    #   <tt>GPGME::SIG_MODE_CLEAR</tt> for a cleartext signature.
-    #
-    def sign(plain, *args_options)
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
-      args, options = split_args(args_options)
-      sig = args[0]
-
-      check_version(options)
       GPGME::Ctx.new(options) do |ctx|
-        if options[:signers]
-          signers = Key.find(:secret, options[:signers], :sign)
+        if options[:signer]
+          signers = Key.find(:secret, options[:signer], :sign)
           ctx.add_signer(*signers)
         end
-        mode = options[:mode] || GPGME::SIG_MODE_NORMAL
-        plain_data = Data.new(plain)
-        sig_data = Data.new(sig)
+
         begin
-          ctx.sign(plain_data, sig_data, mode)
+          ctx.sign(plain, output, mode)
         rescue GPGME::Error::UnusableSecretKey => exc
           exc.keys = ctx.sign_result.invalid_signers
           raise exc
         end
+      end
 
-        unless sig
-          sig_data.seek(0, IO::SEEK_SET)
-          sig_data.read
+      output.seek(0)
+      output
+    end
+
+    # Verifies a previously signed element
+    #
+    #   GPGME.verify sig, options, &block
+    #
+    # Must have the proper keys available.
+    #
+    # @param sig
+    #   The signature itself. Must be possible to convert into a {GPGME::Data}
+    #   object, so can be a file.
+    #
+    # @param [Hash] options
+    #   * +:signed_text+ if the sign is detached, then must be the plain text
+    #     for which the signature was created.
+    #   * +:output+ where to store the result of the signature. Will be
+    #     converted to a {GPGME::Data} object.
+    # @param &block
+    #   In the block all the signatures are yielded, so one could verify them.
+    #   See examples.
+    #
+    # @return [GPGME::Data] unless the sign is detached, the {GPGME::Data}
+    #   object with the plain text. If the sign is detached, will return nil.
+    #
+    # @example simple verification
+    #   sign = GPGME.sign("Hi there")
+    #   data = GPGME.verify(sign) { |signature| signature.valid? }
+    #   data.read # => "Hi there"
+    #
+    # @example saving output to file
+    #   sign = GPGME.sign("Hi there")
+    #   out  = File.open("test.asc", "w+")
+    #   GPGME.verify(sign, :output => out) {|signature| signature.valid?}
+    #   out.read # => "Hi there"
+    #
+    # @example verifying a detached signature
+    #   sign = GPGME.detach_sign("Hi there")
+    #   # Will fail
+    #   GPGME.verify(sign) { |signature| signature.valid? }
+    #   # Will succeed
+    #   GPGME.verify(sign, :signed_text => "hi there") do |signature|
+    #     signature.valid?
+    #   end
+    #
+    def verify(sig, options = {}) # :yields: signature
+      check_version(options) # TODO no idea what it does
+
+      sig         = Data.new(sig)
+      signed_text = Data.new(options[:signed_text])
+      output      = Data.new(options[:output]) unless options[:signed_text]
+
+      GPGME::Ctx.new(options) do |ctx|
+        ctx.verify(sig, signed_text, output)
+        ctx.verify_result.signatures.each do |signature|
+          yield signature
         end
+      end
+
+      if output
+        output.seek(0)
+        output
       end
       keys
     end
 
     # Clearsigns an element
     #
-    #   GPGME.clearsign(plain, sig=nil, options=Hash.new)
+    #   GPGME.clearsign text, options
     #
-    # <code>GPGME.clearsign</code> creates a cleartext signature of the plaintext.
+    # Same functionality of {GPGME.sign} only doing clearsigns by default.
     #
-    # The arguments should be specified as follows.
-    #
-    # - GPGME.clearsign(<i>plain</i>, <i>sig</i>, <i>options</i>)
-    # - GPGME.clearsign(<i>plain</i>, <i>options</i>) -> <i>sig</i>
-    #
-    # All arguments except <i>plain</i> are optional.  <i>plain</i> is
-    # input and <i>sig</i> is output.  If the last argument is a Hash,
-    # options will be read from it.
-    #
-    # An input argument is specified by an IO like object (which responds
-    # to <code>read</code>), a string, or a GPGME::Data object.
-    #
-    # An output argument is specified by an IO like object (which responds
-    # to <code>write</code>) or a GPGME::Data object.
-    #
-    # <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
-    #
-    # - <tt>:signers</tt> Signing keys.  If specified, it is an array
-    #   whose elements are a GPGME::Key object or a string.
-    #
-    def clearsign(plain, *args_options)
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
-      args, options = split_args(args_options)
-      args.push(options.merge({:mode => GPGME::SIG_MODE_CLEAR}))
-      GPGME.sign(plain, *args)
+    def clearsign(text, options = {})
+      GPGME.sign text, options.merge(:mode => GPGME::SIG_MODE_CLEAR)
     end
 
     # Creates a detached signature of an element
     #
-    #   GPGME.detach_sign(plain, sig=nil, options=Hash.new)
+    #   GPGME.detach_sign text, options
     #
-    # <code>GPGME.detach_sign</code> creates a detached signature of the plaintext.
+    # Same functionality of {GPGME.sign} only doing detached signs by default.
     #
-    # The arguments should be specified as follows.
-    #
-    # - GPGME.detach_sign(<i>plain</i>, <i>sig</i>, <i>options</i>)
-    # - GPGME.detach_sign(<i>plain</i>, <i>options</i>) -> <i>sig</i>
-    #
-    # All arguments except <i>plain</i> are optional.  <i>plain</i> is
-    # input and <i>sig</i> is output.  If the last argument is a Hash,
-    # options will be read from it.
-    #
-    # An input argument is specified by an IO like object (which responds
-    # to <code>read</code>), a string, or a GPGME::Data object.
-    #
-    # An output argument is specified by an IO like object (which responds
-    # to <code>write</code>) or a GPGME::Data object.
-    #
-    # <i>options</i> are same as <code>GPGME::Ctx.new()</code> except for
-    #
-    # - <tt>:signers</tt> Signing keys.  If specified, it is an array
-    #   whose elements are a GPGME::Key object or a string.
-    #
-    def detach_sign(plain, *args_options)
-      raise ArgumentError, 'wrong number of arguments' if args_options.length > 2
-      args, options = split_args(args_options)
-      args.push(options.merge({:mode => GPGME::SIG_MODE_DETACH}))
-      GPGME.sign(plain, *args)
+    def detach_sign(text, options = {})
+      GPGME.sign text, options.merge(:mode => GPGME::SIG_MODE_DETACH)
     end
 
     # Lists all the keys available

@@ -8,9 +8,24 @@ module GPGME
     alias fingerprint fpr
 
     ##
-    # TODO empty method to be implemented, would be nice to match examples.
+    # Returns true if the signature is correct
     def valid?
+      status_code == GPGME::GPG_ERR_NO_ERROR
+    end
 
+    def status_code
+      GPGME::gpgme_err_code(status)
+    end
+
+    def from
+      @from ||= begin
+        ctx = Ctx.new
+        if from_key = ctx.get_key(fingerprint)
+          "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}"
+        else
+          fingerprint
+        end
+      end
     end
 
     def timestamp
@@ -22,25 +37,19 @@ module GPGME
     end
 
     def to_s
-      ctx = Ctx.new
-      if from_key = ctx.get_key(fingerprint)
-        from = "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}"
-      else
-        from = fingerprint
-      end
-      case GPGME::gpgme_err_code(status)
+      case status_code
       when GPGME::GPG_ERR_NO_ERROR
-	"Good signature from #{from}"
+        "Good signature from #{from}"
       when GPGME::GPG_ERR_SIG_EXPIRED
-	"Expired signature from #{from}"
+        "Expired signature from #{from}"
       when GPGME::GPG_ERR_KEY_EXPIRED
-	"Signature made from expired key #{from}"
+        "Signature made from expired key #{from}"
       when GPGME::GPG_ERR_CERT_REVOKED
-	"Signature made from revoked key #{from}"
+        "Signature made from revoked key #{from}"
       when GPGME::GPG_ERR_BAD_SIGNATURE
-	"Bad signature from #{from}"
+        "Bad signature from #{from}"
       when GPGME::GPG_ERR_NO_ERROR
-	"No public key for #{from}"
+        "No public key for #{from}"
       end
     end
   end
