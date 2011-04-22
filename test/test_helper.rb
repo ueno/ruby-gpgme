@@ -15,10 +15,8 @@ def import_keys
 end
 
 def remove_keys
-  GPGME::Ctx.new do |ctx|
-    GPGME.list_keys(KEY[:sha]).each do |key|
-      ctx.delete_key key, true
-    end
+  GPGME::Key.find(:public, KEY[:sha]).each do |key|
+    key.delete!(true)
   end
 end
 

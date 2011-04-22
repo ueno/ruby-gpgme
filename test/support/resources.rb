@@ -73,16 +73,16 @@ signed_text = <<-RUBY
 -----BEGIN PGP MESSAGE-----
 Version: GnuPG v1.4.11 (Darwin)
 
-hIwDOjWUQEvcRp8BBACVwaLjM0apXE3Dt4ZEayS5I0WSwArrxGFDuOlzZ7YmnTm3
-Ozk89dXevPEA2ps2dDGoTFpPMH91Bls3Bum2VjBS6d4eyg4G9Ykvu4ouVoUQmzOQ
-YIuTdnTEYml6t4/NYRBQzkay9d+UvmrNG9G/jEFOd9inY5nA30Mgj2iLLd+5VtLA
-NAEXIYfK+AOFtJZ80QN5mmufXY+Ova6gIy7sJyTDWaYX/borKiY2gvcPuXknLZ4L
-cEuPJnlRZWqwnkrsJNR4Txaj+T5uKeLc7JPTHTU3eusfgca7fu6ZYfGeNVaIf4Ah
-FxU9u02KAl2WChPw96gk9T/cgI7mjBAHNG1tcSyjea/iKkCmBkYLFqTDtJhGRxcV
-0glzD48VZQxQKldBdQvvRabZowI92c8+tYS1vGBX6U/vVxAj1NsQoOTL+/luJsQp
-stYLBU9ZBC+nhpinlQssnHkPsi6Wrmpz/UdljydUF300qrvl1rRou/fUtU/GdcUa
-iHVABhk=
-=//EB
+hQEOA7uYu2zDDDNhEAP+LjMKZZuiS1Ol8l+DVFkwNwPjreTfVFUBBkc7NevwmJpT
+VAaJttyxWw1H5CHVFS4VeWaRLmvkjTColP/DvA0m9A3o/U06UCluA3KIjYzlPY0Y
+GtNwLJdrVo9DV6Y07x51duK3qg3kms8jGHqEoWqTZqhXiKNAybuCNO7FhTZQkSwE
+AKL5e60nO/EKNlLj/eRZTLhwgKamljehA2Ig3OQajoOb3nqhf7HAdCR/RtHxcjTT
+t2dGZQ8wD9n4bWK1JENB9xbH3unUGGmG8hBY1RZyJUVLS6afRxnEJOsCsZjV9keC
+4erEdf7NmCQgJ8WKCPqcEYqi5KxdYmNTb0vL1ldBpUt40pkBTapgyxjDYWXHqKOl
+Fm9L/1jrDjTtFGt6oaUsXO0DosVZCLcpZT4FmPUO+te9H98++368uKXEDyl2jJMd
+Q+Q4OWm7MJdpfOasQ5R2jnBaJPMs2Ms1FY1T+SOgUwwHXU5WRruHXcevGPcJqbyk
+jHeYf0s1casLCJYaPd4kPcqU0lxuxLG7NpveBal8pEkqecPtAuU4whk3H+Y=
+=02DH
 -----END PGP MESSAGE-----
 RUBY
 
@@ -99,6 +99,17 @@ EEdpZ6VKsLuoOb9Ou+hD6CLC3Izzmw==
 -----END PGP MESSAGE-----
 RUBY
 
+sign = <<-RUBY
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v1.4.11 (Darwin)
+
+owGbwMvMwCQo65qZfvagZjzjacEkZl01c98VK/96ZCqUZKQWpXa4sTAIMjGwsTKB
+RBm4OAVgqt3PMSxYZXVcSzq4uZvry7RCp9vN31o+LTnBML+wgKFg6aJPKysdX2fc
++rtEd/85jh4A
+=aECe
+-----END PGP MESSAGE-----
+RUBY
+
 KEY = {
   :sha => 'CDC1295F',
   :public => public_key,
@@ -106,8 +117,10 @@ KEY = {
 }
 
 TEXT = {
-  :plain => "Hi there",
-  :encrypted => encrypted_text.chomp,
-  :unavailable => unavailable.chomp, # Created with a temporary key that's been removed.
-  :signed => signed_text.chomp
+  :plain        => "Hi there",
+  :encrypted    => encrypted_text.chomp,
+  # Created with a temporary key that's been removed.
+  :unavailable  => unavailable.chomp,
+  :signed       => signed_text.chomp,
+  :sign         => sign.chomp
 }

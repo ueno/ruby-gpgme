@@ -163,4 +163,25 @@ module GPGME
   VALIDITY_UNDEFINED = GPGME_VALIDITY_UNDEFINED
   VALIDITY_UNKNOWN = GPGME_VALIDITY_UNKNOWN
 
+  PROTOCOL_NAMES = {
+    PROTOCOL_OpenPGP  => :OpenPGP,
+    PROTOCOL_CMS      => :CMS
+  }
+
+  KEYLIST_MODE_NAMES = {
+    KEYLIST_MODE_LOCAL    => :local,
+    KEYLIST_MODE_EXTERN   => :extern,
+    KEYLIST_MODE_SIGS     => :sigs,
+    KEYLIST_MODE_VALIDATE => :validate
+  }
+
+  VALIDITY_NAMES = {
+    VALIDITY_UNKNOWN    => :unknown,
+    VALIDITY_UNDEFINED  => :undefined,
+    VALIDITY_NEVER      => :never,
+    VALIDITY_MARGINAL   => :marginal,
+    VALIDITY_FULL       => :full,
+    VALIDITY_ULTIMATE   => :ultimate
+  }
+
 end
