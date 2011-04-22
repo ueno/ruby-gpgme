@@ -1,53 +1,60 @@
 module GPGME
+
+  ##
   # A context within which all cryptographic operations are performed.
+  #
+  # More operations can be done which are not available in the higher level
+  # API.
   class Ctx
-    # Create a new instance from the given <i>options</i>.
-    # <i>options</i> is a Hash whose keys are
+
+    ##
+    # Create a new instance from the given +options+. Must be released either
+    # executing the operations inside a block, or executing {GPGME::Ctx#release}
+    # afterwards.
     #
-    # * <tt>:protocol</tt>  Either <tt>PROTOCOL_OpenPGP</tt> or
-    #   <tt>PROTOCOL_CMS</tt>.
+    # @param [Hash] options
+    #  The optional parameters are as follows:
+    #  * +:protocol+ Either +PROTOCOL_OpenPGP+ or +PROTOCOL_CMS+.
+    #  * +:armor+ will return ASCII armored outputs if specified true.
+    #  * +:textmode+ if +true+, inform the recipient that the input is text.
+    #  * +:keylist_mode+ One of: +KEYLIST_MODE_LOCAL+, +KEYLIST_MODE_EXTERN+,
+    #    +KEYLIST_MODE_SIGS+ or +KEYLIST_MODE_VALIDATE+.
+    #  * +:passphrase_callback+ A callback function.
+    #  * +:passphrase_callback_value+ An object passed to passphrase_callback.
+    #  * +:progress_callback+  A callback function.
+    #  * +:progress_callback_value+ An object passed to progress_callback.
     #
-    # * <tt>:armor</tt>  If <tt>true</tt>, the output should be ASCII armored.
+    # @example
+    #   ctx = GPGME::Ctx.new
+    #   # operate on ctx
+    #   ctx.release
     #
-    # * <tt>:textmode</tt>  If <tt>true</tt>, inform the recipient that the
-    #   input is text.
+    # @example
+    #   GPGME::Ctx.new do |ctx|
+    #     # operate on ctx
+    #   end
     #
-    # * <tt>:keylist_mode</tt>  Either
-    #   <tt>KEYLIST_MODE_LOCAL</tt>,
-    #   <tt>KEYLIST_MODE_EXTERN</tt>,
-    #   <tt>KEYLIST_MODE_SIGS</tt>, or
-    #   <tt>KEYLIST_MODE_VALIDATE</tt>.
-    # * <tt>:passphrase_callback</tt>  A callback function.
-    # * <tt>:passphrase_callback_value</tt> An object passed to
-    #   passphrase_callback.
-    # * <tt>:progress_callback</tt>  A callback function.
-    # * <tt>:progress_callback_value</tt> An object passed to
-    #   progress_callback.
-    #
-    def self.new(options = Hash.new)
-      rctx = Array.new
+    def self.new(options = {})
+      rctx = []
       err = GPGME::gpgme_new(rctx)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       ctx = rctx[0]
-      options.each_pair do |key, value|
-        case key
-        when :protocol
-          ctx.protocol = value
-        when :armor
-          ctx.armor = value
-        when :textmode
-          ctx.textmode = value
-        when :keylist_mode
-          ctx.keylist_mode = value
-        when :passphrase_callback
-          ctx.set_passphrase_callback(value,
-                                      options[:passphrase_callback_value])
-        when :progress_callback
-          ctx.set_progress_callback(value,
-                                      options[:progress_callback_value])
-        end
+
+      ctx.protocol     = options[:protocol]     if options[:protocol]
+      ctx.armor        = options[:armor]        if options[:armor]
+      ctx.textmode     = options[:textmode]     if options[:textmode]
+      ctx.keylist_mode = options[:keylist_mode] if options[:keylist_mode]
+
+      if options[:passphrase_callback]
+        ctx.set_passphrase_callback options[:passphrase_callback],
+          options[:passphrase_callback_value]
       end
+      if options[:progress_callback]
+        ctx.set_progress_callback options[:progress_callback],
+          options[:progress_callback_value]
+      end
+
       if block_given?
         begin
           yield ctx
@@ -59,7 +66,25 @@ module GPGME
       end
     end
 
-    # Set the <i>protocol</i> used within this context.
+    ##
+    # Releases the Ctx instance. Must be called if it was initialized without
+    # a block.
+    #
+    # @example
+    #   ctx = GPGME::Ctx.new
+    #   # operate on ctx
+    #   ctx.release
+    #
+    def release
+      GPGME::gpgme_release(self)
+    end
+
+    ##
+    # Getters and setters
+    ##
+
+    # Set the +protocol+ used within this context. See {GPGME::Ctx.new} for
+    # possible values.
     def protocol=(proto)
       err = GPGME::gpgme_set_protocol(self, proto)
       exc = GPGME::error_to_exception(err)
@@ -67,7 +92,7 @@ module GPGME
       proto
     end
 
-    # Return the protocol used within this context.
+    # Return the +protocol+ used within this context.
     def protocol
       GPGME::gpgme_get_protocol(self)
     end
@@ -105,11 +130,9 @@ module GPGME
       GPGME::gpgme_get_keylist_mode(self)
     end
 
-    def inspect
-      "#<#{self.class} protocol=#{PROTOCOL_NAMES[protocol] || protocol}, \
-armor=#{armor}, textmode=#{textmode}, \
-keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
-    end
+    ##
+    # Passphrase and progress callbacks
+    ##
 
     # Set the passphrase callback with given hook value.
     # <i>passfunc</i> should respond to <code>call</code> with 5 arguments.
@@ -151,10 +174,15 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
     alias set_progress_cb set_progress_callback
 
-    # Initiate a key listing operation for given pattern.
-    # If <i>pattern</i> is <tt>nil</tt>, all available keys are
-    # returned.  If <i>secret_only</i> is <tt>true</tt>, the only
-    # secret keys are returned.
+    ##
+    # Searching and iterating through keys. Used by {GPGME::Key.find}
+    ##
+
+    # Initiate a key listing operation for given pattern. If +pattern+ is
+    # +nil+, all available keys are returned. If +secret_only<+ is +true+,
+    # only secret keys are returned.
+    #
+    # Used by {GPGME::Ctx#each_key}
     def keylist_start(pattern = nil, secret_only = false)
       err = GPGME::gpgme_op_keylist_start(self, pattern, secret_only ? 1 : 0)
       exc = GPGME::error_to_exception(err)
@@ -162,8 +190,10 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Advance to the next key in the key listing operation.
+    #
+    # Used by {GPGME::Ctx#each_key}
     def keylist_next
-      rkey = Array.new
+      rkey = []
       err = GPGME::gpgme_op_keylist_next(self, rkey)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
@@ -171,6 +201,8 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # End a pending key list operation.
+    #
+    # Used by {GPGME::Ctx#each_key}
     def keylist_end
       err = GPGME::gpgme_op_keylist_end(self)
       exc = GPGME::error_to_exception(err)
@@ -178,44 +210,50 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
 
     # Convenient method to iterate over keys.
-    # If <i>pattern</i> is <tt>nil</tt>, all available keys are
-    # returned.  If <i>secret_only</i> is <tt>true</tt>, the only
-    # secret keys are returned.
-    def each_key(pattern = nil, secret_only = false, &block) # :yields: key
+    #
+    # If +pattern+ is +nil+, all available keys are returned. If +secret_only+
+    # is +true+, only secret keys are returned.
+    #
+    # See {GPGME::Key.find} for an example of how to use, or for an easier way
+    # to use.
+    def each_key(pattern = nil, secret_only = false, &block)
       keylist_start(pattern, secret_only)
       begin
-	loop do
-	  yield keylist_next
-	end
-        keys
+        loop { yield keylist_next }
       rescue EOFError
-	# The last key in the list has already been returned.
+        # The last key in the list has already been returned.
       ensure
-	keylist_end
+        keylist_end
       end
     end
     alias each_keys each_key
 
+    # Returns the keys that match the +pattern+, or all if +pattern+ is nil.
+    # Returns only secret keys if +secret_only+ is true.
     def keys(pattern = nil, secret_only = nil)
-      keys = Array.new
+      keys = []
       each_key(pattern, secret_only) do |key|
         keys << key
       end
       keys
     end
 
-    # Get the key with the <i>fingerprint</i>.
-    # If <i>secret</i> is <tt>true</tt>, secret key is returned.
+    # Get the key with the +fingerprint+.
+    # If +secret+ is +true+, secret key is returned.
     def get_key(fingerprint, secret = false)
-      rkey = Array.new
+      rkey = []
       err = GPGME::gpgme_get_key(self, fingerprint, rkey, secret ? 1 : 0)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       rkey[0]
     end
 
+    ##
+    # Import/export and generation/deletion of keys
+    ##
+
     # Generate a new key pair.
-    # <i>parms</i> is a string which looks like
+    # +parms+ is a string which looks like
     #
     #  <GnupgKeyParms format="internal">
     #  Key-Type: DSA
@@ -229,8 +267,8 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     #  Passphrase: abc
     #  </GnupgKeyParms>
     #
-    # If <i>pubkey</i> and <i>seckey</i> are both set to <tt>nil</tt>,
-    # it stores the generated key pair into your key ring.
+    # If +pubkey+ and +seckey+ are both set to +nil+, it stores the generated
+    # key pair into your key ring.
     def generate_key(parms, pubkey = Data.new, seckey = Data.new)
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
@@ -285,6 +323,10 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
     alias edit_card edit_card_key
     alias card_edit edit_card_key
+
+    ##
+    # Crypto operations
+    ##
 
     # Decrypt the ciphertext and return the plaintext.
     def decrypt(cipher, plain = Data.new)
@@ -371,6 +413,12 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       cipher
+    end
+
+    def inspect
+      "#<#{self.class} protocol=#{PROTOCOL_NAMES[protocol] || protocol}, \
+armor=#{armor}, textmode=#{textmode}, \
+keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
   end
 end

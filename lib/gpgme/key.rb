@@ -62,8 +62,23 @@ module GPGME
       end
     end
 
+    def primary_subkey
+      @primary_subkey ||= subkeys.first
+    end
+
+    def sha
+      primary_subkey.sha
+    end
+
+    def primary_uid
+      uids.first
+    end
+
+    def email
+      primary_uid.email
+    end
+
     def inspect
-      primary_subkey = subkeys[0]
       sprintf("#<#{self.class} %s %4d%c/%s %s trust=%s, owner_trust=%s, \
 capability=%s, subkeys=%s, uids=%s>",
               primary_subkey.secret? ? 'sec' : 'pub',

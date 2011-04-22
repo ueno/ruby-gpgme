@@ -15,6 +15,10 @@ module GPGME
       Time.at(@expires)
     end
 
+    def sha
+      (@fingerprint || @keyid)[-8 .. -1]
+    end
+
     PUBKEY_ALGO_LETTERS = {
       PK_RSA    => "R",
       PK_ELG_E  => "g",
