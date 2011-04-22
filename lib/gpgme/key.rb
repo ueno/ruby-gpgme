@@ -53,6 +53,15 @@ module GPGME
       keys
     end
 
+    ##
+    # Delete this key. If it's public, and has a secret one it will fail unless
+    # +allow_secret+ is specified as true.
+    def delete!(allow_secret = false)
+      GPGME::Ctx.new do |ctx|
+        ctx.delete_key self, allow_secret
+      end
+    end
+
     def inspect
       primary_subkey = subkeys[0]
       sprintf("#<#{self.class} %s %4d%c/%s %s trust=%s, owner_trust=%s, \
