@@ -4,7 +4,8 @@ module GPGME
   # A context within which all cryptographic operations are performed.
   #
   # More operations can be done which are not available in the higher level
-  # API.
+  # API. Note how to create a new instance of this class in {GPGME::Ctx.new}.
+  #
   class Ctx
 
     ##

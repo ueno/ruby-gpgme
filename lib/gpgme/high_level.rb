@@ -1,4 +1,11 @@
 module GPGME
+
+  ##
+  # Different, independent methods providing the simplest possible API to
+  # work with GPG. All methods accept as options the same common options as
+  # {GPGME::Ctx.new}. Read the documentation for that class to know how to
+  # customize things further (like output stuff in ASCII armored format, for
+  # example).
   module HighLevel
 
     ##

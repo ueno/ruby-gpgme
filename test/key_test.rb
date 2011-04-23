@@ -25,8 +25,8 @@ describe GPGME::Key do
     end
 
     it "returns an array even if you pass only one descriptor" do
-      keys_one   = GPGME::Key.find(:secret, KEY[:sha]).map{|key| key.subkeys.map(&:keyid)}
-      keys_array = GPGME::Key.find(:secret, [KEY[:sha]]).map{|key| key.subkeys.map(&:keyid)}
+      keys_one   = GPGME::Key.find(:secret, KEYS.first[:sha]).map{|key| key.subkeys.map(&:keyid)}
+      keys_array = GPGME::Key.find(:secret, [KEYS.first[:sha]]).map{|key| key.subkeys.map(&:keyid)}
       assert_equal keys_one, keys_array
     end
 
