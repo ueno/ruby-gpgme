@@ -198,6 +198,33 @@ describe GPGME::Ctx do
     end
   end
 
+  describe "key generation" do
+    it "generates a key according to specifications" do
+      key = <<-RUBY
+<GnupgKeyParms format="internal">
+Key-Type: DSA
+Key-Length: 1024
+Subkey-Type: ELG-E
+Subkey-Length: 1024
+Name-Real: Key Tester
+Name-Comment: with some comments
+Name-Email: test_generation@example.com
+Expire-Date: 0
+Passphrase: wadus
+</GnupgKeyParms>
+RUBY
 
+      keys_amount = GPGME::Key.find(:public).size
+      GPGME::Ctx.new do |ctx|
+        ctx.generate_key(key.chomp)
+      end
+
+      assert_equal keys_amount + 1, GPGME::Key.find(:public).size
+
+      GPGME::Key.find(:public, "test_generation@example.com").each do |k|
+        k.delete!(true)
+      end
+    end
+  end
 
 end

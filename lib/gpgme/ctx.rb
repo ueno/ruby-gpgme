@@ -270,7 +270,7 @@ module GPGME
     #
     # If +pubkey+ and +seckey+ are both set to +nil+, it stores the generated
     # key pair into your key ring.
-    def generate_key(parms, pubkey = Data.new, seckey = Data.new)
+    def generate_key(parms, pubkey = nil, seckey = nil)
       err = GPGME::gpgme_op_genkey(self, parms, pubkey, seckey)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
