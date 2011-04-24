@@ -11,46 +11,119 @@ module GPGME
 
     include KeyCommon
 
-    ##
-    # Returns an array of {GPGME::Key} objects that match the parameters.
-    # * +secret+ set to +:secret+ to get only secret keys, or to +:public+ to
-    #   get only public keys.
-    # * +keys_or_names+ an array or an item that can be either {GPGME::Key}
-    #   elements, or string identifiers like the email or the sha. Leave
-    #   blank to get all.
-    # * +purposes+ get only keys that are usable for any of these purposes.
-    #   See {GPGME::Key} for a list of possible key capabilities.
-    #
-    # @example
-    #   GPGME::Key.find :secret # => first secret key found
-    #
-    # @example
-    #   GPGME::Key.find(:public, "mrsimo@example.com")
-    #   # => return only public keys that match mrsimo@example.com
-    #
-    # @example
-    #   GPGME::Key.find(:public, "mrsimo@example.com", :sign)
-    #   # => return the public keys that match mrsimo@exampl.com and are
-    #   #    capable of signing
-    def self.find(secret, keys_or_names = nil, purposes = [])
-      secret = (secret == :secret)
-      keys_or_names = [""] if keys_or_names.nil? || keys_or_names.empty?
-      keys_or_names = [keys_or_names].flatten
-      purposes      = [purposes].flatten.compact.uniq
+    class << self
 
-      keys = []
-      keys_or_names.each do |key_or_name|
-        case key_or_name
-        when Key then keys << key_or_name
-        when String
-          GPGME::Ctx.new do |ctx|
-            keys += ctx.keys(key_or_name, secret).select do |k|
-              k.usable_for?(purposes)
+      ##
+      # Returns an array of {GPGME::Key} objects that match the parameters.
+      # * +secret+ set to +:secret+ to get only secret keys, or to +:public+ to
+      #   get only public keys.
+      # * +keys_or_names+ an array or an item that can be either {GPGME::Key}
+      #   elements, or string identifiers like the email or the sha. Leave
+      #   blank to get all.
+      # * +purposes+ get only keys that are usable for any of these purposes.
+      #   See {GPGME::Key} for a list of possible key capabilities.
+      #
+      # @example
+      #   GPGME::Key.find :secret # => first secret key found
+      #
+      # @example
+      #   GPGME::Key.find(:public, "mrsimo@example.com")
+      #   # => return only public keys that match mrsimo@example.com
+      #
+      # @example
+      #   GPGME::Key.find(:public, "mrsimo@example.com", :sign)
+      #   # => return the public keys that match mrsimo@exampl.com and are
+      #   #    capable of signing
+      def find(secret, keys_or_names = nil, purposes = [])
+        secret = (secret == :secret)
+        keys_or_names = [""] if keys_or_names.nil? || keys_or_names.empty?
+        keys_or_names = [keys_or_names].flatten
+        purposes      = [purposes].flatten.compact.uniq
+
+        keys = []
+        keys_or_names.each do |key_or_name|
+          case key_or_name
+          when Key then keys << key_or_name
+          when String
+            GPGME::Ctx.new do |ctx|
+              keys += ctx.keys(key_or_name, secret).select do |k|
+                k.usable_for?(purposes)
+              end
             end
           end
         end
+        keys
       end
-      keys
+
+      # Exports a key
+      #
+      #   GPGME::Key.export pattern, options
+      #
+      # @param pattern
+      #   Identifier of the key to export.
+      #
+      # @param [Hash] options
+      #   * +:output+ specify where to write the key to. It will be converted to
+      #     a {GPGME::Data}, so it could be a file, for example.
+      #   * Any other option accepted by {GPGME::Ctx.new}
+      #
+      # @return [GPGME::Data] the exported key.
+      #
+      # @example
+      #   key = GPGME::Key.export "mrsimo@example.com"
+      #
+      # @example writing to a file
+      #   out = File.open("my.key", "w+")
+      #   GPGME::Key.export "mrsimo@example.com", :output => out
+      #
+      def export(pattern, options = {})
+        output = Data.new(options[:output])
+
+        GPGME::Ctx.new(options) do |ctx|
+          ctx.export_keys(pattern, output)
+        end
+
+        output.seek(0)
+        output
+      end
+
+      # Imports a key
+      #
+      #   GPGME::Key.import keydata, options
+      #
+      # @param keydata
+      #   The key to import. It will be converted to a {GPGME::Data} object,
+      #   so could be a file, for example.
+      # @param options
+      #   Any other option accepted by {GPGME::Ctx.new}
+      #
+      # @example
+      #   GPGME::Key.import(File.open("my.key"))
+      #
+      def import(keydata, options = {})
+        GPGME::Ctx.new(options) do |ctx|
+          ctx.import_keys(Data.new(keydata))
+          ctx.import_result
+        end
+      end
+    end
+
+    ##
+    # Exports this key. Accepts the same options as {GPGME::Ctx.new}, and
+    # +options[:output]+, where you can specify something that can become a
+    # {GPGME::Data}, where the output will go.
+    #
+    # @example
+    #   key.export(:armor => true)
+    #   # => GPGME::Data you can read with ASCII armored format
+    #
+    # @example
+    #   file = File.open("key.asc", "w+")
+    #   key.export(:output => file)
+    #   # => the key will be written to the file.
+    #
+    def export(options = {})
+      Key.export self, options
     end
 
     ##

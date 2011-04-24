@@ -34,6 +34,7 @@ module GPGME
     #    signers. Must be an array of sign identifiers.
     #  * +:output+ if specified, it will write the output into it. It will be
     #    converted to a {GPGME::Data} object, so it could be a file for example.
+    #   * Any other option accepted by {GPGME::Ctx.new}
     #
     # @return [GPGME::Data] a {GPGME::Data} object that can be read.
     #
@@ -113,6 +114,7 @@ module GPGME
     #   * +:output+ if specified, it will write the output into it. It will
     #     me converted to a {GPGME::Data} object, so it can also be a file,
     #     for example.
+    #   * Any other option accepted by {GPGME::Ctx.new}
     #
     # @param &block
     #   In the block all the signatures are yielded, so one could verify them.
@@ -183,30 +185,31 @@ module GPGME
     #
     # @param [Hash] options
     #  Optional parameters.
-    #  * +:signer+ sign identifier to sign the text with. Will use the first
-    #   key it finds if none specified.
-    #  * +:output+ if specified, it will write the output into it. It will be
-    #    converted to a {GPGME::Data} object, so it could be a file for example.
-    #  * +:mode+ Desired type of signature. Options are:
-    #   - +GPGME::SIG_MODE_NORMAL+ for a normal signature. The default one if
-    #     not specified.
-    #   - +GPGME::SIG_MODE_DETACH+ for a detached signature
-    #   - +GPGME::SIG_MODE_CLEAR+ for a cleartext signature
+    #   * +:signer+ sign identifier to sign the text with. Will use the first
+    #    key it finds if none specified.
+    #   * +:output+ if specified, it will write the output into it. It will be
+    #     converted to a {GPGME::Data} object, so it could be a file for example.
+    #   * +:mode+ Desired type of signature. Options are:
+    #    - +GPGME::SIG_MODE_NORMAL+ for a normal signature. The default one if
+    #      not specified.
+    #    - +GPGME::SIG_MODE_DETACH+ for a detached signature
+    #    - +GPGME::SIG_MODE_CLEAR+ for a cleartext signature
+    #   * Any other option accepted by {GPGME::Ctx.new}
     #
     # @return [GPGME::Data] a {GPGME::Data} that can be read.
     #
     # @example normal sign
-    #  GPGME.sign "Hi there"
+    #   GPGME.sign "Hi there"
     #
     # @example outputing to a file
-    #  file = File.open("text.sign", "w+")
-    #  GPGME.sign "Hi there", :options => file
+    #   file = File.open("text.sign", "w+")
+    #   GPGME.sign "Hi there", :options => file
     #
     # @example doing a detached signature
-    #  GPGME.sign "Hi there", :mode => GPGME::SIG_MODE_DETACH
+    #   GPGME.sign "Hi there", :mode => GPGME::SIG_MODE_DETACH
     #
     # @example specifying the signer
-    #  GPGME.sign "Hi there", :signer => "mrsimo@example.com"
+    #   GPGME.sign "Hi there", :signer => "mrsimo@example.com"
     #
     # @raise [GPGME::Error::UnusableSecretKey] TODO don't know
     def sign(text, options = {})
@@ -249,6 +252,8 @@ module GPGME
     #     for which the signature was created.
     #   * +:output+ where to store the result of the signature. Will be
     #     converted to a {GPGME::Data} object.
+    #   * Any other option accepted by {GPGME::Ctx.new}
+    #
     # @param &block
     #   In the block all the signatures are yielded, so one could verify them.
     #   See examples.
@@ -314,59 +319,6 @@ module GPGME
     #
     def detach_sign(text, options = {})
       GPGME.sign text, options.merge(:mode => GPGME::SIG_MODE_DETACH)
-    end
-
-    # Exports a key
-    #
-    #   GPGME.export pattern, options
-    #
-    # @param pattern
-    #   Identifier of the key to export.
-    #
-    # @param [Hash] options
-    #   * +:output+ specify where to write the key to. It will be converted to
-    #     a {GPGME::Data}, so it could be a file
-    #
-    # @return [GPGME::Data] the exported key.
-    #
-    # @example
-    #   key = GPGME.export "mrsimo@example.com"
-    #
-    # @example writing to a file
-    #   out = File.open("my.key", "w+")
-    #   GPGME.export "mrsimo@example.com", :output => out
-    #
-    def export(pattern, options = {})
-      check_version(options)
-
-      output = Data.new(options[:output])
-
-      GPGME::Ctx.new(options) do |ctx|
-        ctx.export_keys(pattern, output)
-      end
-
-      output.seek(0)
-      output
-    end
-
-    # Imports a key
-    #
-    #   GPGME.import keydata, options
-    #
-    # @param keydata
-    #   The key to import. It will be converted to a {GPGME::Data} object,
-    #   so could be a file for example.
-    #
-    # @example
-    #   GPGME.import(File.open("my.key"))
-    #
-    def import(keydata, options = {})
-      check_version(options)
-
-      GPGME::Ctx.new(options) do |ctx|
-        ctx.import_keys(Data.new(keydata))
-        ctx.import_result
-      end
     end
 
     ##

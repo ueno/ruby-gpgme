@@ -47,6 +47,58 @@ describe GPGME::Key do
     end
   end
 
+  describe :export do
+    # Testing the lazy way with expectations. I think tests in
+    # the Ctx class are enough.
+    it "exports any key that matches the pattern" do
+      GPGME::Ctx.any_instance.expects(:export_keys).with("", anything)
+      GPGME::Key.export("")
+    end
+
+    it "exports any key that matches the pattern, can specify output" do
+      data = GPGME::Data.new
+      GPGME::Ctx.any_instance.expects(:export_keys).with("wadus", data)
+      ret = GPGME::Key.export("wadus", :output => data)
+      assert_equal data, ret
+    end
+
+    it "can specify options for Ctx" do
+      GPGME::Ctx.expects(:new).with(:armor => true).yields(mock(:export_keys => true))
+      GPGME::Key.export("wadus", :armor => true)
+    end
+  end
+
+  describe "#export" do
+    it "can export from the key instance" do
+      key = GPGME::Key.find(:public).first
+      GPGME::Key.expects(:export).with(key, {})
+
+      key.export
+    end
+
+    it "can export from the key instance passing variables" do
+      key = GPGME::Key.find(:public).first
+      GPGME::Key.expects(:export).with(key, {:armor => true})
+
+      key.export :armor => true
+    end
+  end
+
+  describe :import do
+    it "can import keys" do
+      data = GPGME::Data.new
+      GPGME::Ctx.any_instance.expects(:import_keys).with(data)
+      GPGME::Ctx.any_instance.expects(:import_result).returns("wadus")
+
+      assert_equal "wadus", GPGME::Key.import(data)
+    end
+
+    it "can specify options for Ctx" do
+      GPGME::Ctx.expects(:new).with(:armor => true).yields(mock(:import_keys => true, :import_result => true))
+      GPGME::Key.import("wadus", :armor => true)
+    end
+  end
+
   # describe :trust do
   #   it "returns :revoked if it is so"
   #   it "returns :expired if it is expired"

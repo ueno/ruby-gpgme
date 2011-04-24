@@ -16,8 +16,8 @@ def import_keys
 end
 
 def import_key(key)
-  GPGME.import key[:public]
-  GPGME.import key[:private]
+  GPGME::Key.import key[:public]
+  GPGME::Key.import key[:private]
 end
 
 def remove_keys

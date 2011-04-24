@@ -239,7 +239,7 @@ RUBY
       GPGME::Key.find(:public).each{|k| k.delete!(true)}
       assert_equal 0, GPGME::Key.find(:public).size
 
-      result = GPGME.import(export)
+      result = GPGME::Key.import(export)
       current_keys = GPGME::Key.find(:public)
       assert_equal original_keys.size, current_keys.size
       assert_equal result.imports.size, current_keys.size
@@ -261,7 +261,7 @@ RUBY
 
       key.delete!(true)
 
-      result = GPGME.import(export)
+      result = GPGME::Key.import(export)
       assert_equal 1, result.imports.size
 
       import = result.imports.first
