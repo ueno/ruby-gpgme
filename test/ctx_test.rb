@@ -123,7 +123,9 @@ describe GPGME::Ctx do
       ctx.release
 
       assert keys.size >= 4
-      assert_equal KEYS.map{|k| k[:sha]}.sort, keys.map{|key| key.uids.first.email}.sort
+      KEYS.each do |key|
+        assert keys.map(&:email).include?(key[:sha])
+      end
     end
 
     it "can return keys filtering by a pattern" do
@@ -274,18 +276,19 @@ RUBY
 
     it "imports keys and can get a result object" do
       with_keys 3 do
-        keys_amount = GPGME::Key.find(:public).size
-        result = nil
+        public_amount  = GPGME::Key.find(:public).size
+        secret_amount = GPGME::Key.find(:secret).size
 
+        result = nil
         GPGME::Ctx.new do |ctx|
-          ctx.import_keys(GPGME::Data.new(KEYS.last[:private]))
           ctx.import_keys(GPGME::Data.new(KEYS.last[:public]))
+          ctx.import_keys(GPGME::Data.new(KEYS.last[:private]))
 
           result = ctx.import_result
         end
 
-        assert_equal keys_amount + 1, GPGME::Key.find(:secret).size
-        assert_equal keys_amount + 1, GPGME::Key.find(:public).size
+        assert_equal secret_amount + 1, GPGME::Key.find(:secret).size
+        assert_equal public_amount + 1, GPGME::Key.find(:public).size
         assert_instance_of GPGME::ImportResult, result
         assert_instance_of GPGME::ImportStatus, result.imports.first
       end

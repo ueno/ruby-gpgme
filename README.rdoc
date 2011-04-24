@@ -1,6 +1,8 @@
-= Ruby-GPGME
+= GPGME
 
-* http://rubyforge.org/projects/ruby-gpgme/
+This README is better is better viewed through the YARD formatted documentation:
+http://rdoc.info/github/mrsimo/gpgme/master/frames for latest github version, or
+http://rdoc.info/gems/gpgme for latest gem release.
 
 == History behind this fork
 
@@ -18,15 +20,6 @@ My objectives are as follows:
 * Make documentation a little bit more newbie friendly.
 * Improve the API to be more idiomatic.
 
-== Description
-
-Ruby-GPGME is a Ruby language binding of GPGME (GnuPG Made Easy).
-
-GnuPG Made Easy (GPGME) is a library designed to make access to GnuPG
-easier for applications. It provides a High-Level Crypto API for
-encryption, decryption, signing, signature verification and key
-management.
-
 == Requirements
 
 * Ruby 1.8 or later
@@ -35,53 +28,36 @@ management.
 
 == Installation
 
- $ gem install ruby-gpgme
-
-or
-
- $ ruby extconf.rb
- $ make
- $ make install
-
-== Examples
-
- examples/genkey.rb	Generate a key pair in your keyring.
- examples/keylist.rb	List your keyring like gpg --list-keys.
- examples/roundtrip.rb  Encrypt a plain text and then decrypt it.
- examples/sign.rb	Create a clear text signature.
- examples/verify.rb	Verify a clear text signature given from stdin.
+ $ gem install gpgme
 
 == API
 
-Ruby-GPGME provides three levels of API.  The highest level API is
-close to the command line interface of GnuPG.  The mid level API looks
-object-oriented (or rubyish).  The lowest level API is close to the C
-interface of GPGME.
+GPGME provides three levels of API. The highest level API is as simple as it
+gets, the mid level API provides more functionality but might be less
+user-friendly, and the lowest level API is close to the C interface of GPGME.
 
 === The highest level API
 
 For example, to create a cleartext signature of the plaintext from
 stdin and write the result to stdout can be written as follows.
 
- $ ruby -rgpgme -e 'GPGME.clearsign($stdin, $stdout)'
+ GPGME::Crypto.clearsign($stdin, :output => $stdout)
 
 === The mid level API
 
 The same example can be rewritten in the mid level API as follows.
 
- $ ruby -rgpgme -e <<End
- ctx = GPGME::Ctx.new
- plain = GPGME::Data.from_io($stdin)
- sig = GPGME::Data.from_io($stdout)
- ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
- End
+ plain = GPGME::Data.new($stdin)
+ sig   = GPGME::Data.new($stdout)
+ GPGME::Ctx.new do |ctx|
+   ctx.sign(plain, sig, GPGME::SIG_MODE_CLEAR)
+ end
 
 === The lowest level API
 
 The same example can be rewritten in the lowest level API as follows.
 
- $ ruby -rgpgme -e <<End
- ret = Array.new
+ ret = []
  GPGME::gpgme_new(ret)
  ctx = ret.shift
  GPGME::gpgme_data_new_from_fd(ret, 0)
@@ -89,12 +65,77 @@ The same example can be rewritten in the lowest level API as follows.
  GPGME::gpgme_data_new_from_fd(ret, 1)
  sig = ret.shift
  GPGME::gpgme_op_sign(ctx, plain, sig, GPGME::SIG_MODE_CLEAR)
- End
 
 As you see, it's much harder to write a program in this API than the
-highest level API.  However, if you are already familier with the C
+highest level API. However, if you are already familiar with the C
 interface of GPGME and want to control detailed behavior of GPGME, it
 might be useful.
+
+== Usage
+
+All the high level methods attack the mid level {GPGME::Ctx} API. It is
+recommended to read through the #{GPGME::Ctx.new} methods for common options.
+
+Also, most of the input/output is done via {GPGME::Data} objects that create a
+common interface for reading/writing to normal strings, or other common
+objects like files. Read the {GPGME::Data} documentation to understand
+how it works. Every time the lib needs a {GPGME::Data} object, it will be
+automatically converted to it.
+
+=== Crypto
+
+The {GPGME::Crypto} class has the high level convenience methods to encrypt,
+decrypt, sign and verify signatures. Here are some examples, but it is
+recommended to read through the {GPGME::Crypto} class to see all the options.
+
+* Document encryption via {GPGME::Crypto.encrypt}:
+ GPGME::Crypto.encrypt "Hello world!"
+
+* Document decryption via {GPGME::Crypto.decrypt} (including signature verification):
+ GPGME::Crypto.decrypt File.open("text.gpg")
+
+* Document signing via {GPGME::Crypto.sign}. Also the clearsigning and detached signing.
+ GPGME::Crypto.sign "I hereby proclaim Github the beneficiary of all my money when I die"
+
+* Sign verification via {GPGME::Crypto.verify}
+ sign = GPGME::Crypto.sign("Some text")
+ data = GPGME::Crypto.verify(sign) { |signature| signature.valid? }
+
+=== Key
+
+The {GPGME::Key} object represents a key, and has the high level related
+methods to work with them and find them, export, import, deletetion and
+creation.
+
+* Key listing
+ GPGME::Key.find(:secret, "someone@example.com")
+ # => Returns an array with all the secret keys available in the keychain.
+ #    that match "someone@example.com"
+
+* Key exporting
+ GPGME::Key.export("someone@example.com")
+ # => Returns a {GPGME::Data} object with the exported key.
+
+ key = GPGME::Key.find(:secret, "someone@example.com").first
+ key.export
+ # => Returns a {GPGME::Data} object with the exported key.
+
+* Key importing
+ GPGME::Key.import(File.open("my.key"))
+
+* TODO: Key generation
+
+=== Engine
+
+Provides three convenience methods to obtain information about the
+
+== Contributing
+
+To run the local test suite you need bundler and gpg:
+
+ bundle
+ rake compile   # simple rake task to compile the extension
+ rake           # runs the test suite
 
 == License
 

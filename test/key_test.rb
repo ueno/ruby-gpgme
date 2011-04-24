@@ -71,14 +71,14 @@ describe GPGME::Key do
   describe "#export" do
     it "can export from the key instance" do
       key = GPGME::Key.find(:public).first
-      GPGME::Key.expects(:export).with(key, {})
+      GPGME::Key.expects(:export).with(key.sha, {})
 
       key.export
     end
 
     it "can export from the key instance passing variables" do
       key = GPGME::Key.find(:public).first
-      GPGME::Key.expects(:export).with(key, {:armor => true})
+      GPGME::Key.expects(:export).with(key.sha, {:armor => true})
 
       key.export :armor => true
     end

@@ -1,9 +1,12 @@
 module GPGME
 
   ##
-  # A class whose purpose is to unify the way we work with the data (both
-  # input and output). Most of the calls expect instances of this class,
-  # or will try to create one from your parameters.
+  # A class whose purpose is to unify the way we work with the data (both input
+  # and output). Most of the calls expect instances of this class, or will try
+  # to create one from your parameters.
+  #
+  # Read the {#read}, {#write} and {#seek} methods for the most commonly used
+  # methods.
   class Data
 
     BLOCK_SIZE = 4096
@@ -15,7 +18,8 @@ module GPGME
       # instantiated through the C API with stuff like +gpgme_data_new+.
       #
       # We try to create a {GPGME::Data} smartly depending on the object passed, and if
-      # another {GPGME::Data} object is passed, it just returns it.
+      # another {GPGME::Data} object is passed, it just returns it, so when in
+      # doubt, you can always pass a {GPGME::Data} object.
       #
       # @example empty
       #   data = GPGME::Data.new
@@ -90,11 +94,19 @@ module GPGME
         raise exc if exc
         rdh.first
       end
+    end # class << self
 
-    end
-
-    # Read at most <i>length</i> bytes from the data object, or to the end
-    # of file if <i>length</i> is omitted or is <tt>nil</tt>.
+    # Read at most +length+ bytes from the data object, or to the end
+    # of file if +length+ is omitted or is +nil+.
+    #
+    # @example
+    #   data = GPGME::Data.new("From a string")
+    #   data.read # => "From a string"
+    #
+    # @example
+    #   data = GPGME::Data.new("From a string")
+    #   data.read(4) # => "From"
+    #
     def read(length = nil)
       if length
         GPGME::gpgme_data_read(self, length)
@@ -115,8 +127,9 @@ module GPGME
     #
     # @example going to the beginning of the buffer after writing something
     #  data = GPGME::Data.new("Some data")
+    #  data.read # => "Some data"
     #  data.read # => ""
-    #  data.seek(0)
+    #  data.seek 0
     #  data.read # => "Some data"
     #
     def seek(offset, whence = IO::SEEK_SET)
@@ -126,6 +139,19 @@ module GPGME
     ##
     # Writes +length+ bytes from +buffer+ into the data object.
     # Writes the full buffer if no length passed.
+    #
+    # @example
+    #   data = GPGME::Data.new
+    #   data.write "hola"
+    #   data.seek 0
+    #   data.read # => "hola"
+    #
+    # @example
+    #   data = GPGME::Data.new
+    #   data.write "hola", 2
+    #   data.seek 0
+    #   data.read # => "ho"
+    #
     def write(buffer, length = buffer.length)
       GPGME::gpgme_data_write(self, buffer, length)
     end
