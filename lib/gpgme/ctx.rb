@@ -277,7 +277,12 @@ module GPGME
     end
     alias genkey generate_key
 
-    # Extract the public keys of the recipients.
+    # Extract the public keys that match the +recipients+. Returns a
+    # {GPGME::Data} object which is not rewinded (should do +seek(0)+
+    # before reading).
+    #
+    # If passed, the key will be exported to +keydata+, which must be
+    # a {GPGME::Data} object.
     def export_keys(recipients, keydata = Data.new)
       err = GPGME::gpgme_op_export(self, recipients, 0, keydata)
       exc = GPGME::error_to_exception(err)

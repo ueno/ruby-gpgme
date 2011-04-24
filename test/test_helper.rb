@@ -46,10 +46,12 @@ def with_keys(size, &block)
     delete_key(key)
   end
 
-  yield
-
-  KEYS.last(KEYS.size - size).each do |key|
-    import_key(key)
+  begin
+    yield
+  ensure
+    KEYS.last(KEYS.size - size).each do |key|
+      import_key(key)
+    end
   end
 end
 

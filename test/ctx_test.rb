@@ -123,7 +123,7 @@ describe GPGME::Ctx do
       ctx.release
 
       assert keys.size >= 4
-      assert_equal KEYS.map{|k| k[:sha]}, keys.map{|key| key.uids.first.email}
+      assert_equal KEYS.map{|k| k[:sha]}.sort, keys.map{|key| key.uids.first.email}.sort
     end
 
     it "can return keys filtering by a pattern" do
@@ -227,4 +227,94 @@ RUBY
     end
   end
 
+  describe "key export/import" do
+    it "exports and imports all keys when passing an empty string" do
+      original_keys = GPGME::Key.find(:public)
+      export = ""
+      GPGME::Ctx.new do |ctx|
+        export = ctx.export_keys("")
+      end
+      export.seek(0)
+
+      GPGME::Key.find(:public).each{|k| k.delete!(true)}
+      assert_equal 0, GPGME::Key.find(:public).size
+
+      result = GPGME.import(export)
+      current_keys = GPGME::Key.find(:public)
+      assert_equal original_keys.size, current_keys.size
+      assert_equal result.imports.size, current_keys.size
+      assert result.imports.all?{|import| import.status == 1}
+
+      assert_equal original_keys.map(&:sha), original_keys.map(&:sha)
+
+      import_keys # If the test fails for some reason, it won't break others.
+    end
+
+    it "exports only one key" do
+      original_keys = GPGME::Key.find(:public)
+      key           = original_keys.first
+      export = ""
+      GPGME::Ctx.new do |ctx|
+        export = ctx.export_keys(key.sha)
+      end
+      export.seek(0)
+
+      key.delete!(true)
+
+      result = GPGME.import(export)
+      assert_equal 1, result.imports.size
+
+      import = result.imports.first
+
+      imported_key = GPGME::Key.find(:public, import.fpr).first
+      assert_equal key.sha, imported_key.sha
+      assert_equal key.email, imported_key.email
+      import_keys # If the test fails for some reason, it won't break others.
+    end
+
+    it "imports keys and can get a result object" do
+      with_keys 3 do
+        keys_amount = GPGME::Key.find(:public).size
+        result = nil
+
+        GPGME::Ctx.new do |ctx|
+          ctx.import_keys(GPGME::Data.new(KEYS.last[:private]))
+          ctx.import_keys(GPGME::Data.new(KEYS.last[:public]))
+
+          result = ctx.import_result
+        end
+
+        assert_equal keys_amount + 1, GPGME::Key.find(:secret).size
+        assert_equal keys_amount + 1, GPGME::Key.find(:public).size
+        assert_instance_of GPGME::ImportResult, result
+        assert_instance_of GPGME::ImportStatus, result.imports.first
+      end
+    end
+  end
+
+  describe "deleting/editing of keys" do
+    it "can delete keys" do
+      original_keys = GPGME::Key.find(:public)
+      key = original_keys.first
+
+      GPGME::Ctx.new do |ctx|
+        ctx.delete_key key, true
+      end
+
+      assert_empty GPGME::Key.find(:public, key.sha)
+    end
+
+    it "raises error if there's a private key attached but private key deletion isn't marked" do
+      original_keys = GPGME::Key.find(:public)
+      key = original_keys.first
+
+      assert_raises GPGME::Error::Conflict do
+        GPGME::Ctx.new do |ctx|
+          ctx.delete_key key
+        end
+      end
+    end
+  end
+
+  # Don't know how to test or use edit_key and edit_card
 end
