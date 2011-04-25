@@ -26,12 +26,12 @@ describe GPGME::Ctx do
     # We consider :armor, :protocol, :textmode and :keylist_mode as tested
     # with the other tests of this file. Here we test the rest
 
-    it ":key_password sets the password for the key" do
+    it ":password sets the password for the key" do
       with_password_key do
         input  = GPGME::Data.new(TEXT[:passwored])
         output = GPGME::Data.new
 
-        GPGME::Ctx.new(:key_password => 'gpgme') do |ctx|
+        GPGME::Ctx.new(:password => 'gpgme') do |ctx|
           ctx.decrypt_verify input, output
         end
 

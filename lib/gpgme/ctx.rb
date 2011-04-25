@@ -20,7 +20,7 @@ module GPGME
     #  * +:textmode+ if +true+, inform the recipient that the input is text.
     #  * +:keylist_mode+ One of: +KEYLIST_MODE_LOCAL+, +KEYLIST_MODE_EXTERN+,
     #    +KEYLIST_MODE_SIGS+ or +KEYLIST_MODE_VALIDATE+.
-    #  * +:key_password+ password of the passphrased password being used.
+    #  * +:password+ password of the passphrased password being used.
     #  * +:passphrase_callback+ A callback function. See {#set_passphrase_callback}.
     #  * +:passphrase_callback_value+ An object passed to passphrase_callback.
     #  * +:progress_callback+  A callback function. See {#set_progress_callback}.
@@ -48,9 +48,9 @@ module GPGME
       ctx.textmode     = options[:textmode]     if options[:textmode]
       ctx.keylist_mode = options[:keylist_mode] if options[:keylist_mode]
 
-      if options[:key_password]
+      if options[:password]
         ctx.set_passphrase_callback GPGME::Ctx.method(:pass_function),
-          options[:key_password]
+          options[:password]
       else
         if options[:passphrase_callback]
           ctx.set_passphrase_callback options[:passphrase_callback],

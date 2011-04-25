@@ -25,16 +25,19 @@ module GPGME
       #
       # @param [Hash] options
       #  The optional parameters are as follows:
-      #  * +:recipients+ for which recipient do you want to encrypt this file. It
-      #    will pick the first one available if none specified. Can be an array of
-      #    identifiers or just one (a string).
-      #  * +:always_trust+ if set to true specifies all the recipients to be
-      #    trusted, thus not requiring confirmation.
-      #  * +:sign+ if set to true, performs a combined sign and encrypt operation.
-      #  * +:signers+ if +:sign+ specified to true, a list of additional possible
-      #    signers. Must be an array of sign identifiers.
-      #  * +:output+ if specified, it will write the output into it. It will be
-      #    converted to a {GPGME::Data} object, so it could be a file for example.
+      #   * +:recipients+ for which recipient do you want to encrypt this file. It
+      #     will pick the first one available if none specified. Can be an array of
+      #     identifiers or just one (a string).
+      #   * +:symmetric+ if set to true, will ignore +:recipients+, and will perform
+      #     a symmetric encryption. Must provide a password via the +:password+
+      #     option.
+      #   * +:always_trust+ if set to true specifies all the recipients to be
+      #     trusted, thus not requiring confirmation.
+      #   * +:sign+ if set to true, performs a combined sign and encrypt operation.
+      #   * +:signers+ if +:sign+ specified to true, a list of additional possible
+      #     signers. Must be an array of sign identifiers.
+      #   * +:output+ if specified, it will write the output into it. It will be
+      #     converted to a {GPGME::Data} object, so it could be a file for example.
       #   * Any other option accepted by {GPGME::Ctx.new}
       #
       # @return [GPGME::Data] a {GPGME::Data} object that can be read.
@@ -67,6 +70,7 @@ module GPGME
         plain_data  = Data.new(plain)
         cipher_data = Data.new(options[:output])
         keys        = Key.find(:public, options[:recipients])
+        keys        = nil if options[:symmetric]
 
         flags = 0
         flags |= GPGME::ENCRYPT_ALWAYS_TRUST if options[:always_trust]
@@ -113,6 +117,8 @@ module GPGME
       #   * +:output+ if specified, it will write the output into it. It will
       #     me converted to a {GPGME::Data} object, so it can also be a file,
       #     for example.
+      #   * If the file was encrypted with symmentric encryption, must provide
+      #     a :password option.
       #   * Any other option accepted by {GPGME::Ctx.new}
       #
       # @param &block
@@ -123,6 +129,9 @@ module GPGME
       #
       # @example Simple decrypt
       #   GPGME::Crypto.decrypt encrypted_data
+      #
+      # @example symmetric encryption, or passwored key
+      #   GPGME::Crypto.decrypt encrypted_data, :password => "gpgme"
       #
       # @example Output to file
       #   file = File.open("decrypted.txt", "w+")

@@ -19,12 +19,47 @@ describe GPGME do
       end
     end
 
+
     # it "can specify which key(s) to use for encrypting with a string"
     # it "can specify which key to use for encrypting with a Key object"
     # it "can also sign at the same time"
     # it "can be signed by more than one person"
     # it "outputs to a file if specified"
     # it "outputs to something else that responds to write"
+  end
+
+  describe "symmetric encryption/decryption" do
+    it "requires a password to encrypt" do
+      assert_raises GPGME::Error::BadPassphrase do
+        GPGME::Crypto.encrypt TEXT[:plain], :symmetric => true
+      end
+    end
+
+    it "requires a password to decrypt" do
+      encrypted_data = GPGME::Crypto.encrypt TEXT[:plain],
+        :symmetric => true, :password => "gpgme"
+
+      assert_raises GPGME::Error::BadPassphrase do
+        GPGME::Crypto.decrypt encrypted_data
+      end
+    end
+
+    it "can encrypt and decrypt with the same password" do
+      encrypted_data = GPGME::Crypto.encrypt TEXT[:plain],
+        :symmetric => true, :password => "gpgme"
+
+      plain = GPGME::Crypto.decrypt encrypted_data, :password => "gpgme"
+      assert_equal "Hi there", plain.read
+    end
+
+    it "but breaks with different ones" do
+      encrypted_data = GPGME::Crypto.encrypt TEXT[:plain],
+        :symmetric => true, :password => "gpgme"
+
+      assert_raises GPGME::Error::DecryptFailed do
+        GPGME::Crypto.decrypt encrypted_data, :password => "wrong one"
+      end
+    end
   end
 
   describe :decrypt do
