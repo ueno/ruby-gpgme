@@ -20,9 +20,10 @@ module GPGME
     #  * +:textmode+ if +true+, inform the recipient that the input is text.
     #  * +:keylist_mode+ One of: +KEYLIST_MODE_LOCAL+, +KEYLIST_MODE_EXTERN+,
     #    +KEYLIST_MODE_SIGS+ or +KEYLIST_MODE_VALIDATE+.
-    #  * +:passphrase_callback+ A callback function.
+    #  * +:key_password+ password of the passphrased password being used.
+    #  * +:passphrase_callback+ A callback function. See {#set_passphrase_callback}.
     #  * +:passphrase_callback_value+ An object passed to passphrase_callback.
-    #  * +:progress_callback+  A callback function.
+    #  * +:progress_callback+  A callback function. See {#set_progress_callback}.
     #  * +:progress_callback_value+ An object passed to progress_callback.
     #
     # @example
@@ -47,9 +48,14 @@ module GPGME
       ctx.textmode     = options[:textmode]     if options[:textmode]
       ctx.keylist_mode = options[:keylist_mode] if options[:keylist_mode]
 
-      if options[:passphrase_callback]
-        ctx.set_passphrase_callback options[:passphrase_callback],
-          options[:passphrase_callback_value]
+      if options[:key_password]
+        ctx.set_passphrase_callback GPGME::Ctx.method(:pass_function),
+          options[:key_password]
+      else
+        if options[:passphrase_callback]
+          ctx.set_passphrase_callback options[:passphrase_callback],
+            options[:passphrase_callback_value]
+        end
       end
       if options[:progress_callback]
         ctx.set_progress_callback options[:progress_callback],
@@ -66,6 +72,7 @@ module GPGME
         ctx
       end
     end
+
 
     ##
     # Releases the Ctx instance. Must be called if it was initialized without
@@ -136,9 +143,33 @@ module GPGME
     ##
 
     # Set the passphrase callback with given hook value.
-    # <i>passfunc</i> should respond to <code>call</code> with 5 arguments.
+    # +passfunc+ should respond to +call+ with 5 arguments.
     #
-    #  def passfunc(hook, uid_hint, passphrase_info, prev_was_bad, fd)
+    # * +obj+ the parameter +:passphrase_callback_value+ passed when creating
+    #   the {GPGME::Ctx} object.
+    # * +uid_hint+ hint as to what key are we asking the password for. Ex:
+    #
+    #   +CFB3294A50C2CFD7 Albert Llop <mrsimo@example.com>+
+    #
+    # * +passphrase_info+
+    # * +prev_was_bad+ 0 if it's the first time the password is being asked,
+    #   1 otherwise.
+    # * +fd+ file descriptor where the password must be written too.
+    #
+    # Expects a Method object which can be obtained by the +method+ method
+    # (really..).
+    #
+    #  ctx.set_passphrase_callback(MyModule.method(:passfunc))
+    #
+    # @example this method will simply return +maria+ as password.
+    #  def pass_function(obj, uid_hint, passphrase_info, prev_was_bad, fd)
+    #    io = IO.for_fd(fd, 'w')
+    #    io.puts "maria"
+    #    io.flush
+    #  end
+    #
+    # @example this will interactively ask for the password
+    #  def passfunc(obj, uid_hint, passphrase_info, prev_was_bad, fd)
     #    $stderr.write("Passphrase for #{uid_hint}: ")
     #    $stderr.flush
     #    begin
@@ -152,8 +183,6 @@ module GPGME
     #    end
     #    $stderr.puts
     #  end
-    #
-    #  ctx.set_passphrase_callback(method(:passfunc))
     #
     def set_passphrase_callback(passfunc, hook_value = nil)
       GPGME::gpgme_set_passphrase_cb(self, passfunc, hook_value)
@@ -281,6 +310,8 @@ module GPGME
     # {GPGME::Data} object which is not rewinded (should do +seek(0)+
     # before reading).
     #
+    # Private keys cannot be exported due to GPGME restrictions.
+    #
     # If passed, the key will be exported to +keydata+, which must be
     # a {GPGME::Data} object.
     def export_keys(recipients, keydata = Data.new)
@@ -365,14 +396,6 @@ module GPGME
       GPGME::gpgme_op_verify_result(self)
     end
 
-    # Decrypt the ciphertext and return the plaintext.
-    def decrypt_verify(cipher, plain = Data.new)
-      err = GPGME::gpgme_op_decrypt_verify(self, cipher, plain)
-      exc = GPGME::error_to_exception(err)
-      raise exc if exc
-      plain
-    end
-
     # Remove the list of signers from this object.
     def clear_signers
       GPGME::gpgme_signers_clear(self)
@@ -388,8 +411,8 @@ module GPGME
     end
 
     # Create a signature for the text.
-    # <i>plain</i> is a data object which contains the text.
-    # <i>sig</i> is a data object where the generated signature is stored.
+    # +plain+ is a data object which contains the text.
+    # +sig+ is a data object where the generated signature is stored.
     def sign(plain, sig = Data.new, mode = GPGME::SIG_MODE_NORMAL)
       err = GPGME::gpgme_op_sign(self, plain, sig, mode)
       exc = GPGME::error_to_exception(err)
@@ -426,5 +449,14 @@ module GPGME
 armor=#{armor}, textmode=#{textmode}, \
 keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     end
+
+    private
+
+    def self.pass_function(pass, uid_hint, passphrase_info, prev_was_bad, fd)
+      io = IO.for_fd(fd, 'w')
+      io.puts pass
+      io.flush
+    end
+
   end
 end

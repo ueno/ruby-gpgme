@@ -3,7 +3,7 @@ require 'test_helper'
 
 describe GPGME do
   it "does the roundtrip encrypting" do
-    encrypted = GPGME::Crypto.encrypt TEXT[:plain], :always_trust => true
+    encrypted = GPGME::Crypto.encrypt TEXT[:plain], :always_trust => true, :recipients => KEYS.first[:sha]
     assert_equal TEXT[:plain], GPGME::Crypto.decrypt(encrypted).read
   end
 

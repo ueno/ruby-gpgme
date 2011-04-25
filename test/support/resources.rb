@@ -230,6 +230,102 @@ wL83cFHmFqvdwJ+sOOE1exn7FZMvCAx12eMAJ1KxNrbgrwj6lE6FVTgYwmA9E6Pe
 -----END PGP PRIVATE KEY BLOCK-----
 RUBY
 
+password_key_public = <<-RUBY
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.11 (Darwin)
+
+mQENBE20i3MBCACuRmguvjHCkZaJGu9mD/vMa4ytavXYLqQ0HBQe6RAqVarAidFf
+bKfIAuaqg9xRpnNpDL+hPqbOiYcxy6USw0hvEhLUem83KHIwU8t6+Fu5vRYOxgch
+R/t66N9+B5TfxXg5fAKl7dKesXXw1VwS6jnmjWB1NaWwfmhRkbSQbCRKW38JNQ6t
+xysZnFDtqmp1Y/vb4LZ8Q87ITfHkxLAfPKEFh25qMfXB/iXgP4NnFOFH1bZ9sz4E
+cX0sXEAXKtrpHFOg78qTQaucKu7fBJo+r/crAK7SWutGCv5R5kE+sLNWsOdgFz4k
+CdwgxQeK0URwMF9kNHb/HHwfiWUZZrkAu0sxABEBAAG0M1Rlc3Qgd2l0aCBwYXNz
+d29yZCA8dGVzdF93aXRoX3Bhc3N3b3JkQGV4YW1wbGUuY29tPokBOAQTAQIAIgUC
+TbSLcwIbAwYLCQgHAwIGFQgCCQoLBBYCAwECHgECF4AACgkQ8QmEM7hLckmStQf+
+JYFRx82ufCAZ4PjcXJJJsb1M4jhUo9/mOdWaQy19E5n6OM1heG5dWgoPTBL8t96G
+XQmum9zD2bI6hOIT/0z85Sm/+tbQwZUUba9Rw8/NHnjOuvVxr6DHQOtC86LezIY0
+zrVk6sfCDw0Ll/i3q8zjY5oZw7VOOhCwPd6vhWtdPfW5QQ8/gC/gAGZiHm6Cf1nf
+JV+WRtyUKNnlDVa9iPe4CdTGQfqqgpMWEoHV6NKfQ69A2dNA1SRX2XEecoEXwcnq
+HVO9NqZDdr3NFfMmDEo7vAD77d7hXEFE4MBR5E2C91P+sOuOTVDjVQ3tucJ7qesw
+puyJCPsWWsd9omxTze+RYrkBDQRNtItzAQgAlHfZpWMwcmi1YpGDFdALSk4pozBV
+jjc9QsrWGozmJUpI1SAXOto3k3apR4lPzBsUOuf3bAt2A2e0CWPpCUWPByzm/Hpg
+nIOPAK6Ab9hGpSGSObegz6mNUbhDopmh0XojejWm3CExtBadIY8ukSKOZSqnWsO0
+MQ08eW5xMApqeajtTY8U2U4tVT3BGw0XM5Tqrtg05e0GmYa3wGssjI6f7A1i0InB
+oAxy3AYL2jVPkODsPiUwK6DIfpsc+FQk4ouWfZcp3sgOJXhcoOaL6/Xpb/Rzpy+G
+HaO9+xU/btkcx6IQV0icygFNxcQUDbBBESjDVoRvDbAtWg0rXkeK9N5bAQARAQAB
+iQEfBBgBAgAJBQJNtItzAhsMAAoJEPEJhDO4S3JJS7EH/Rl8NOMaLFs7wpghmoqo
+PHQhzkcV8zXJ8gwT+2qAz1Et9oyU1pHBT/1E+8XqrMlXQhcCevhmwlQdIIQpfzXZ
+eserXabPKrwPDkwPoajVFLVc1WPHzBbmuBP/7XSgEXxfKXE8qA3nAkiidnfdA7ww
+WB+4iMYnsimKAQxTLQvwZE3twnt+5hPbtg89BSaYSv2WuBkh/qAb8DxoffjenTko
+RPX4fQDveZa4UswstJNM1s1hq/idQtCzgrRw0/ZD2g/hupBbXlM7dm+Iiuy+hMFM
+G4bNiySxInxh/nfvsvlz9xgePjqxptjVggEVVkKHvkb8Z+MX+/N632WOVkIw2HFB
+tck=
+=hRl0
+-----END PGP PUBLIC KEY BLOCK-----
+RUBY
+
+password_key_private = <<-RUBY
+-----BEGIN PGP PRIVATE KEY BLOCK-----
+Version: GnuPG v1.4.11 (Darwin)
+
+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
+=9u2Q
+-----END PGP PRIVATE KEY BLOCK-----
+RUBY
+
 encrypted_text = <<-RUBY
 -----BEGIN PGP MESSAGE-----
 Version: GnuPG v1.4.11 (Darwin)
@@ -301,11 +397,33 @@ RBm4OAVgqt3PMSxYZXVcSzq4uZvry7RCp9vN31o+LTnBML+wgKFg6aJPKysdX2fc
 -----END PGP MESSAGE-----
 RUBY
 
+passwored = <<-RUBY
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v1.4.11 (Darwin)
+
+hQEMAykL9/bExDNQAQf/ZXL4iUQEzoE0XfBLakpLTV5euOvdGFVPxrFS481i/Ldi
+Yfpoo/gbB0yEwKnm0faCRSz2AiOQ4f3iIWRwdwoEYTbCW/o1/iXKH8fp6GXd4hQG
+JdRIwr7GoGQFuOb96kZL3TbO4VapC6ubx5evxyhCIRLZPL415YXdGAcqnVvYew92
+pzZn0RWe2dXDlE1HTENVvHoABnBgOOLSE/37kJJYWgsk1QJCSbaxsS6sZdJXcINQ
+uqeKQKagF15DVYRA27viX0IZ9J2x9ytPQWLdf0wc8dE0h4NJiEwL6myU2WPR27xx
+Lrrp3kD2wewwUSljOW/SbXS6TNLSEiLILUZkTr5+F9JIAWF1YLZTxjN9HxABuboy
+wYhnVMaM+gQKDMgbIXdxim0ssq2ICHROYkbC/JTEIVXqnJbKLivfNP6J0ROHcczO
+w/3/C0MallvG
+=hrCw
+-----END PGP MESSAGE-----
+RUBY
+
 KEYS = []
 KEYS << { :sha => 'test1@example.com', :public => key1_public, :private => key1_private}
 KEYS << { :sha => 'test2@example.com', :public => key2_public, :private => key2_private}
 KEYS << { :sha => 'test3@example.com', :public => key3_public, :private => key3_private}
 KEYS << { :sha => 'test4@example.com', :public => key4_public, :private => key4_private}
+
+PASSWORD_KEY = {
+  :sha      => 'test_with_password@example.com',
+  :public   => password_key_public,
+  :private  => password_key_private
+}
 
 TEXT = {
   :plain        => "Hi there",
@@ -313,5 +431,6 @@ TEXT = {
   # Created with a temporary key that's been removed.
   :unavailable  => unavailable.chomp,
   :signed       => signed_text.chomp,
-  :sign         => sign.chomp
+  :sign         => sign.chomp,
+  :passwored    => passwored.chomp
 }

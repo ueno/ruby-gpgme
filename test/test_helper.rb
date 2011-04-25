@@ -43,15 +43,25 @@ end
 #   end
 def with_keys(size, &block)
   KEYS.last(KEYS.size - size).each do |key|
-    delete_key(key)
+    delete_key key
   end
 
   begin
     yield
   ensure
     KEYS.last(KEYS.size - size).each do |key|
-      import_key(key)
+      import_key key
     end
+  end
+end
+
+def with_password_key(&block)
+  import_key PASSWORD_KEY
+
+  begin
+    yield
+  ensure
+    delete_key PASSWORD_KEY
   end
 end
 

@@ -22,6 +22,99 @@ describe GPGME::Ctx do
     ctx.release
   end
 
+  describe :new do
+    # We consider :armor, :protocol, :textmode and :keylist_mode as tested
+    # with the other tests of this file. Here we test the rest
+
+    it ":key_password sets the password for the key" do
+      with_password_key do
+        input  = GPGME::Data.new(TEXT[:passwored])
+        output = GPGME::Data.new
+
+        GPGME::Ctx.new(:key_password => 'gpgme') do |ctx|
+          ctx.decrypt_verify input, output
+        end
+
+        output.seek 0
+        assert_equal "Hi there", output.read.chomp
+      end
+    end
+
+    it ":passphrase_callback sets the callback for the password" do
+      def test_pass_func(obj,par2,par3,prev_was_bad,fd)
+        # prev_was_bad is 0 the first time, 1 the rest
+        if @var == 0
+          assert_equal 0, prev_was_bad
+        else
+          assert_equal 1, prev_was_bad
+        end
+
+        @var += 1
+
+        io = IO.for_fd(fd, 'w')
+        io.puts "wrong pasword"
+        io.flush
+      end
+
+      def with_correct_pass_func(obj,par2,par3,prev_was_bad,fd)
+        io = IO.for_fd(fd, 'w')
+        io.puts "gpgme"
+        io.flush
+      end
+
+      with_password_key do
+        input  = GPGME::Data.new(TEXT[:passwored])
+        output = GPGME::Data.new
+        @var = 0
+
+        assert_raises GPGME::Error::BadPassphrase do
+          GPGME::Ctx.new(:passphrase_callback => method(:test_pass_func)) do |ctx|
+            ctx.decrypt_verify input, output
+          end
+        end
+
+        # Since we request the key 3 times, we should've gone through the
+        # callback 3 times.
+        assert_equal 3, @var
+
+        input.seek 0
+        output.seek 0
+
+        # Shouldn't crash
+        GPGME::Ctx.new(:passphrase_callback => method(:with_correct_pass_func)) do |ctx|
+          ctx.decrypt_verify input, output
+        end
+      end
+    end
+
+    it ":passphrase_callback_value passes a value to the callback function" do
+      def checking_value(value,par2,par3,par4,fd)
+        assert_equal "superman", value
+        io = IO.for_fd(fd, 'w')
+        io.puts "gpgme"
+        io.flush
+      end
+
+      with_password_key do
+        input  = GPGME::Data.new(TEXT[:passwored])
+        output = GPGME::Data.new
+
+        options = {
+          :passphrase_callback => method(:checking_value),
+          :passphrase_callback_value => "superman"
+        }
+
+        GPGME::Ctx.new(options) do |ctx|
+          ctx.decrypt_verify input, output
+        end
+      end
+    end
+
+    # TODO Don't know how to use them yet
+    # it ":progress_callback"
+    # it ":progress_callback_value"
+  end
+
   describe :armor do
     it "sets false by default" do
       ctx = GPGME::Ctx.new
@@ -115,6 +208,15 @@ describe GPGME::Ctx do
     #   GPGME::Ctx.new(:keylist_mode => -200)
     # end
   end
+
+  # describe :set_passphrase_callback do
+  #   def test_pass_func(par1,par2,par3,par4,par5)
+  #     par1
+  #   end
+
+  #   test "it sets the passphrase"
+
+  # end
 
   describe "keylist operations" do
     it "can return all of the keys" do

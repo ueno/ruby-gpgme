@@ -55,9 +55,11 @@ module GPGME
         keys
       end
 
-      # Exports a key
+      # Exports public keys
       #
       #   GPGME::Key.export pattern, options
+      #
+      # Private keys cannot be exported due to GPGME restrictions.
       #
       # @param pattern
       #   Identifier of the key to export.
@@ -123,7 +125,7 @@ module GPGME
     #   # => the key will be written to the file.
     #
     def export(options = {})
-      Key.export self, options
+      Key.export self.sha, options
     end
 
     ##
