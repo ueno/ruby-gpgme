@@ -13,9 +13,9 @@ module GPGME
       # @return [Boolean] true if the engine is installed.
       #
       # @example
-      #   GPGME.engine_check_version(GPGME::PROTOCOL_OpenPGP) # => true
+      #   GPGME::Engine.check_version(GPGME::PROTOCOL_OpenPGP) # => true
       #
-      def engine_check_version(proto)
+      def check_version(proto)
         err = GPGME::gpgme_engine_check_version(proto)
         exc = GPGME::error_to_exception(err)
         !exc
@@ -25,14 +25,14 @@ module GPGME
       # Return an array of {GPGME::EngineInfo} structures of enabled engines.
       #
       # @example
-      #   GPGME.engine_info.first
+      #   GPGME::Engine.engine_info.first
       #   # => #<GPGME::EngineInfo:0x00000100d4fbd8
       #          @file_name="/usr/local/bin/gpg",
       #          @protocol=0,
       #          @req_version="1.3.0",
       #          @version="1.4.11">
       #
-      def engine_info
+      def info
         rinfo = []
         GPGME::gpgme_get_engine_info(rinfo)
         rinfo
@@ -52,14 +52,25 @@ module GPGME
       #   The directory name of the configuration directory.
       #
       # @example
-      #   TODO how do we use this?
+      #   GPGME::Engine.set
       #
-      def set_engine_info(proto, file_name, home_dir)
+      def set_info(proto, file_name, home_dir)
         err = GPGME::gpgme_set_engine_info(proto, file_name, home_dir)
         exc = GPGME::error_to_exception(err)
         raise exc if exc
       end
 
+      ##
+      # Sets the home dir for the configuration options. This way one could,
+      # for example, load the keys from a customized keychain.
+      #
+      # @example
+      #   GPGME::Engine.home_dir = '/tmp'
+      #
+      def home_dir=(home_dir)
+        current = info.first
+        set_info current.protocol, current.file_name, home_dir
+      end
     end # class << self
   end # class Engine
 end # module GPGME

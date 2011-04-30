@@ -22,11 +22,11 @@ end
 
 def remove_keys
   KEYS.each do |key|
-    delete_key(key)
+    remove_key(key)
   end
 end
 
-def delete_key(key)
+def remove_key(key)
   GPGME::Key.find(:public, key[:sha]).each do |k|
     k.delete!(true)
   end
@@ -43,7 +43,7 @@ end
 #   end
 def with_keys(size, &block)
   KEYS.last(KEYS.size - size).each do |key|
-    delete_key key
+    remove_key key
   end
 
   begin
@@ -61,13 +61,12 @@ def with_password_key(&block)
   begin
     yield
   ensure
-    delete_key PASSWORD_KEY
+    remove_key PASSWORD_KEY
   end
 end
 
+# We use a different home directory for the keys to not disturb current
+# installation
+require 'tmpdir'
+GPGME::Engine.home_dir = Dir.tmpdir
 import_keys
-
-# Remove the tests key at the end of test execution
-MiniTest::Unit.after_tests do
-  remove_keys
-end
