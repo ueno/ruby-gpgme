@@ -55,13 +55,13 @@ def with_keys(size, &block)
   end
 end
 
-def with_password_key(&block)
-  import_key PASSWORD_KEY
+def with_key(key, &block)
+  import_key key
 
   begin
     yield
   ensure
-    remove_key PASSWORD_KEY
+    remove_key key
   end
 end
 

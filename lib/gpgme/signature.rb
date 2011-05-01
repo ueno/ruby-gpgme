@@ -13,17 +13,38 @@ module GPGME
       status_code == GPGME::GPG_ERR_NO_ERROR
     end
 
+    def expired_signature?
+      status_code == GPGME::GPG_ERR_SIG_EXPIRED
+    end
+
+    def expired_key?
+      status_code == GPGME::GPG_ERR_KEY_EXPIRED
+    end
+
+    def revoked_key?
+      status_code == GPGME::GPG_ERR_CERT_REVOKED
+    end
+
+    def bad?
+      status_code == GPGME::GPG_ERR_BAD_SIGNATURE
+    end
+
+    def no_key?
+      status_code == GPGME::GPG_ERR_NO_PUBKEY
+    end
+
     def status_code
       GPGME::gpgme_err_code(status)
     end
 
     def from
       @from ||= begin
-        ctx = Ctx.new
-        if from_key = ctx.get_key(fingerprint)
-          "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}"
-        else
-          fingerprint
+        Ctx.new do
+          if from_key = ctx.get_key(fingerprint)
+            "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}"
+          else
+            fingerprint
+          end
         end
       end
     end
@@ -48,7 +69,7 @@ module GPGME
         "Signature made from revoked key #{from}"
       when GPGME::GPG_ERR_BAD_SIGNATURE
         "Bad signature from #{from}"
-      when GPGME::GPG_ERR_NO_ERROR
+      when GPGME::GPG_ERR_NO_PUBKEY
         "No public key for #{from}"
       end
     end

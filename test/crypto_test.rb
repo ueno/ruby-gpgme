@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 require 'test_helper'
+require 'tempfile'
 
 describe GPGME::Crypto do
   describe "default options functionality" do
@@ -43,12 +44,83 @@ describe GPGME::Crypto do
       end
     end
 
-    # it "can specify which key(s) to use for encrypting with a string"
-    # it "can specify which key to use for encrypting with a Key object"
-    # it "can also sign at the same time"
-    # it "can be signed by more than one person"
-    # it "outputs to a file if specified"
-    # it "outputs to something else that responds to write"
+    it "doesn't raise an error and returns something when encrypting nothing" do
+      data = GPGME::Crypto.new.encrypt nil, :always_trust => true
+      refute_empty data.read
+      data = GPGME::Crypto.new.encrypt "", :always_trust => true
+      refute_empty data.read
+    end
+
+    it "can specify which key(s) to use for encrypting with a string" do
+      crypto    = GPGME::Crypto.new :always_trust => true
+      key       = KEYS.last
+      encrypted = crypto.encrypt TEXT[:plain], :recipients => key[:sha]
+      assert_equal TEXT[:plain], crypto.decrypt(encrypted).read
+
+      remove_key key
+      encrypted.seek 0
+      assert_raises GPGME::Error::DecryptFailed do
+        crypto.decrypt(encrypted)
+      end
+      import_key key
+    end
+
+    it "can specify which key to use for encrypting with a Key object" do
+      crypto    = GPGME::Crypto.new :always_trust => true
+      key       = KEYS.last
+      real_key  = GPGME::Key.find(:public, key[:sha]).first
+
+      encrypted = crypto.encrypt TEXT[:plain], :recipients => real_key
+      assert_equal TEXT[:plain], crypto.decrypt(encrypted).read
+
+      remove_key key
+      encrypted.seek 0
+      assert_raises GPGME::Error::DecryptFailed do
+        crypto.decrypt(encrypted)
+      end
+      import_key key
+    end
+
+    it "can also sign at the same time" do
+      crypto      = GPGME::Crypto.new :always_trust => true
+      encrypted   = crypto.encrypt TEXT[:plain], :sign => true
+      signatures  = 0
+
+      crypto.verify(encrypted) do |signature|
+        assert_instance_of GPGME::Signature, signature
+        signatures += 1
+      end
+
+      assert_equal 1, signatures
+    end
+
+    it "can be signed by more than one person" do
+      crypto      = GPGME::Crypto.new :always_trust => true
+      encrypted   = crypto.encrypt TEXT[:plain], :sign => true, :signers => KEYS.map{|k| k[:sha]}
+      signatures  = 0
+
+      crypto.verify(encrypted) do |signature|
+        assert_instance_of GPGME::Signature, signature
+        signatures += 1
+      end
+
+      assert_equal 4, signatures
+    end
+
+    it "outputs to a file if specified" do
+      crypto    = GPGME::Crypto.new :always_trust => true
+      file      = Tempfile.new "test"
+      crypto.encrypt TEXT[:plain], :output => file
+      file_contents = file.read
+      file.seek 0
+
+      refute_empty file_contents
+      assert_equal TEXT[:plain], crypto.decrypt(file).read
+    end
+
+    # TODO find how to test
+    # it "raises GPGME::Error::UnusablePublicKey"
+    # it "raises GPGME::Error::UnusableSecretKey"
   end
 
   describe "symmetric encryption/decryption" do
@@ -133,6 +205,7 @@ describe GPGME::Crypto do
 
       crypto.verify(sign) do |signature|
         assert_instance_of GPGME::Signature, signature
+        assert signature.valid?
         signatures += 1
       end
 

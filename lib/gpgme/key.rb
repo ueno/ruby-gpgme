@@ -36,7 +36,7 @@ module GPGME
       #   #    capable of signing
       def find(secret, keys_or_names = nil, purposes = [])
         secret = (secret == :secret)
-        keys_or_names = [""] if keys_or_names.nil? || keys_or_names.empty?
+        keys_or_names = [""] if keys_or_names.nil? || (keys_or_names.is_a?(Array) && keys_or_names.empty?)
         keys_or_names = [keys_or_names].flatten
         purposes      = [purposes].flatten.compact.uniq
 

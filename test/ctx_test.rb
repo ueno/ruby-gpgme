@@ -27,7 +27,7 @@ describe GPGME::Ctx do
     # with the other tests of this file. Here we test the rest
 
     it ":password sets the password for the key" do
-      with_password_key do
+      with_key PASSWORD_KEY do
         input  = GPGME::Data.new(TEXT[:passwored])
         output = GPGME::Data.new
 
@@ -62,7 +62,7 @@ describe GPGME::Ctx do
         io.flush
       end
 
-      with_password_key do
+      with_key PASSWORD_KEY do
         input  = GPGME::Data.new(TEXT[:passwored])
         output = GPGME::Data.new
         @var = 0
@@ -95,7 +95,7 @@ describe GPGME::Ctx do
         io.flush
       end
 
-      with_password_key do
+      with_key PASSWORD_KEY do
         input  = GPGME::Data.new(TEXT[:passwored])
         output = GPGME::Data.new
 
