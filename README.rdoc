@@ -41,7 +41,8 @@ user-friendly, and the lowest level API is close to the C interface of GPGME.
 For example, to create a cleartext signature of the plaintext from
 stdin and write the result to stdout can be written as follows.
 
- GPGME::Crypto.clearsign($stdin, :output => $stdout)
+ crypto = GPGME::Crypto.new
+ crypto.clearsign $stdin, :output => $stdout
 
 === The mid level API
 
@@ -88,18 +89,19 @@ The {GPGME::Crypto} class has the high level convenience methods to encrypt,
 decrypt, sign and verify signatures. Here are some examples, but it is
 recommended to read through the {GPGME::Crypto} class to see all the options.
 
-* Document encryption via {GPGME::Crypto.encrypt}:
- GPGME::Crypto.encrypt "Hello world!"
+* Document encryption via {GPGME::Crypto#encrypt}:
+ crypto = GPGME::Crypto.new
+ crypto.encrypt "Hello world!"
 
-* Document decryption via {GPGME::Crypto.decrypt} (including signature verification):
- GPGME::Crypto.decrypt File.open("text.gpg")
+* Document decryption via {GPGME::Crypto#decrypt} (including signature verification):
+ crypto.decrypt File.open("text.gpg")
 
-* Document signing via {GPGME::Crypto.sign}. Also the clearsigning and detached signing.
- GPGME::Crypto.sign "I hereby proclaim Github the beneficiary of all my money when I die"
+* Document signing via {GPGME::Crypto#sign}. Also the clearsigning and detached signing.
+ crypto.sign "I hereby proclaim Github the beneficiary of all my money when I die"
 
-* Sign verification via {GPGME::Crypto.verify}
- sign = GPGME::Crypto.sign("Some text")
- data = GPGME::Crypto.verify(sign) { |signature| signature.valid? }
+* Sign verification via {GPGME::Crypto#verify}
+ sign = crypto.sign "Some text"
+ data = crypto.verify(sign) { |signature| signature.valid? }
 
 === Key
 
