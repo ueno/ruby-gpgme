@@ -6,7 +6,7 @@ describe GPGME::SubKey do
   # We trust Key for common methods that come from KeyCommon
 
   it "has certain attributes" do
-    subkey = GPGME::Key.find(:secret).first.subkeys.first
+    subkey = GPGME::Key.find(:secret).first.primary_subkey
     [:pubkey_algo, :length, :keyid, :fpr, :fingerprint].each do |attrib|
       assert subkey.respond_to?(attrib), "Key doesn't respond to #{attrib}"
     end
@@ -15,6 +15,16 @@ describe GPGME::SubKey do
   it "won't allow the creation of GPGME::SubKey's without the C API" do
     assert_raises NoMethodError do
       GPGME::SubKey.new
+    end
+  end
+
+  it "knows if the key is expired" do
+    subkey = GPGME::Key.find(:secret).first.primary_subkey
+    refute subkey.expired
+
+    with_key EXPIRED_KEY do
+      subkey = GPGME::Key.find(:secret, EXPIRED_KEY[:sha]).first.primary_subkey
+      assert subkey.expired
     end
   end
 

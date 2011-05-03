@@ -2,6 +2,14 @@ module GPGME
 
   ##
   # A ruby representation of a public or a secret key.
+  #
+  # Every key has two instances of {GPGME::SubKey}, accessible through
+  # {.subkeys}, and with a {.primary_subkey} where most attributes are
+  # derived from, like the +fingerprint+.
+  #
+  # Also, every key has at least a {GPGME::UserID}, accessible through
+  # {.uids}, with a {.primary_uid}, where other attributes are derived from,
+  # like +email+ or +name+
   class Key
     private_class_method :new
 
@@ -53,6 +61,12 @@ module GPGME
           end
         end
         keys
+      end
+
+      def get(fingerprint)
+        Ctx.new do |ctx|
+          ctx.get_key(fingerprint)
+        end
       end
 
       # Exports public keys
@@ -137,20 +151,60 @@ module GPGME
       end
     end
 
+    ##
+    # Returns the expiry date for this key
+    def expires
+      primary_subkey.expires
+    end
+
+    ##
+    # Returns true if the key is expired
+    def expired
+      subkeys.any?(&:expired)
+    end
+
     def primary_subkey
       @primary_subkey ||= subkeys.first
     end
 
+    ##
+    # Short descriptive value. Can be used to identify the key.
     def sha
       primary_subkey.sha
     end
 
+    ##
+    # Longer descriptive value. Can be used to identify the key.
+    def fingerprint
+      primary_subkey.fingerprint
+    end
+
+    ##
+    # Returns the main {GPGME::UserID} for this key.
     def primary_uid
       uids.first
     end
 
+    ##
+    # Returns the email for this key.
     def email
       primary_uid.email
+    end
+
+    ##
+    # Returns the issuer name for this key.
+    def name
+      primary_uid.name
+    end
+
+    ##
+    # Returns the issuer comment for this key.
+    def comment
+      primary_uid.comment
+    end
+
+    def ==(another_key)
+      fingerprint == another_key.fingerprint
     end
 
     def inspect

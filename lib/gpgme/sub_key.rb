@@ -15,6 +15,11 @@ module GPGME
       Time.at(@expires)
     end
 
+    def expired
+      return false if @expires == 0
+      @expires < Time.now.to_i
+    end
+
     def sha
       (@fingerprint || @keyid)[-8 .. -1]
     end

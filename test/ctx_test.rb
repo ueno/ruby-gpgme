@@ -272,7 +272,7 @@ describe GPGME::Ctx do
       end
     end
 
-    it "can iterate through them getting only private ones" do
+    it "can iterate through them getting only secret ones" do
       GPGME::Ctx.new do |ctx|
         ctx.each_key("", true) do |key|
           assert_instance_of GPGME::Key, key
@@ -377,14 +377,14 @@ RUBY
     end
 
     it "imports keys and can get a result object" do
-      with_keys 3 do
-        public_amount  = GPGME::Key.find(:public).size
+      without_key KEYS.last do
+        public_amount = GPGME::Key.find(:public).size
         secret_amount = GPGME::Key.find(:secret).size
 
         result = nil
         GPGME::Ctx.new do |ctx|
           ctx.import_keys(GPGME::Data.new(KEYS.last[:public]))
-          ctx.import_keys(GPGME::Data.new(KEYS.last[:private]))
+          ctx.import_keys(GPGME::Data.new(KEYS.last[:secret]))
 
           result = ctx.import_result
         end
@@ -407,9 +407,10 @@ RUBY
       end
 
       assert_empty GPGME::Key.find(:public, key.sha)
+      import_keys
     end
 
-    it "raises error if there's a private key attached but private key deletion isn't marked" do
+    it "raises error if there's a secret key attached but secret key deletion isn't marked" do
       original_keys = GPGME::Key.find(:public)
       key = original_keys.first
 

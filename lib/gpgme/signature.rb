@@ -39,12 +39,20 @@ module GPGME
 
     def from
       @from ||= begin
-        Ctx.new do
+        Ctx.new do |ctx|
           if from_key = ctx.get_key(fingerprint)
             "#{from_key.subkeys[0].keyid} #{from_key.uids[0].uid}"
           else
             fingerprint
           end
+        end
+      end
+    end
+
+    def key
+      @key ||= begin
+        Ctx.new do |ctx|
+          @key = ctx.get_key(fingerprint)
         end
       end
     end

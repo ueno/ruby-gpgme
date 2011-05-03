@@ -211,5 +211,32 @@ describe GPGME::Crypto do
 
       assert_equal 1, signatures
     end
+
+    # TODO Find how to import an expired public key
+    # it "raises an error if trying to sign with an expired key" do
+    #   with_key EXPIRED_KEY do
+    #     crypto  = GPGME::Crypto.new
+    #     assert_raises GPGME::Error::General do
+    #       sign = crypto.sign "Hi there", :signer => EXPIRED_KEY[:sha]
+    #     end
+    #   end
+    # end
+
+    it "selects who to sign for" do
+      crypto  = GPGME::Crypto.new
+      sign    = crypto.sign "Hi there", :signer => KEYS.last[:sha]
+      key     = GPGME::Key.get(KEYS.last[:sha])
+
+      signatures = 0
+
+      crypto.verify(sign) do |signature|
+        assert_instance_of GPGME::Signature, signature
+        assert_equal key, signature.key
+        signatures += 1
+      end
+
+      assert_equal 1, signatures
+    end
+
   end
 end

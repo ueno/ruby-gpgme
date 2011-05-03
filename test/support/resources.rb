@@ -20,7 +20,7 @@ Pwe30z4usZ5kM/PDMCpN+A9vkzYieyxquvkul2W7VfzLftx81UexyoFnJ9I=
 -----END PGP PUBLIC KEY BLOCK-----
 RUBY
 
-key1_private = <<-RUBY
+key1_secret = <<-RUBY
 -----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (Darwin)
 
@@ -78,7 +78,7 @@ AjUk9I7RWu3E2loIHgYeTBwXyKLmWr5ZVfpX6KvIa4Y3MTRnE0x6+woeT90=
 -----END PGP PUBLIC KEY BLOCK-----
 RUBY
 
-key2_private = <<-RUBY
+key2_secret = <<-RUBY
 -----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (Darwin)
 
@@ -136,7 +136,7 @@ tsU3JEa9ma0EN5Iwj8cHpvzATsxS5zCIEfDYHIHNhGhnpFp4GKgN6cXD2QY=
 -----END PGP PUBLIC KEY BLOCK-----
 RUBY
 
-key3_private = <<-RUBY
+key3_secret = <<-RUBY
 -----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (Darwin)
 
@@ -194,7 +194,7 @@ OBjCYD0To97vULkS/+bU1+jAE3IYtedYNFdGhd0cm4kLzFVlAzc9xDLTp08=
 -----END PGP PUBLIC KEY BLOCK-----
 RUBY
 
-key4_private = <<-RUBY
+key4_secret = <<-RUBY
 -----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (Darwin)
 
@@ -264,7 +264,7 @@ tck=
 -----END PGP PUBLIC KEY BLOCK-----
 RUBY
 
-password_key_private = <<-RUBY
+password_key_secret = <<-RUBY
 -----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (Darwin)
 
@@ -326,6 +326,66 @@ c/cYHj46sabY1YIBFVZCh75G/GfjF/vzet9ljlZCMNhxQbXJ
 -----END PGP PRIVATE KEY BLOCK-----
 RUBY
 
+expired_key_public = <<-RUBY
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.11 (Darwin)
+
+mI0ETb8S8gEEAK2m1FMu8mAWS+WwnQIXLikRegUC5faHFpNNwqp9SgH4GuWxq2iQ
+PfnSHRhE6qtcK6DVqJv4R6h1AfCCd1Vdgp8FtWyCA6dgxflH206VY+GgfwbK6nDs
+eiCX9wFNKZjXrmesOete1oxIrqDKpNQbJ1zwGSQ+GW3KQFq4gImTiA17ABEBAAG0
+JkV4cGlyZWQgS2V5IDx0ZXN0X2V4cGlyZWRAZXhhbXBsZS5jb20+iL4EEwECACgF
+Ak2/EvICGwMFCQABUYAGCwkIBwMCBhUIAgkKCwQWAgMBAh4BAheAAAoJEDY/0HHE
+tnipp88D/RSAytabxU9uGCba4mEla/6PJavnqA1y+Pfuvqq6mlAOPTsL/Y5TXyp7
+USEgqmigdga+FHVJfZu3C+uxkIkzGjhi4iuL7nI3gGwGNd82HJL0j1WnM47brPjo
+F85SxAyn0LXk77piMVlK96TfQFX0Zk+Zz8QEaW3B59O705US6Q8puI0ETb8S8gEE
+ANBET93bCi3SalKuNtT5D7L7+zNgiP9xEpCIhoUbW0OVJ3Nz1iSWRLYeQsPyKnhZ
+Ws1Gv9Bp7MC5iOP1jtPd81elrwN71o+4xT7nv3Hvz1JzuhrYFC/wKcz1DG/Diset
+jKPJu/W8ip0K5jYvDIUrDO8g9jCc8m80wMhxMzpsVNhnABEBAAGIpQQYAQIADwUC
+Tb8S8gIbDAUJAAFRgAAKCRA2P9BxxLZ4qbMOA/9XY586CtP1QCVvIdlJVVuLc/mu
+I7IVAp03q4hqA6ykooLFu3FzYFTCENcyvemEB4TJhfG6XYmrq5N0jOrl6BB/ONLc
+37OBnsxWQBKVbn7yzDb6WzsMtAlQ8Q8S5oYbIWSt+nUoE5slZ+tx9ngzLG20IpUH
+sunYPhvnuBAfIRuA0A==
+=tKG5
+-----END PGP PUBLIC KEY BLOCK-----
+RUBY
+
+expired_key_secret = <<-RUBY
+-----BEGIN PGP PRIVATE KEY BLOCK-----
+Version: GnuPG v1.4.11 (Darwin)
+
+lQHYBE2/EvIBBACtptRTLvJgFkvlsJ0CFy4pEXoFAuX2hxaTTcKqfUoB+Brlsato
+kD350h0YROqrXCug1aib+EeodQHwgndVXYKfBbVsggOnYMX5R9tOlWPhoH8Gyupw
+7Hogl/cBTSmY165nrDnrXtaMSK6gyqTUGydc8BkkPhltykBauICJk4gNewARAQAB
+AAP8DWaEl6kiZRqmkrwO8bYn05CyS0HoMx6rnFE+ed+fRW86/1ZQzvBKoaux0q/T
+mC1NsWSriHwfzR0loCsnprvHmsaX7O7W4PHZRN+xB9clpRGfEnHiyljWuaP8bxWg
+r57fmnJ+bFoWanyxZsHoYZrVOlMa6JpQiQ+y0QUsbykTCPECAMt6Z3qc54JtU3Rt
+lNzHNE7zRYt1z2fRGnOmrh0ch5TF9x+uRqQ/Am4VYe6Xzjhj6HBO7tB/n4xK4ypz
+JLviw8MCANp5hw99W1AOTXpIkIS7xC9Pbx2j8AwAW5nlzyFILX+mQR/SmUX1H722
+A8gj98hb6UUuf+CRzx7/FB6gk6Yzi+kCAMhcDPRgDUPggcOSdCdZDbZ78xwHwwOS
++9MT+VkIYDmOJOSer9xUdtGPcr8t/kGeICFSqZC2My38Sj1TJTs4rn2gtrQmRXhw
+aXJlZCBLZXkgPHRlc3RfZXhwaXJlZEBleGFtcGxlLmNvbT6IvgQTAQIAKAUCTb8S
+8gIbAwUJAAFRgAYLCQgHAwIGFQgCCQoLBBYCAwECHgECF4AACgkQNj/QccS2eKmn
+zwP9FIDK1pvFT24YJtriYSVr/o8lq+eoDXL49+6+qrqaUA49Owv9jlNfKntRISCq
+aKB2Br4UdUl9m7cL67GQiTMaOGLiK4vucjeAbAY13zYckvSPVaczjtus+OgXzlLE
+DKfQteTvumIxWUr3pN9AVfRmT5nPxARpbcHn07vTlRLpDymdAdgETb8S8gEEANBE
+T93bCi3SalKuNtT5D7L7+zNgiP9xEpCIhoUbW0OVJ3Nz1iSWRLYeQsPyKnhZWs1G
+v9Bp7MC5iOP1jtPd81elrwN71o+4xT7nv3Hvz1JzuhrYFC/wKcz1DG/DisetjKPJ
+u/W8ip0K5jYvDIUrDO8g9jCc8m80wMhxMzpsVNhnABEBAAEAA/0VV0Kl1amb22lY
+spBcz26r5QUvFQ/EuRXxaIP8RLrb2H9T5cVGN32v+bbWtExky6cxzLOgDBKeBwT/
+cuyhSieCntuxgjHoRRO8CKDSAWsjRTC/R9UpnTk+UiCrxK/2Bk7BorFbBR+lcmi9
+bddoOe6p/LAFvJhK7y6OCCUqrh08LQIA4pPdh/8HdDgaHLaBkFMq3L5HVD1WfyVf
+emCNIfGmE5i9JU0VRU7xPJXlEWxKmFPKdlGOAT8V4QSgLVvp7H+3OwIA60+9rWrB
+i3mQgjETNM2mT0wDrXNCyuR2MdeOfCyEYY+4xBLdPs7aSsVakQrx/1B8WZkWZUNU
+d7iuHlKaickIxQIA50UW9VuaMxyImLIdt2RzcLacOC98oMvZ8R/5ShkWunGOkUka
+0YHOGCUAqhjwh5SFKjp3VYfy22P3YR1Usj8ETpmRiKUEGAECAA8FAk2/EvICGwwF
+CQABUYAACgkQNj/QccS2eKmzDgP/V2OfOgrT9UAlbyHZSVVbi3P5riOyFQKdN6uI
+agOspKKCxbtxc2BUwhDXMr3phAeEyYXxul2Jq6uTdIzq5egQfzjS3N+zgZ7MVkAS
+lW5+8sw2+ls7DLQJUPEPEuaGGyFkrfp1KBObJWfrcfZ4MyxttCKVB7Lp2D4b57gQ
+HyEbgNA=
+=NliS
+-----END PGP PRIVATE KEY BLOCK-----
+RUBY
+
 encrypted_text = <<-RUBY
 -----BEGIN PGP MESSAGE-----
 Version: GnuPG v1.4.11 (Darwin)
@@ -373,6 +433,19 @@ jVRh9AFdOceUv5zZJpiSYXYXyntWqSy4Q5zguQmzhE5Wu3mY9HYPcpAUHxbn
 -----END PGP MESSAGE-----
 RUBY
 
+signed_with_expired_key_text = <<-RUBY
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v1.4.11 (Darwin)
+
+owGbwMvMwMRoZn+h8Mi2ipWMpwWTmHXVzH33C7d6ZCqUZKQWpXbMYWFgZGJgY2UC
+iTJwcQrAVDsoMv9mvx954X+W9uzfGSVVvlE5n3yFrdn2CB/q0jr4Um5C/Notby0t
+YxibhPfqpC4Sy3UMfHd/76qvBp8cZv3749/xJ2LZGT9O39nsM7yvfXsjttm1Kyv1
+unDJJQnpxHlOubtKPuTkLU+aZOQtf1/zsRKTz5zv37XLTY6qWdy18fr0t1fbf8o9
+jxAA
+=Vta9
+-----END PGP MESSAGE-----
+RUBY
+
 unavailable = <<-RUBY
 -----BEGIN PGP MESSAGE-----
 Version: GnuPG v1.4.11 (Darwin)
@@ -414,23 +487,30 @@ w/3/C0MallvG
 RUBY
 
 KEYS = []
-KEYS << { :sha => 'test1@example.com', :public => key1_public, :private => key1_private}
-KEYS << { :sha => 'test2@example.com', :public => key2_public, :private => key2_private}
-KEYS << { :sha => 'test3@example.com', :public => key3_public, :private => key3_private}
-KEYS << { :sha => 'test4@example.com', :public => key4_public, :private => key4_private}
+KEYS << { :sha => 'test1@example.com', :public => key1_public, :secret => key1_secret}
+KEYS << { :sha => 'test2@example.com', :public => key2_public, :secret => key2_secret}
+KEYS << { :sha => 'test3@example.com', :public => key3_public, :secret => key3_secret}
+KEYS << { :sha => 'test4@example.com', :public => key4_public, :secret => key4_secret}
 
 PASSWORD_KEY = {
-  :sha      => 'test_with_password@example.com',
-  :public   => password_key_public,
-  :private  => password_key_private
+  :sha    => 'test_with_password@example.com',
+  :public => password_key_public,
+  :secret => password_key_secret
+}
+
+EXPIRED_KEY = {
+  :sha    => "test_expired@example.com",
+  :public => expired_key_public,
+  :secret => expired_key_secret
 }
 
 TEXT = {
-  :plain        => "Hi there",
-  :encrypted    => encrypted_text.chomp,
+  :plain            => "Hi there",
+  :encrypted        => encrypted_text.chomp,
   # Created with a temporary key that's been removed.
-  :unavailable  => unavailable.chomp,
-  :signed       => signed_text.chomp,
-  :sign         => sign.chomp,
-  :passwored    => passwored.chomp
+  :unavailable      => unavailable.chomp,
+  :signed           => signed_text.chomp,
+  :sign             => sign.chomp,
+  :passwored        => passwored.chomp,
+  :expired_key_sign => signed_with_expired_key_text.chomp
 }

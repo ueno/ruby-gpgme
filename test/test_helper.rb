@@ -15,9 +15,9 @@ def import_keys
   end
 end
 
-def import_key(key)
-  GPGME::Key.import key[:public]
-  GPGME::Key.import key[:private]
+def import_key(key, only = :all)
+  GPGME::Key.import(key[:public]) unless only == :secret
+  GPGME::Key.import(key[:secret]) unless only == :public
 end
 
 def remove_keys
@@ -26,47 +26,48 @@ def remove_keys
   end
 end
 
-def remove_key(key)
-  GPGME::Key.find(:public, key[:sha]).each do |k|
+def remove_all_keys
+  GPGME::Key.find(:public).each do |k|
+    k.delete!(true)
+  end
+  GPGME::Key.find(:secret).each do |k|
     k.delete!(true)
   end
 end
 
-##
-# Execute the code inside the block with only the +size+ first keys available.
-#
-# @example
-#   test "something that requires no keys" do
-#     with_keys 0 do
-#       # none of the test keys are available
-#     end
-#   end
-def with_keys(size, &block)
-  KEYS.last(KEYS.size - size).each do |key|
-    remove_key key
+def remove_key(key)
+  GPGME::Key.find(:public, key[:sha]).each do |k|
+    k.delete!(true)
   end
-
-  begin
-    yield
-  ensure
-    KEYS.last(KEYS.size - size).each do |key|
-      import_key key
-    end
+  GPGME::Key.find(:secret, key[:sha]).each do |k|
+    k.delete!(true)
   end
 end
 
-def with_key(key, &block)
-  import_key key
+def with_key(key, only = :all, &block)
+  import_key key, only
 
   begin
     yield
   ensure
     remove_key key
+  end
+end
+
+def without_key(key, &block)
+  remove_key key
+
+  begin
+    yield
+  ensure
+    import_key key
   end
 end
 
 # We use a different home directory for the keys to not disturb current
 # installation
+
 require 'tmpdir'
 GPGME::Engine.home_dir = Dir.tmpdir
+remove_all_keys
 import_keys

@@ -17,6 +17,13 @@ describe GPGME::Key do
     end
   end
 
+  it "can compare one with another even though if they're not the same object" do
+    key1 = GPGME::Key.find(:secret).first
+    key2 = GPGME::Key.find(:secret).first
+    refute_equal key1.object_id, key2.object_id
+    assert_equal key1, key2
+  end
+
   describe :find do
     it "should return all by default" do
       keys = GPGME::Key.find :secret
@@ -137,5 +144,44 @@ describe GPGME::Key do
     end
   end
 
+  describe :delete! do
+    it "deletes the key itself and its secret one if called with true" do
+      begin
+        key = KEYS.first
+        GPGME::Key.find(:public, key[:sha]).first.delete!(true)
+
+        assert_empty GPGME::Key.find(:public, key[:sha])
+        assert_empty GPGME::Key.find(:secret, key[:sha])
+      ensure
+        import_key key
+      end
+    end
+
+    it "raises GPGME::Error::Conflict if we're deleting a key that is secret" do
+      key = KEYS.first
+      assert_raises GPGME::Error::Conflict do
+        GPGME::Key.find(:secret, key[:sha]).first.delete!
+      end
+      refute_empty GPGME::Key.find(:secret, key[:sha])
+    end
+  end
+
+  it "knows if the key is expired" do
+    key = GPGME::Key.find(:secret).first
+    refute key.expired
+
+    with_key EXPIRED_KEY do
+      key = GPGME::Key.find(:secret, EXPIRED_KEY[:sha]).first
+      assert key.expired
+    end
+  end
+
+  it "returns the expiry date of the first subkey" do
+    key = GPGME::Key.find(:secret).first
+    subkey = key.primary_subkey
+    subkey.expects(:expired).returns(true)
+
+    assert key.expired
+  end
 end
 
