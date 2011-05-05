@@ -12,6 +12,7 @@ GEM
       ruby_core_source (>= 0.1.4)
     minitest (2.1.0)
     mocha (0.9.12)
+    rcov (0.9.9)
     ruby-debug-base19 (0.11.25)
       columnize (>= 0.3.1)
       linecache19 (>= 0.5.11)
@@ -31,5 +32,6 @@ DEPENDENCIES
   gpgme!
   minitest (~> 2.1.0)
   mocha (~> 0.9.12)
+  rcov (~> 0.9.9)
   ruby-debug19 (~> 0.11.6)
   yard (~> 0.6.7)
