@@ -2,7 +2,7 @@ $:.push File.expand_path("../..", __FILE__) # C extension is in the root
 
 require 'gpgme_n'
 
-# TODO without this call one can't GPGME::Ctx.new :\
+# TODO without this call one can't GPGME::Ctx.new, find out why
 GPGME::gpgme_check_version(nil)
 
 require 'gpgme/constants'

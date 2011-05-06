@@ -91,7 +91,12 @@ recommended to read through the {GPGME::Crypto} class to see all the options.
 
 * Document encryption via {GPGME::Crypto#encrypt}:
  crypto = GPGME::Crypto.new
- crypto.encrypt "Hello world!"
+ crypto.encrypt "Hello world!", :recipients => "someone@example.com"
+
+* Symmetric encryption:
+ crypto = GPGME::Crypto.new :password => "gpgme"
+ crypto.encrypt "Hello world!", :symmetric => true
+
 
 * Document decryption via {GPGME::Crypto#decrypt} (including signature verification):
  crypto.decrypt File.open("text.gpg")
@@ -129,7 +134,19 @@ creation.
 
 === Engine
 
-Provides three convenience methods to obtain information about the
+Provides three convenience methods to obtain information about the gpg engine
+one is currently using. For example:
+
+* Getting current information
+ GPGME::Engine.engine_info.first
+      # => #<GPGME::EngineInfo:0x00000100d4fbd8
+             @file_name="/usr/local/bin/gpg",
+             @protocol=0,
+             @req_version="1.3.0",
+             @version="1.4.11">
+
+* Changing home directory to work with different settings:
+ GPGME::Engine.home_dir = '/tmp'
 
 == Contributing
 

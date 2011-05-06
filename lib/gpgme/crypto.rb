@@ -231,7 +231,7 @@ module GPGME
     # @example specifying the signer
     #   crypto.sign "Hi there", :signer => "mrsimo@example.com"
     #
-    # @raise [GPGME::Error::UnusableSecretKey] TODO don't know
+    # @raise [GPGME::Error::UnusableSecretKey] TODO don't know when
     def sign(text, options = {})
       options = @default_options.merge options
 
