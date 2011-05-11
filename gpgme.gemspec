@@ -1,5 +1,5 @@
 Gem::Specification.new do |s|
-  s.name              = 'ruby-gpgme'
+  s.name              = 'gpgme'
   s.version           = '1.0.9'
   s.authors           = ['Daiki Ueno']
   s.date              = '2011-05-09'
