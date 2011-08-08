@@ -28,4 +28,18 @@ describe GPGME::SubKey do
     end
   end
 
+  describe :inspect do
+    it "can be inspected" do
+      subkey = GPGME::Key.find(:secret).first.primary_subkey
+      subkey.inspect
+    end
+  end
+
+  describe :to_s do
+    it "can be coerced into a String" do
+      subkey = GPGME::Key.find(:secret).first.primary_subkey
+      subkey.to_s
+    end
+  end
+
 end

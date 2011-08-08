@@ -36,7 +36,7 @@ module GPGME
     end
 
     def inspect
-      sprintf("#<#{self.class} %s %4d%c/%s %s trust=%s, capability=%s>",
+      sprintf("#<#{self.class} %s %4d%s/%s %s trust=%s, capability=%s>",
               secret? ? 'ssc' : 'sub',
               length,
               pubkey_algo_letter,
@@ -47,7 +47,7 @@ module GPGME
     end
 
     def to_s
-      sprintf("%s   %4d%c/%s %s\n",
+      sprintf("%s   %4d%s/%s %s\n",
               secret? ? 'ssc' : 'sub',
               length,
               pubkey_algo_letter,

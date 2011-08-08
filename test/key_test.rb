@@ -183,5 +183,19 @@ describe GPGME::Key do
 
     assert key.expired
   end
+
+  describe :inspect do
+    it "can be inspected" do
+      key = GPGME::Key.find(:secret).first
+      key.inspect
+    end
+  end
+
+  describe :to_s do
+    it "can be coerced into a String" do
+      key = GPGME::Key.find(:secret).first
+      key.to_s
+    end
+  end
 end
 

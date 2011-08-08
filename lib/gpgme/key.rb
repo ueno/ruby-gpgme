@@ -208,7 +208,7 @@ module GPGME
     end
 
     def inspect
-      sprintf("#<#{self.class} %s %4d%c/%s %s trust=%s, owner_trust=%s, \
+      sprintf("#<#{self.class} %s %4d%s/%s %s trust=%s, owner_trust=%s, \
 capability=%s, subkeys=%s, uids=%s>",
               primary_subkey.secret? ? 'sec' : 'pub',
               primary_subkey.length,
@@ -224,7 +224,7 @@ capability=%s, subkeys=%s, uids=%s>",
 
     def to_s
       primary_subkey = subkeys[0]
-      s = sprintf("%s   %4d%c/%s %s\n",
+      s = sprintf("%s   %4d%s/%s %s\n",
                   primary_subkey.secret? ? 'sec' : 'pub',
                   primary_subkey.length,
                   primary_subkey.pubkey_algo_letter,
