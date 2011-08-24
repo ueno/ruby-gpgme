@@ -8,17 +8,18 @@ require 'yard'
 
 desc "Re-compile the extensions"
 task :compile do
-  FileUtils.rm_f('gpgme_n.bundle')
-  FileUtils.rm_f('gpgme_n.o')
-  FileUtils.rm_f('Makefile')
+  FileUtils.rm_rf('tmp') if File.directory?('tmp')
+  mkdir 'tmp'
 
-  system "ruby extconf.rb"
-  system "make"
+  Dir.chdir('tmp') do
+    system "ruby #{File.dirname(__FILE__)}/ext/gpgme/extconf.rb"
+    system "make"
+  end
 end
 
 task :default => [:test]
 
-Rake::TestTask.new(:test) do |t|
+Rake::TestTask.new(:test => :compile) do |t|
   t.libs << 'test'
   t.pattern = "test/**/*_test.rb"
   t.verbose = true

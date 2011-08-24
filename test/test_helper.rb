@@ -1,4 +1,9 @@
 # -*- encoding: utf-8 -*-
+
+# include compiled gpgme_n.bundle
+tmp_dir = File.join(File.dirname(__FILE__), '..', 'tmp')
+$:.unshift(tmp_dir) if File.directory?(tmp_dir)
+
 require 'rubygems'
 require 'bundler/setup'
 require 'minitest/autorun'
