@@ -40,7 +40,7 @@ module GPGME
       #
       # @example
       #   GPGME::Key.find(:public, "mrsimo@example.com", :sign)
-      #   # => return the public keys that match mrsimo@exampl.com and are
+      #   # => return the public keys that match mrsimo@example.com and are
       #   #    capable of signing
       def find(secret, keys_or_names = nil, purposes = [])
         secret = (secret == :secret)
