@@ -1,0 +1,6 @@
+doc
+gpgme_n.*
+mkmf.log
+Makefile
+coverage
+Gemfile.lock

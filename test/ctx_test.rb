@@ -1,0 +1,426 @@
+# -*- encoding: utf-8 -*-
+require 'test_helper'
+
+describe GPGME::Ctx do
+  it "can instantiate" do
+    assert_instance_of GPGME::Ctx, GPGME::Ctx.new
+  end
+
+  it "doesn't close itself" do
+    GPGME.expects(:gpgme_release).never
+    GPGME::Ctx.new
+  end
+
+  it "closes itself if called with a block" do
+    GPGME.expects(:gpgme_release).with(anything)
+    GPGME::Ctx.new { |ctx| }
+  end
+
+  it "can be closed with the release method" do
+    GPGME.expects(:gpgme_release).with(anything)
+    ctx = GPGME::Ctx.new
+    ctx.release
+  end
+
+  describe :new do
+    # We consider :armor, :protocol, :textmode and :keylist_mode as tested
+    # with the other tests of this file. Here we test the rest
+
+    it ":password sets the password for the key" do
+      with_key PASSWORD_KEY do
+        input  = GPGME::Data.new(TEXT[:passwored])
+        output = GPGME::Data.new
+
+        GPGME::Ctx.new(:password => 'gpgme') do |ctx|
+          ctx.decrypt_verify input, output
+        end
+
+        output.seek 0
+        assert_equal "Hi there", output.read.chomp
+      end
+    end
+
+    it ":passphrase_callback sets the callback for the password" do
+      def test_pass_func(obj,par2,par3,prev_was_bad,fd)
+        # prev_was_bad is 0 the first time, 1 the rest
+        if @var == 0
+          assert_equal 0, prev_was_bad
+        else
+          assert_equal 1, prev_was_bad
+        end
+
+        @var += 1
+
+        io = IO.for_fd(fd, 'w')
+        io.puts "wrong pasword"
+        io.flush
+      end
+
+      def with_correct_pass_func(obj,par2,par3,prev_was_bad,fd)
+        io = IO.for_fd(fd, 'w')
+        io.puts "gpgme"
+        io.flush
+      end
+
+      with_key PASSWORD_KEY do
+        input  = GPGME::Data.new(TEXT[:passwored])
+        output = GPGME::Data.new
+        @var = 0
+
+        assert_raises GPGME::Error::BadPassphrase do
+          GPGME::Ctx.new(:passphrase_callback => method(:test_pass_func)) do |ctx|
+            ctx.decrypt_verify input, output
+          end
+        end
+
+        # Since we request the key 3 times, we should've gone through the
+        # callback 3 times.
+        assert_equal 3, @var
+
+        input.seek 0
+        output.seek 0
+
+        # Shouldn't crash
+        GPGME::Ctx.new(:passphrase_callback => method(:with_correct_pass_func)) do |ctx|
+          ctx.decrypt_verify input, output
+        end
+      end
+    end
+
+    it ":passphrase_callback_value passes a value to the callback function" do
+      def checking_value(value,par2,par3,par4,fd)
+        assert_equal "superman", value
+        io = IO.for_fd(fd, 'w')
+        io.puts "gpgme"
+        io.flush
+      end
+
+      with_key PASSWORD_KEY do
+        input  = GPGME::Data.new(TEXT[:passwored])
+        output = GPGME::Data.new
+
+        options = {
+          :passphrase_callback => method(:checking_value),
+          :passphrase_callback_value => "superman"
+        }
+
+        GPGME::Ctx.new(options) do |ctx|
+          ctx.decrypt_verify input, output
+        end
+      end
+    end
+
+    # TODO Don't know how to use them yet
+    # it ":progress_callback"
+    # it ":progress_callback_value"
+  end
+
+  describe :armor do
+    it "sets false by default" do
+      ctx = GPGME::Ctx.new
+      refute ctx.armor
+    end
+
+    it "can set" do
+      ctx = GPGME::Ctx.new
+      ctx.armor = true
+      assert ctx.armor
+    end
+
+    it "can set and get armor" do
+      ctx = GPGME::Ctx.new(:armor => false)
+      refute ctx.armor
+      ctx = GPGME::Ctx.new(:armor => true)
+      assert ctx.armor
+    end
+  end
+
+  describe :protocol do
+    it "sets 0 by default" do
+      ctx = GPGME::Ctx.new
+      assert_equal 0, ctx.protocol
+    end
+
+    it "can set" do
+      ctx = GPGME::Ctx.new
+      ctx.protocol = 1
+      assert_equal 1, ctx.protocol
+    end
+
+    it "can set and get protocol" do
+      ctx = GPGME::Ctx.new(:protocol => GPGME::PROTOCOL_OpenPGP)
+      assert_equal GPGME::PROTOCOL_OpenPGP, ctx.protocol
+    end
+
+    it "doesn't allow just any value" do
+      assert_raises GPGME::Error::InvalidValue do
+        ctx = GPGME::Ctx.new(:protocol => -200)
+      end
+    end
+  end
+
+  describe :textmode do
+    it "sets false by default" do
+      ctx = GPGME::Ctx.new
+      refute ctx.textmode
+    end
+
+    it "can set" do
+      ctx = GPGME::Ctx.new
+      ctx.textmode = true
+      assert ctx.textmode
+    end
+
+    it "can set and get textmode" do
+      ctx = GPGME::Ctx.new(:textmode => false)
+      refute ctx.textmode
+      ctx = GPGME::Ctx.new(:textmode => true)
+      assert ctx.textmode
+    end
+  end
+
+  describe :keylist_mode do
+    it "sets local by default" do
+      ctx = GPGME::Ctx.new
+      assert_equal GPGME::KEYLIST_MODE_LOCAL, ctx.keylist_mode
+    end
+
+    it "can set and get" do
+      ctx = GPGME::Ctx.new(:keylist_mode => GPGME::KEYLIST_MODE_SIGS)
+      assert_equal GPGME::KEYLIST_MODE_SIGS, ctx.keylist_mode
+    end
+
+    it "can set" do
+      ctx = GPGME::Ctx.new
+      ctx.keylist_mode = GPGME::KEYLIST_MODE_SIGS
+      assert_equal GPGME::KEYLIST_MODE_SIGS, ctx.keylist_mode
+    end
+
+    it "allows the four possible values" do
+      [GPGME::KEYLIST_MODE_LOCAL, GPGME::KEYLIST_MODE_EXTERN,
+      GPGME::KEYLIST_MODE_SIGS, GPGME::KEYLIST_MODE_VALIDATE].each do |mode|
+        GPGME::Ctx.new(:keylist_mode => mode)
+      end
+    end
+
+    # It's not crashing?
+    # it "crashes with other values" do
+    #   GPGME::Ctx.new(:keylist_mode => -200)
+    # end
+  end
+
+  # describe :set_passphrase_callback do
+  #   def test_pass_func(par1,par2,par3,par4,par5)
+  #     par1
+  #   end
+
+  #   test "it sets the passphrase"
+
+  # end
+
+  describe "keylist operations" do
+    it "can return all of the keys" do
+      ctx = GPGME::Ctx.new
+      keys = ctx.keys
+      ctx.release
+
+      assert keys.size >= 4
+      KEYS.each do |key|
+        assert keys.map(&:email).include?(key[:sha])
+      end
+    end
+
+    it "can return keys filtering by a pattern" do
+      ctx = GPGME::Ctx.new
+      keys = ctx.keys(KEYS.first[:sha])
+      ctx.release
+
+      assert_equal 1, keys.size
+      assert_equal KEYS.first[:sha], keys.first.email
+    end
+
+    it "can return only secret keys" do
+      ctx = GPGME::Ctx.new
+      keys = ctx.keys(KEYS.first[:sha], true)
+      ctx.release
+
+      assert keys.all?(&:secret?)
+    end
+
+    it "can return only public keys" do
+      ctx = GPGME::Ctx.new
+      keys = ctx.keys(KEYS.first[:sha], false)
+      ctx.release
+
+      refute keys.any?(&:secret?)
+    end
+
+    it "returns only public keys by default" do
+      ctx = GPGME::Ctx.new
+      keys = ctx.keys(KEYS.first[:sha])
+      ctx.release
+
+      refute keys.any?(&:secret?)
+    end
+
+    it "can iterate through them returning only public keys" do
+      GPGME::Ctx.new do |ctx|
+        ctx.each_key do |key|
+          assert_instance_of GPGME::Key, key
+          refute key.secret?
+        end
+      end
+    end
+
+    it "can iterate through them getting only secret ones" do
+      GPGME::Ctx.new do |ctx|
+        ctx.each_key("", true) do |key|
+          assert_instance_of GPGME::Key, key
+          assert key.secret?
+        end
+      end
+    end
+
+    it "can iterate through them filtering by pattern" do
+      num = 0
+      GPGME::Ctx.new do |ctx|
+        ctx.each_key(KEYS.first[:sha]) do |key|
+          assert_instance_of GPGME::Key, key
+          assert_equal KEYS.first[:sha], key.email
+          num += 1
+        end
+      end
+      assert_equal 1, num
+    end
+
+    it "can get only a specific key" do
+      GPGME::Ctx.new do |ctx|
+        key = ctx.get_key(KEYS.first[:sha])
+        assert_instance_of GPGME::Key, key
+        assert_equal KEYS.first[:sha], key.email
+      end
+    end
+  end
+
+  describe "key generation" do
+    it "generates a key according to specifications" do
+      key = <<-RUBY
+<GnupgKeyParms format="internal">
+Key-Type: DSA
+Key-Length: 1024
+Subkey-Type: ELG-E
+Subkey-Length: 1024
+Name-Real: Key Tester
+Name-Comment: with some comments
+Name-Email: test_generation@example.com
+Expire-Date: 0
+Passphrase: wadus
+</GnupgKeyParms>
+RUBY
+
+      keys_amount = GPGME::Key.find(:public).size
+      GPGME::Ctx.new do |ctx|
+        ctx.generate_key(key.chomp)
+      end
+
+      assert_equal keys_amount + 1, GPGME::Key.find(:public).size
+
+      GPGME::Key.find(:public, "test_generation@example.com").each do |k|
+        k.delete!(true)
+      end
+    end
+  end
+
+  describe "key export/import" do
+    it "exports and imports all keys when passing an empty string" do
+      original_keys = GPGME::Key.find(:public)
+      export = ""
+      GPGME::Ctx.new do |ctx|
+        export = ctx.export_keys("")
+      end
+      export.seek(0)
+
+      GPGME::Key.find(:public).each{|k| k.delete!(true)}
+      assert_equal 0, GPGME::Key.find(:public).size
+
+      result = GPGME::Key.import(export)
+      current_keys = GPGME::Key.find(:public)
+      assert_equal original_keys.size, current_keys.size
+      assert_equal result.imports.size, current_keys.size
+      assert result.imports.all?{|import| import.status == 1}
+
+      assert_equal original_keys.map(&:sha), original_keys.map(&:sha)
+
+      import_keys # If the test fails for some reason, it won't break others.
+    end
+
+    it "exports only one key" do
+      original_keys = GPGME::Key.find(:public)
+      key           = original_keys.first
+      export = ""
+      GPGME::Ctx.new do |ctx|
+        export = ctx.export_keys(key.sha)
+      end
+      export.seek(0)
+
+      key.delete!(true)
+
+      result = GPGME::Key.import(export)
+      assert_equal 1, result.imports.size
+
+      import = result.imports.first
+
+      imported_key = GPGME::Key.find(:public, import.fpr).first
+      assert_equal key.sha, imported_key.sha
+      assert_equal key.email, imported_key.email
+      import_keys # If the test fails for some reason, it won't break others.
+    end
+
+    it "imports keys and can get a result object" do
+      without_key KEYS.last do
+        public_amount = GPGME::Key.find(:public).size
+        secret_amount = GPGME::Key.find(:secret).size
+
+        result = nil
+        GPGME::Ctx.new do |ctx|
+          ctx.import_keys(GPGME::Data.new(KEYS.last[:public]))
+          ctx.import_keys(GPGME::Data.new(KEYS.last[:secret]))
+
+          result = ctx.import_result
+        end
+
+        assert_equal secret_amount + 1, GPGME::Key.find(:secret).size
+        assert_equal public_amount + 1, GPGME::Key.find(:public).size
+        assert_instance_of GPGME::ImportResult, result
+        assert_instance_of GPGME::ImportStatus, result.imports.first
+      end
+    end
+  end
+
+  describe "deleting/editing of keys" do
+    it "can delete keys" do
+      original_keys = GPGME::Key.find(:public)
+      key = original_keys.first
+
+      GPGME::Ctx.new do |ctx|
+        ctx.delete_key key, true
+      end
+
+      assert_empty GPGME::Key.find(:public, key.sha)
+      import_keys
+    end
+
+    it "raises error if there's a secret key attached but secret key deletion isn't marked" do
+      original_keys = GPGME::Key.find(:public)
+      key = original_keys.first
+
+      assert_raises GPGME::Error::Conflict do
+        GPGME::Ctx.new do |ctx|
+          ctx.delete_key key
+        end
+      end
+    end
+  end
+
+  # Don't know how to test or use edit_key and edit_card
+end

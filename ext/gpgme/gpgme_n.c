@@ -228,7 +228,7 @@ rb_s_gpgme_data_new (VALUE dummy, VALUE rdh)
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     rb_ary_store (rdh, 0, WRAP_GPGME_DATA(dh));
   return LONG2NUM(err);
-}  
+}
 
 static VALUE
 rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
@@ -249,7 +249,7 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
       rb_ary_store (rdh, 0, vdh);
     }
   return LONG2NUM(err);
-}  
+}
 
 static VALUE
 rb_s_gpgme_data_new_from_fd (VALUE dummy, VALUE rdh, VALUE vfd)
@@ -494,7 +494,7 @@ rb_s_gpgme_set_textmode (VALUE dummy, VALUE vctx, VALUE vyes)
     rb_raise (rb_eArgError, "released ctx");
   gpgme_set_textmode (ctx, NUM2INT(vyes));
   return Qnil;
-}     
+}
 
 static VALUE
 rb_s_gpgme_get_textmode (VALUE dummy, VALUE vctx)
@@ -507,7 +507,7 @@ rb_s_gpgme_get_textmode (VALUE dummy, VALUE vctx)
     rb_raise (rb_eArgError, "released ctx");
   yes = gpgme_get_textmode (ctx);
   return INT2FIX(yes);
-}     
+}
 
 static VALUE
 rb_s_gpgme_set_include_certs (VALUE dummy, VALUE vctx, VALUE vnr_of_certs)
@@ -609,7 +609,7 @@ rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
   return Qnil;
 }
 
-static void 
+static void
 progress_cb (void *hook, const char *what, int type, int current, int total)
 {
   VALUE vcb = (VALUE)hook, vprogfunc, vhook_value;
@@ -657,7 +657,7 @@ rb_s_gpgme_set_locale (VALUE dummy, VALUE vctx, VALUE vcategory, VALUE vvalue)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
-  
+
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
@@ -1518,7 +1518,7 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
   gpgme_verify_result_t verify_result;
   gpgme_signature_t signature;
   VALUE vverify_result, vsignatures = rb_ary_new ();
-  
+
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
@@ -1924,7 +1924,7 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
   return Qnil;
 }
 
-void 
+void
 Init_gpgme_n (void)
 {
   VALUE mGPGME;
