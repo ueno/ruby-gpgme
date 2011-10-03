@@ -1,24 +1,8 @@
 = GPGME
 
-This README is better is better viewed through the YARD formatted documentation:
-http://rdoc.info/github/mrsimo/gpgme/master/frames for latest github version, or
-http://rdoc.info/gems/gpgme for latest gem release.
-
-== History behind this fork
-
-This project started as my Ruby Mendicant University. The idea is to give an
-overhaul to the API of this gem. As a relativelly new developer in the ruby
-world, I found the documentation not very newbie friendly, and the API somewhat
-different to the kind I'm used to in the ruby world.
-
-GPG is a very powerful tool, and this gem is implemented using the C bindings,
-making it very fast, and the only proper way to do it.
-
-My objectives are as follows:
-
-* Add test coverage of some type.
-* Make documentation a little bit more newbie friendly.
-* Improve the API to be more idiomatic.
+This README is better viewed through the YARD formatted documentation:
+http://rdoc.info/github/ueno/gpgme/master/frames for latest github
+version, or http://rdoc.info/gems/gpgme for latest gem release.
 
 == Requirements
 

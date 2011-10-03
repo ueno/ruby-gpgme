@@ -1,0 +1,19 @@
+2.0.0 October 3, 2011
+
+- Major rework mostly done by Albert Llop
+ * Add test coverage of some type.
+ * Make documentation a little bit more newbie friendly.
+ * Improve the API to be more idiomatic.
+
+1.0.9 May 21, 2010
+
+- Stop using Hoe.
+
+1.0.8 September, 2009
+
+- Follow the ABI changes of GPGME 1.2.
+ * Add bindings for gpgme_op_{export,import}_keys_start.
+ * GPGME.{decrypt,verify,sign,encrypt} now calls
+   gpgme_check_version() before creating a context.
+   Fixes Bug#26829 reported by Sam Hall.
+- Use Hoe for packaging contributed by Kouhei Sutou.

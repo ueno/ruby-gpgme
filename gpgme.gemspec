@@ -1,14 +1,14 @@
 Gem::Specification.new do |s|
   s.name              = 'gpgme'
-  s.version           = '1.0.9'
-  s.authors           = ['Daiki Ueno']
-  s.date              = '2011-05-09'
+  s.version           = '2.0.0'
+  s.authors           = ['Daiki Ueno', 'Albert Llop']
+  s.date              = '2011-10-03'
   s.email             = 'ueno@unixuser.org'
   s.extensions        = ['ext/gpgme/extconf.rb']
-  s.files             = Dir['{lib,ext}/**/*']
+  s.files             = Dir['{lib,ext,test,examples}/**/*']
   s.has_rdoc          = true
   s.rubyforge_project = 'ruby-gpgme'
-  s.homepage          = 'http://rubyforge.org/projects/ruby-gpgme/'
+  s.homepage          = 'http://github.com/ueno/ruby-gpgme'
   s.require_paths     = ['lib', 'ext']
   s.summary           = 'Ruby binding of GPGME.'
   s.description       = %q{Ruby-GPGME is a Ruby language binding of GPGME (GnuPG
