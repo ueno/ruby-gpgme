@@ -1,7 +1,8 @@
 require 'mkmf'
 
-CWD     = File.expand_path(File.dirname(__FILE__))
-PREFIX  = "#{CWD}/dst/"
+BUILD   = Dir::pwd
+SRC     = File.expand_path(File.dirname(__FILE__))
+PREFIX  = "#{BUILD}/dst/"
 
 def sys(*cmd)
   puts "  -- #{cmd.join(' ')}"
@@ -23,9 +24,9 @@ def build(tgz, *flags)
   end
 end
 
-libgpg_error_tgz  = File.join(CWD, 'libgpg-error-1.10.tar.bz2')
-libassuan_tgz     = File.join(CWD, 'libassuan-2.0.2.tar.bz2')
-gpgme_tgz         = File.join(CWD, 'gpgme-1.3.1.tar.bz2')
+libgpg_error_tgz  = File.join(SRC, 'libgpg-error-1.10.tar.bz2')
+libassuan_tgz     = File.join(SRC, 'libassuan-2.0.2.tar.bz2')
+gpgme_tgz         = File.join(SRC, 'gpgme-1.3.1.tar.bz2')
 
 # build deps
 
@@ -37,11 +38,11 @@ build(gpgme_tgz, "--with-gpg-error-prefix=#{PREFIX}", "--with-libassuan-prefix=#
 
 
 %w[ libassuan libgpg-error libgpgme ].each do |lib|
-  FileUtils.cp "#{CWD}/dst/lib/#{lib}.a", "#{CWD}/#{lib}_ext.a"
+  FileUtils.cp "#{PREFIX}/lib/#{lib}.a", "#{BUILD}/#{lib}_ext.a"
 end
 
-$INCFLAGS[0,0] = " -I#{CWD}/dst/include "
-#$LDFLAGS << " -L#{CWD} "
+$INCFLAGS[0,0] = " -I#{PREFIX}/include "
+#$LDFLAGS << " -L#{PREFIX}/lib "
 $CFLAGS << " -fPIC "
 
 # build gpgme extension
