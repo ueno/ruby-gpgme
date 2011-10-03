@@ -2,7 +2,7 @@ require 'mkmf'
 
 BUILD   = Dir::pwd
 SRC     = File.expand_path(File.dirname(__FILE__))
-PREFIX  = "#{BUILD}/dst/"
+PREFIX  = "#{BUILD}/dst"
 
 def sys(*cmd)
   puts "  -- #{cmd.join(' ')}"
