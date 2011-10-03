@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 require 'gpgme'
 
-GPGME::verify(ARGF.read, nil, $stdout) do |signature|
-  puts(signature.to_s)
+crypto = GPGME::Crypto.new
+signature = GPGME::Data.new(ARGF.read)
+crypto.verify(signature) do |sig|
+  puts(sig.to_s)
 end

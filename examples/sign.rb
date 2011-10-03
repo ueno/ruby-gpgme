@@ -24,6 +24,8 @@ unless ENV['GPG_AGENT_INFO']
   exit(1)
 end
 
-puts GPGME::clearsign('test test test', {
-                   # :passphrase_callback => method(:passfunc)
-                 })
+crypto = GPGME::Crypto.new
+signature = crypto.clearsign('test test test', {
+                               # :passphrase_callback => method(:passfunc)
+                             })
+puts signature.read
