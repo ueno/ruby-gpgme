@@ -47,7 +47,7 @@ $CFLAGS << " -fPIC "
 
 # build gpgme extension
 
-unless have_library 'gpg-error_ext' and have_library 'gpgme_ext' and have_library 'assuan_ext' and have_library 'gpg-error_ext' and have_header 'gpgme.h'
+unless have_library 'gpg-error_ext' and have_library 'assuan_ext' and have_library 'gpgme_ext' and have_header 'gpgme.h'
   STDERR.puts "\n\n"
   STDERR.puts "*********************************************************"
   STDERR.puts "********* error compiling and linking libgpgme. *********"
