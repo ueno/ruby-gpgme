@@ -122,7 +122,7 @@ Provides three convenience methods to obtain information about the gpg engine
 one is currently using. For example:
 
 * Getting current information
- GPGME::Engine.engine_info.first
+ GPGME::Engine.info.first
       # => #<GPGME::EngineInfo:0x00000100d4fbd8
              @file_name="/usr/local/bin/gpg",
              @protocol=0,

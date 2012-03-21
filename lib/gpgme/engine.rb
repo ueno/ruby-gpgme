@@ -25,7 +25,7 @@ module GPGME
       # Return an array of {GPGME::EngineInfo} structures of enabled engines.
       #
       # @example
-      #   GPGME::Engine.engine_info.first
+      #   GPGME::Engine.info.first
       #   # => #<GPGME::EngineInfo:0x00000100d4fbd8
       #          @file_name="/usr/local/bin/gpg",
       #          @protocol=0,
