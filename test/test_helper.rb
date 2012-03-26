@@ -74,10 +74,12 @@ def without_key(key, &block)
   end
 end
 
-# We use a different home directory for the keys to not disturb current
-# installation
+if GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
+  # We use a different home directory for the keys to not disturb current
+  # installation
 
-require 'tmpdir'
-GPGME::Engine.home_dir = Dir.tmpdir
-remove_all_keys
-import_keys
+  require 'tmpdir'
+  GPGME::Engine.home_dir = Dir.tmpdir
+  remove_all_keys
+  import_keys
+end

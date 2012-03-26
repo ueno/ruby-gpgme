@@ -2,6 +2,10 @@
 require 'test_helper'
 
 describe GPGME::Ctx do
+  before do
+    skip unless GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
+  end
+
   it "can instantiate" do
     assert_instance_of GPGME::Ctx, GPGME::Ctx.new
   end

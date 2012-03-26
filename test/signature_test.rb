@@ -2,6 +2,10 @@
 require 'test_helper'
 
 describe GPGME::Signature do
+  before do
+    skip unless GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
+  end
+
   it "#valid? is true when the signature is valid" do
     crypto = GPGME::Crypto.new
     signatures = 0

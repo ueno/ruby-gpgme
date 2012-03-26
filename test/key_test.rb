@@ -2,6 +2,9 @@
 require 'test_helper'
 
 describe GPGME::Key do
+  before do
+    skip unless GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
+  end
 
   it "has certain attributes" do
     key = GPGME::Key.find(:secret).first

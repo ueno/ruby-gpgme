@@ -3,6 +3,10 @@ require 'test_helper'
 require 'tempfile'
 
 describe GPGME::Crypto do
+  before do
+    skip unless GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
+  end
+
   describe "default options functionality" do
     it "allows operation from instances normally" do
       crypto = GPGME::Crypto.new
