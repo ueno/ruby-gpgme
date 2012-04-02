@@ -1544,7 +1544,7 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
 	   * The name of the notation field. If this is NULL, then the member
 	   * value will contain a policy URL. */
 	  if (notation->name == NULL)
-	    rb_iv_set (vnotation, "@name", rb_str_new2 ("Signature Policy"));
+	    rb_iv_set (vnotation, "@name", Qnil);
 	  else rb_iv_set (vnotation, "@name", rb_str_new2 (notation->name));
 	  rb_iv_set (vnotation, "@value", rb_str_new2 (notation->value));
 	  rb_ary_push (vnotations, vnotation);
