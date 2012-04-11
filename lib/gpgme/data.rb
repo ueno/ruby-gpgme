@@ -173,5 +173,17 @@ module GPGME
       raise exc if exc
       encoding
     end
+
+    ##
+    # Return the entire content of the data object as string.
+    def to_s
+      pos = seek(0, IO::SEEK_CUR)
+      begin
+        seek(0)
+        read
+      ensure
+        seek(pos)
+      end
+    end
   end
 end

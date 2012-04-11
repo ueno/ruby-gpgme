@@ -112,5 +112,16 @@ describe GPGME::Data do
       end
     end
   end
+
+  describe :to_s do
+    it "returns the entire content of data" do
+      data = GPGME::Data.new("wadus")
+      data.read
+      old_pos = data.seek(0, IO::SEEK_CUR)
+      assert_equal "wadus", data.to_s
+      new_pos = data.seek(0, IO::SEEK_CUR)
+      assert_equal old_pos, new_pos
+    end
+  end
 end
 
