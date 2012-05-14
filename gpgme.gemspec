@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name              = 'gpgme'
-  s.version           = '2.0.0'
+  s.version           = '2.0.1'
   s.authors           = ['Daiki Ueno', 'Albert Llop']
   s.date              = '2011-10-03'
   s.email             = 'ueno@unixuser.org'
