@@ -22,7 +22,7 @@ encryption, decryption, signing, signature verification and key management.}
   s.add_development_dependency "rcov",      "~> 0.9.9"
 
   case RUBY_VERSION
-  when "1.9.2"
+  when /\A1\.9\./
     s.add_development_dependency "ruby-debug19" , "~> 0.11.6"
   else
     s.add_development_dependency "ruby-debug" , "~> 0.10.4"
