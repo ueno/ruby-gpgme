@@ -27,6 +27,11 @@ describe GPGME::Key do
     assert_equal key1, key2
   end
 
+  it "can compare a key with any other object" do
+    key1 = GPGME::Key.find(:secret).first
+    refute_equal key1, nil
+  end
+
   describe :find do
     it "should return all by default" do
       keys = GPGME::Key.find :secret

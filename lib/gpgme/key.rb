@@ -204,7 +204,7 @@ module GPGME
     end
 
     def ==(another_key)
-      fingerprint == another_key.fingerprint
+      self.class === another_key and fingerprint == another_key.fingerprint
     end
 
     def inspect
