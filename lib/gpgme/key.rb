@@ -204,7 +204,9 @@ module GPGME
     end
 
     def ==(another_key)
-      fingerprint == another_key.fingerprint
+      if another_key.respond_to?(:fingerprint)
+        fingerprint == another_key.fingerprint
+      end
     end
 
     def inspect
