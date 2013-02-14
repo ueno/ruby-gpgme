@@ -38,7 +38,9 @@ build(gpgme_tgz, "--with-gpg-error-prefix=#{PREFIX}", "--with-libassuan-prefix=#
 
 
 %w[ libassuan libgpg-error libgpgme ].each do |lib|
-  FileUtils.cp "#{PREFIX}/lib/#{lib}.a", "#{BUILD}/#{lib}_ext.a"
+  source = Dir["#{PREFIX}/lib{64,}/#{lib}.a"].first
+
+  FileUtils.cp source, "#{BUILD}/#{lib}_ext.a"
 end
 
 $INCFLAGS[0,0] = " -I#{PREFIX}/include "
