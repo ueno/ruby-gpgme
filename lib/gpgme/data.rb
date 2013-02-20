@@ -45,7 +45,7 @@ module GPGME
           object
         elsif object.is_a?(Integer)
           from_fd(object)
-        elsif object.is_a?(StringIO)
+        elsif defined?(StringIO) and object.is_a?(StringIO)
           from_io(object)
         elsif object.respond_to? :to_str
           from_str(object.to_str)
