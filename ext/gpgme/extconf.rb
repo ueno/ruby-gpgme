@@ -18,7 +18,7 @@ def build(tgz, *flags)
   sys("tar xjvf #{tgz}")
 
   Dir.chdir(File.basename(tgz, '.tar.bz2')) do
-    sys("./configure --prefix=#{PREFIX} --disable-shared --enable-static --with-pic", *flags)
+    sys("./configure --prefix=#{PREFIX} --libdir=#{PREFIX}/lib --disable-shared --enable-static --with-pic", *flags)
     sys("make")
     sys("make install")
   end
