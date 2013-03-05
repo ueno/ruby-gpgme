@@ -51,6 +51,8 @@ module GPGME
           from_io(object.to_io)
         elsif object.respond_to? :open
           from_io(object.open)
+        elsif defined?(StringIO) and object.is_a?(StringIO)
+          from_io(object)
         end
       end
 
