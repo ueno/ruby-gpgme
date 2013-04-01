@@ -666,6 +666,7 @@ rb_s_gpgme_set_locale (VALUE dummy, VALUE vctx, VALUE vcategory, VALUE vvalue)
   return LONG2NUM(err);
 }
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010400
 static VALUE
 rb_s_gpgme_set_pinentry_mode (VALUE dummy, VALUE vctx, VALUE vmode)
 {
@@ -693,6 +694,7 @@ rb_s_gpgme_get_pinentry_mode (VALUE dummy, VALUE vctx)
   mode = gpgme_get_pinentry_mode (ctx);
   return INT2FIX(mode);
 }
+#endif
 
 static VALUE
 rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
@@ -2075,6 +2077,12 @@ Init_gpgme_n (void)
 			     rb_s_gpgme_set_keylist_mode, 2);
   rb_define_module_function (mGPGME, "gpgme_get_keylist_mode",
 			     rb_s_gpgme_get_keylist_mode, 1);
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010400
+  rb_define_module_function (mGPGME, "gpgme_set_pinentry_mode",
+			     rb_s_gpgme_set_pinentry_mode, 2);
+  rb_define_module_function (mGPGME, "gpgme_get_pinentry_mode",
+			     rb_s_gpgme_get_pinentry_mode, 1);
+#endif
   rb_define_module_function (mGPGME, "gpgme_set_passphrase_cb",
 			     rb_s_gpgme_set_passphrase_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_get_passphrase_cb",
@@ -2655,7 +2663,7 @@ Init_gpgme_n (void)
 #endif
 
   /* These flags were added in 1.4.0. */
-#ifdef GPGME_PINENTRY_MODE_DEFAULT
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010400
   rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_DEFAULT",
                    INT2FIX(GPGME_PINENTRY_MODE_DEFAULT));
   rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_ASK",
