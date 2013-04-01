@@ -667,6 +667,34 @@ rb_s_gpgme_set_locale (VALUE dummy, VALUE vctx, VALUE vcategory, VALUE vvalue)
 }
 
 static VALUE
+rb_s_gpgme_set_pinentry_mode (VALUE dummy, VALUE vctx, VALUE vmode)
+{
+  gpgme_ctx_t ctx;
+  gpgme_error_t err;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  err = gpgme_set_pinentry_mode (ctx, NUM2INT(vmode));
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_get_pinentry_mode (VALUE dummy, VALUE vctx)
+{
+  gpgme_ctx_t ctx;
+  gpgme_pinentry_mode_t mode;
+  
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  mode = gpgme_get_pinentry_mode (ctx);
+  return INT2FIX(mode);
+}
+
+static VALUE
 rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 			     VALUE vsecret_only)
 {
@@ -2624,5 +2652,19 @@ Init_gpgme_n (void)
 #ifdef GPGME_ENCRYPT_NO_ENCRYPT_TO
   rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_ENCRYPT_TO",
 		   INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
+#endif
+
+  /* These flags were added in 1.4.0. */
+#ifdef GPGME_PINENTRY_MODE_DEFAULT
+  rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_DEFAULT",
+                   INT2FIX(GPGME_PINENTRY_MODE_DEFAULT));
+  rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_ASK",
+                   INT2FIX(GPGME_PINENTRY_MODE_ASK));
+  rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_CANCEL",
+                   INT2FIX(GPGME_PINENTRY_MODE_CANCEL));
+  rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_ERROR",
+                   INT2FIX(GPGME_PINENTRY_MODE_ERROR));
+  rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_LOOPBACK",
+                   INT2FIX(GPGME_PINENTRY_MODE_LOOPBACK));
 #endif
 }
