@@ -20,6 +20,9 @@ module GPGME
     #  * +:textmode+ if +true+, inform the recipient that the input is text.
     #  * +:keylist_mode+ One of: +KEYLIST_MODE_LOCAL+, +KEYLIST_MODE_EXTERN+,
     #    +KEYLIST_MODE_SIGS+ or +KEYLIST_MODE_VALIDATE+.
+    #  * +:pinentry_mode+ One of: +PINENTRY_MODE_DEFAULT+,
+    #    +PINENTRY_MODE_ASK+, +PINENTRY_MODE_CANCEL+,
+    #    +PINENTRY_MODE_ERROR+, or +PINENTRY_MODE_LOOPBACK+.
     #  * +:password+ password of the passphrased password being used.
     #  * +:passphrase_callback+ A callback function. See {#set_passphrase_callback}.
     #  * +:passphrase_callback_value+ An object passed to passphrase_callback.
@@ -43,10 +46,11 @@ module GPGME
       raise exc if exc
       ctx = rctx[0]
 
-      ctx.protocol     = options[:protocol]     if options[:protocol]
-      ctx.armor        = options[:armor]        if options[:armor]
-      ctx.textmode     = options[:textmode]     if options[:textmode]
-      ctx.keylist_mode = options[:keylist_mode] if options[:keylist_mode]
+      ctx.protocol      = options[:protocol]      if options[:protocol]
+      ctx.armor         = options[:armor]         if options[:armor]
+      ctx.textmode      = options[:textmode]      if options[:textmode]
+      ctx.keylist_mode  = options[:keylist_mode]  if options[:keylist_mode]
+      ctx.pinentry_mode = options[:pinentry_mode] if options[:pinentry_mode]
 
       if options[:password]
         ctx.set_passphrase_callback GPGME::Ctx.method(:pass_function),
@@ -136,6 +140,17 @@ module GPGME
     # Return the current key listing mode.
     def keylist_mode
       GPGME::gpgme_get_keylist_mode(self)
+    end
+
+    # Change the default behaviour of the pinentry invocation.
+    def pinentry_mode=(mode)
+      GPGME::gpgme_set_pinentry_mode(self, mode)
+      mode
+    end
+
+    # Return the current pinentry mode.
+    def pinentry_mode
+      GPGME::gpgme_get_pinentry_mode(self)
     end
 
     ##
