@@ -1,7 +1,7 @@
 = GPGME
 
 This README is better viewed through the YARD formatted documentation:
-http://rdoc.info/github/ueno/gpgme/master/frames for latest github
+http://rdoc.info/github/ueno/ruby-gpgme/frames for latest github
 version, or http://rdoc.info/gems/gpgme for latest gem release.
 
 == Requirements
