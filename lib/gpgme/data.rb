@@ -68,7 +68,7 @@ module GPGME
       # Create a new instance with internal buffer.
       def from_str(string)
         rdh = []
-        err = GPGME::gpgme_data_new_from_mem(rdh, string, string.length)
+        err = GPGME::gpgme_data_new_from_mem(rdh, string, string.bytesize)
         exc = GPGME::error_to_exception(err)
         raise exc if exc
         rdh.first
