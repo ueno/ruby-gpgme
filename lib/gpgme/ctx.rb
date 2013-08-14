@@ -199,6 +199,10 @@ module GPGME
     #    $stderr.puts
     #  end
     #
+    # Note that this function doesn't work with GnuPG 2.0.  You can
+    # use either GnuPG 1.x, which can be installed in parallel with
+    # GnuPG 2.0, or GnuPG 2.1, which has loopback pinentry feature (see
+    # {#pinentry_mode}).
     def set_passphrase_callback(passfunc, hook_value = nil)
       GPGME::gpgme_set_passphrase_cb(self, passfunc, hook_value)
     end
