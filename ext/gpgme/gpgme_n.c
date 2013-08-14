@@ -782,7 +782,7 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
   if (key->issuer_serial)
     rb_iv_set (vkey, "@issuer_serial", rb_str_new2 (key->issuer_serial));
   if (key->issuer_name)
-    rb_iv_set (vkey, "@issuer_name", gpg_rb_str_utf8_new (key->issuer_name));
+    rb_iv_set (vkey, "@issuer_name", gpgme_rb_str_utf8_new (key->issuer_name));
   if (key->chain_id)
     rb_iv_set (vkey, "@chain_id", rb_str_new2 (key->chain_id));
   rb_iv_set (vkey, "@owner_trust", INT2FIX(key->owner_trust));
