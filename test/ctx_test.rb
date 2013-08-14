@@ -314,7 +314,7 @@ Key-Type: DSA
 Key-Length: 1024
 Subkey-Type: ELG-E
 Subkey-Length: 1024
-Name-Real: Key Tester
+Name-Real: Key Testér
 Name-Comment: with some comments
 Name-Email: test_generation@example.com
 Expire-Date: 0
@@ -330,6 +330,8 @@ RUBY
       assert_equal keys_amount + 1, GPGME::Key.find(:public).size
 
       GPGME::Key.find(:public, "test_generation@example.com").each do |k|
+        # Make sure UTF-8 in and UTF-8 out.
+        assert_equal "Key Testér", k.name
         k.delete!(true)
       end
     end
