@@ -314,13 +314,17 @@ Key-Type: DSA
 Key-Length: 1024
 Subkey-Type: ELG-E
 Subkey-Length: 1024
-Name-Real: Key Tester
+Name-Real: Key Testér
 Name-Comment: with some comments
 Name-Email: test_generation@example.com
 Expire-Date: 0
 Passphrase: wadus
 </GnupgKeyParms>
 RUBY
+
+      if RUBY_VERSION > "1.9"
+        assert_equal key.encoding, Encoding::UTF_8
+      end
 
       keys_amount = GPGME::Key.find(:public).size
       GPGME::Ctx.new do |ctx|
@@ -330,6 +334,12 @@ RUBY
       assert_equal keys_amount + 1, GPGME::Key.find(:public).size
 
       GPGME::Key.find(:public, "test_generation@example.com").each do |k|
+
+        if RUBY_VERSION > "1.9"
+          # Make sure UTF-8 in and UTF-8 out.
+          assert_equal "Key Testér", k.name
+          assert_equal k.name.encoding, Encoding::UTF_8
+        end
         k.delete!(true)
       end
     end
