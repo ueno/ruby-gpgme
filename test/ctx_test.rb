@@ -336,7 +336,7 @@ RUBY
       GPGME::Key.find(:public, "test_generation@example.com").each do |k|
 
         if RUBY_VERSION > "1.9"
-        # Make sure UTF-8 in and UTF-8 out.
+          # Make sure UTF-8 in and UTF-8 out.
           assert_equal "Key Testér", k.name
           assert_equal k.name.encoding, Encoding::UTF_8
         end
