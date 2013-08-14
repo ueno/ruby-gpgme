@@ -37,6 +37,9 @@
    cases) for that.  */
 
 #include "ruby.h"
+#ifdef HAVE_RUBY_ENCODING_H
+#include "ruby/encoding.h"
+#endif
 #include "gpgme.h"
 #include <errno.h>
 
@@ -686,7 +689,7 @@ rb_s_gpgme_get_pinentry_mode (VALUE dummy, VALUE vctx)
 {
   gpgme_ctx_t ctx;
   gpgme_pinentry_mode_t mode;
-  
+
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
@@ -749,6 +752,16 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 }
 
 static VALUE
+gpgme_rb_str_utf8_new(const char* data) {
+    VALUE string = rb_str_new2(data);
+    #ifdef HAVE_RUBY_ENCODING_H
+    int enc = rb_enc_find_index("UTF-8");
+    rb_enc_associate_index(string, enc);
+    #endif
+    return string;
+}
+
+static VALUE
 save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
 {
   VALUE vsubkeys, vuids;
@@ -769,7 +782,7 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
   if (key->issuer_serial)
     rb_iv_set (vkey, "@issuer_serial", rb_str_new2 (key->issuer_serial));
   if (key->issuer_name)
-    rb_iv_set (vkey, "@issuer_name", rb_str_new2 (key->issuer_name));
+    rb_iv_set (vkey, "@issuer_name", gpgme_rb_str_utf8_new (key->issuer_name));
   if (key->chain_id)
     rb_iv_set (vkey, "@chain_id", rb_str_new2 (key->chain_id));
   rb_iv_set (vkey, "@owner_trust", INT2FIX(key->owner_trust));
@@ -805,10 +818,10 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
       rb_iv_set (vuser_id, "@revoked", INT2FIX(user_id->revoked));
       rb_iv_set (vuser_id, "@invalid", INT2FIX(user_id->invalid));
       rb_iv_set (vuser_id, "@validity", INT2FIX(user_id->validity));
-      rb_iv_set (vuser_id, "@uid", rb_str_new2 (user_id->uid));
-      rb_iv_set (vuser_id, "@name", rb_str_new2 (user_id->name));
-      rb_iv_set (vuser_id, "@comment", rb_str_new2 (user_id->comment));
-      rb_iv_set (vuser_id, "@email", rb_str_new2 (user_id->email));
+      rb_iv_set (vuser_id, "@name", gpgme_rb_str_utf8_new (user_id->name));
+      rb_iv_set (vuser_id, "@uid", gpgme_rb_str_utf8_new (user_id->uid));
+      rb_iv_set (vuser_id, "@comment", gpgme_rb_str_utf8_new (user_id->comment));
+      rb_iv_set (vuser_id, "@email", gpgme_rb_str_utf8_new (user_id->email));
 
       vsignatures = rb_ary_new ();
       rb_iv_set (vuser_id, "@signatures", vsignatures);

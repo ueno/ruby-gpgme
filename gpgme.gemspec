@@ -23,7 +23,7 @@ encryption, decryption, signing, signature verification and key management.}
 
   case RUBY_VERSION
   when /\A1\.9\./
-    s.add_development_dependency "ruby-debug19" , "~> 0.11.6"
+    s.add_development_dependency "debugger"
   else
     s.add_development_dependency "ruby-debug" , "~> 0.10.4"
   end
