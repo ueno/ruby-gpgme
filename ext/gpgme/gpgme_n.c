@@ -814,10 +814,10 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
       rb_iv_set (vuser_id, "@revoked", INT2FIX(user_id->revoked));
       rb_iv_set (vuser_id, "@invalid", INT2FIX(user_id->invalid));
       rb_iv_set (vuser_id, "@validity", INT2FIX(user_id->validity));
-      rb_iv_set (vuser_id, "@name", gpg_rb_str_utf8_new (user_id->name));
-      rb_iv_set (vuser_id, "@uid", gpg_rb_str_utf8_new (user_id->uid));
-      rb_iv_set (vuser_id, "@comment", gpg_rb_str_utf8_new (user_id->comment));
-      rb_iv_set (vuser_id, "@email", gpg_rb_str_utf8_new (user_id->email));
+      rb_iv_set (vuser_id, "@name", gpgme_rb_str_utf8_new (user_id->name));
+      rb_iv_set (vuser_id, "@uid", gpgme_rb_str_utf8_new (user_id->uid));
+      rb_iv_set (vuser_id, "@comment", gpgme_rb_str_utf8_new (user_id->comment));
+      rb_iv_set (vuser_id, "@email", gpgme_rb_str_utf8_new (user_id->email));
 
       vsignatures = rb_ary_new ();
       rb_iv_set (vuser_id, "@signatures", vsignatures);
