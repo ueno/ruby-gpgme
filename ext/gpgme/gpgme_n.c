@@ -37,7 +37,9 @@
    cases) for that.  */
 
 #include "ruby.h"
+#ifdef HAVE_RUBY_ENCODING_H
 #include "ruby/encoding.h"
+#endif
 #include "gpgme.h"
 #include <errno.h>
 
@@ -753,8 +755,9 @@ static VALUE
 gpgme_rb_str_utf8_new(const char* data) {
     VALUE string = rb_str_new2(data);
     int enc = rb_enc_find_index("UTF-8");
+    #ifdef HAVE_RUBY_ENCODING_H
     rb_enc_associate_index(string, enc);
-
+    #endif
     return string;
 }
 
