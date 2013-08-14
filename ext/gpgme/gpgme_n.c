@@ -754,8 +754,8 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 static VALUE
 gpgme_rb_str_utf8_new(const char* data) {
     VALUE string = rb_str_new2(data);
-    int enc = rb_enc_find_index("UTF-8");
     #ifdef HAVE_RUBY_ENCODING_H
+    int enc = rb_enc_find_index("UTF-8");
     rb_enc_associate_index(string, enc);
     #endif
     return string;
