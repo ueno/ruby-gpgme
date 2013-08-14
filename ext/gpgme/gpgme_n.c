@@ -689,7 +689,7 @@ rb_s_gpgme_get_pinentry_mode (VALUE dummy, VALUE vctx)
 {
   gpgme_ctx_t ctx;
   gpgme_pinentry_mode_t mode;
-  
+
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
