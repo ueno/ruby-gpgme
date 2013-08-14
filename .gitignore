@@ -4,3 +4,4 @@ mkmf.log
 Makefile
 coverage
 Gemfile.lock
+/tmp/*
