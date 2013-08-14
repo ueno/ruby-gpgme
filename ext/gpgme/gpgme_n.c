@@ -37,6 +37,7 @@
    cases) for that.  */
 
 #include "ruby.h"
+#include "ruby/encoding.h"
 #include "gpgme.h"
 #include <errno.h>
 
