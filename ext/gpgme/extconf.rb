@@ -25,8 +25,8 @@ def build(tgz, *flags)
 end
 
 libgpg_error_tgz  = File.join(SRC, 'libgpg-error-1.12.tar.bz2')
-libassuan_tgz     = File.join(SRC, 'libassuan-2.1.0.tar.bz2')
-gpgme_tgz         = File.join(SRC, 'gpgme-1.4.0.tar.bz2')
+libassuan_tgz     = File.join(SRC, 'libassuan-2.1.1.tar.bz2')
+gpgme_tgz         = File.join(SRC, 'gpgme-1.4.3.tar.bz2')
 
 # build deps
 
