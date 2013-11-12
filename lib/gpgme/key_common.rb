@@ -16,10 +16,10 @@ module GPGME
     # +:encrypt+, +:sign+, +:certify+ or +:authenticate+
     def capability
       caps = []
-      caps << :encrypt if @can_encrypt
-      caps << :sign if @can_sign
-      caps << :certify if @can_certify
-      caps << :authenticate if @can_authenticate
+      caps << :encrypt if @can_encrypt == 1
+      caps << :sign if @can_sign == 1
+      caps << :certify if @can_certify == 1
+      caps << :authenticate if @can_authenticate == 1
       caps
     end
 
