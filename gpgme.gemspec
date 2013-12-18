@@ -9,6 +9,7 @@ Gem::Specification.new do |s|
   s.has_rdoc          = true
   s.rubyforge_project = 'ruby-gpgme'
   s.homepage          = 'http://github.com/ueno/ruby-gpgme'
+  s.license           = 'GPL2'
   s.require_paths     = ['lib', 'ext']
   s.summary           = 'Ruby binding of GPGME.'
   s.description       = %q{Ruby-GPGME is a Ruby language binding of GPGME (GnuPG
