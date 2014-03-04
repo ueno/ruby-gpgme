@@ -124,6 +124,7 @@ static VALUE cEngineInfo,
   cSignature,
   cSigNotation,
   cTrustItem,
+  cRecipient,
   cDecryptResult,
   cVerifyResult,
   cSignResult,
@@ -1493,7 +1494,8 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
 {
   gpgme_ctx_t ctx;
   gpgme_decrypt_result_t result;
-  VALUE vresult;
+  gpgme_recipient_t recipient;
+  VALUE vresult, vrecipients;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
@@ -1505,6 +1507,17 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
     rb_iv_set (vresult, "@unsupported_algorithm",
 	       rb_str_new2 (result->unsupported_algorithm));
   rb_iv_set (vresult, "@wrong_key_usage", INT2FIX(result->wrong_key_usage));
+  vrecipients = rb_ary_new ();
+  rb_iv_set (vresult, "@recipients", vrecipients);
+  for (recipient = result->recipients; recipient; recipient = recipient->next)
+    {
+      VALUE vrecipient = rb_class_new_instance (0, NULL, cRecipient);
+      rb_iv_set (vrecipient, "@pubkey_algo", INT2FIX(recipient->pubkey_algo));
+      rb_iv_set (vrecipient, "@keyid", rb_str_new2 (recipient->keyid));
+      rb_iv_set (vrecipient, "@status", UINT2NUM(recipient->status));
+      rb_ary_push (vrecipients, vrecipient);
+    }
+  rb_iv_set (vresult, "@file_name", rb_str_new2 (result->file_name));
   return vresult;
 }
 
@@ -2015,6 +2028,8 @@ Init_gpgme_n (void)
     rb_define_class_under (mGPGME, "UserID", rb_cObject);
   cKeySig =
     rb_define_class_under (mGPGME, "KeySig", rb_cObject);
+  cRecipient =
+    rb_define_class_under (mGPGME, "Recipient", rb_cObject);
   cDecryptResult =
     rb_define_class_under (mGPGME, "DecryptResult", rb_cObject);
   cVerifyResult =
