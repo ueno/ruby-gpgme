@@ -1,41 +1,6 @@
 require 'mkmf'
 
-BUILD = Dir::pwd
-SRC = File.expand_path(File.dirname(__FILE__))
-PREFIX = "#{BUILD}/dst"
-
-def sys(*cmd)
-  puts "  -- #{cmd.join(' ')}"
-
-  unless ret = xsystem(cmd.join(' '))
-    raise "#{cmd.join(' ')} failed!"
-  end
-
-  ret
-end
-
-def build(name, tgz, *flags)
-  message <<-"EOS"
-************************************************************************
-IMPORTANT!  gpgme builds and uses a packaged version of #{name}.
-
-If this is a concern for you and you want to use the system library
-instead, abort this installation process and reinstall nokogiri as
-follows:
-
-    gem install gpgme -- --use-system-libraries
-
-************************************************************************
-EOS
-
-  sys("tar xjvf #{tgz}")
-
-  Dir.chdir(File.basename(tgz, '.tar.bz2')) do
-    sys("./configure --prefix=#{PREFIX} --libdir=#{PREFIX}/lib --disable-shared --enable-static --with-pic", *flags)
-    sys("make")
-    sys("make install")
-  end
-end
+ROOT = File.expand_path(File.join(File.dirname(__FILE__), '..', '..'))
 
 if arg_config('--use-system-libraries', ENV['RUBY_GPGME_USE_SYSTEM_LIBRARIES'])
   unless find_executable('gpgme-config')
@@ -46,47 +11,102 @@ if arg_config('--use-system-libraries', ENV['RUBY_GPGME_USE_SYSTEM_LIBRARIES'])
   $CFLAGS += ' ' << `gpgme-config --cflags`.chomp
   $libs += ' ' << `gpgme-config --libs`.chomp
 else
-  $INCFLAGS[0,0] = " -I#{PREFIX}/include "
-  #$LDFLAGS << " -L#{PREFIX}/lib "
-  $CFLAGS << " -fPIC "
+  require 'rubygems'
+  require 'mini_portile'
 
-  deps = {
-    'libgpg-error' => {
-      :lib => 'libgpg-error',
-      :tarball => 'libgpg-error-1.12.tar.bz2',
-      :configure_options => ['--disable-nls']
-    },
-    'libassuan' => {
-      :lib => 'libassuan',
-      :tarball => 'libassuan-2.1.1.tar.bz2',
-      :configure_options => ["--with-gpg-error-prefix=#{PREFIX}"]
-    },
-    'gpgme' => {
-      :lib => 'libgpgme',
-      :tarball => 'gpgme-1.4.3.tar.bz2',
-      :configure_options => ["--with-gpg-error-prefix=#{PREFIX}",
-                             "--with-libassuan-prefix=#{PREFIX}"]
-    }
-  }
-
-  # build libraries in the right order
-  %w[libgpg-error libassuan gpgme].each do |name|
-    options = deps[name]
-    build(name, File.join(SRC, options[:tarball]), *options[:configure_options])
+  libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.12').tap do |recipe|
+    recipe.target = File.join(ROOT, "ports")
+    recipe.files = ["ftp://ftp.gnupg.org/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2"]
+    recipe.configure_options = [
+      '--disable-shared',
+      '--enable-static',
+      '--disable-nls',
+      "CFLAGS='-fPIC #{ENV["CFLAGS"]}'",
+    ]
+    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
+    unless File.exist?(checkpoint)
+      recipe.cook
+      FileUtils.touch checkpoint
+    end
+    recipe.activate
   end
 
-  # rename locally built libraries so it will not conflict with system libraries
-  deps.each do |name, options|
-    File.rename("#{PREFIX}/lib/#{options[:lib]}.a",
-                "#{BUILD}/#{options[:lib]}_ext.a")
-
-    unless have_library "#{options[:lib][3..-1]}_ext"
-      abort <<-"EOS"
-************************************************************************
-ERROR!  Cannot link to #{options[:lib]}.
-************************************************************************
-EOS
+  libassuan_recipe = MiniPortile.new('libassuan', '2.1.1').tap do |recipe|
+    recipe.target = File.join(ROOT, "ports")
+    recipe.files = ["ftp://ftp.gnupg.org/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2"]
+    recipe.configure_options = [
+      '--disable-shared',
+      '--enable-static',
+      "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
+      "CFLAGS='-fPIC #{ENV["CFLAGS"]}'",
+    ]
+    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
+    unless File.exist?(checkpoint)
+      recipe.cook
+      FileUtils.touch checkpoint
     end
+    recipe.activate
+  end
+
+  gpgme_recipe = MiniPortile.new('gpgme', '1.4.3').tap do |recipe|
+    recipe.target = File.join(ROOT, "ports")
+    recipe.files = ["ftp://ftp.gnupg.org/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2"]
+    recipe.configure_options = [
+      '--disable-shared',
+      '--enable-static',
+      "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
+      "--with-libassuan-prefix=#{libassuan_recipe.path}",
+      "CFLAGS='-fPIC #{ENV["CFLAGS"]}'",
+    ]
+    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
+    unless File.exist?(checkpoint)
+      recipe.cook
+      FileUtils.touch checkpoint
+    end
+    recipe.activate
+  end
+
+  # special treatment to link with static libraries
+  # borrowed from Nokogiri
+  $libs = $libs.shellsplit.tap {|libs|
+    File.join(gpgme_recipe.path, "bin", "gpgme-config").tap {|config|
+      # call config scripts explicit with 'sh' for compat with Windows
+      $CPPFLAGS = `sh #{config} --cflags`.strip << ' ' << $CPPFLAGS
+      `sh #{config} --libs`.strip.shellsplit.each {|arg|
+        case arg
+        when /\A-L(.+)\z/
+          lpath=$1
+          # Prioritize ports' directories
+          if lpath.start_with?(ROOT + '/')
+            $LIBPATH = [lpath] | $LIBPATH
+          else
+            $LIBPATH = $LIBPATH | [lpath]
+          end
+        when /\A-l./
+          libs.unshift(arg)
+        else
+          $LDFLAGS << ' ' << arg.shellescape
+        end
+      }
+    }
+  }.shelljoin
+
+  message 'checking for linker flags for static linking... '
+  case
+  when try_link('int main(void) { return 0; }',
+                ['-Wl,-Bstatic', '-lgpgme', '-Wl,-Bdynamic'].shelljoin)
+    message "-Wl,-Bstatic\n"
+
+    $libs = $libs.shellsplit.flat_map {|arg|
+      case arg
+      when '-lgpgme', '-lassuan', '-lgpg-error'
+        ['-Wl,-Bstatic', arg, '-Wl,-Bdynamic']
+      else
+        arg
+      end
+    }.shelljoin
+  else
+    message "NONE\n"
   end
 
   unless have_header 'gpgme.h'
