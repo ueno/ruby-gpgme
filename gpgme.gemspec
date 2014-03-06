@@ -5,7 +5,8 @@ Gem::Specification.new do |s|
   s.date              = '2013-03-05'
   s.email             = 'ueno@gnu.org'
   s.extensions        = ['ext/gpgme/extconf.rb']
-  s.files             = Dir['{lib,ext,test,examples}/**/*']
+  s.files             = Dir['{lib,ext,test,examples}/**/*'] +
+                        Dir['ports/archives/*']
   s.has_rdoc          = true
   s.rubyforge_project = 'ruby-gpgme'
   s.homepage          = 'http://github.com/ueno/ruby-gpgme'
