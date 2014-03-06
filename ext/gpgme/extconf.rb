@@ -107,7 +107,7 @@ EOS
             $LIBPATH = $LIBPATH | [lpath]
           end
         when /\A-l./
-          libs.unshift(arg)
+          libs.push(arg)
         else
           $LDFLAGS << ' ' << arg.shellescape
         end
@@ -121,14 +121,14 @@ EOS
                 ['-Wl,-Bstatic', '-lgpgme', '-Wl,-Bdynamic'].shelljoin)
     message "-Wl,-Bstatic\n"
 
-    $libs = $libs.shellsplit.flat_map {|arg|
+    $libs = $libs.shellsplit.map {|arg|
       case arg
       when '-lgpgme', '-lassuan', '-lgpg-error'
         ['-Wl,-Bstatic', arg, '-Wl,-Bdynamic']
       else
         arg
       end
-    }.shelljoin
+    }.flatten.shelljoin
   else
     message "NONE\n"
   end
