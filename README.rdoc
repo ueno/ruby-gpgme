@@ -4,6 +4,8 @@ This README is better viewed through the YARD formatted documentation:
 http://rdoc.info/github/ueno/ruby-gpgme/frames for latest github
 version, or http://rdoc.info/gems/gpgme for latest gem release.
 
+{<img src="https://travis-ci.org/ueno/ruby-gpgme.png?branch=master" alt="Build Status" />}[https://travis-ci.org/ueno/ruby-gpgme]
+
 == Requirements
 
 * Ruby 1.8 or later
