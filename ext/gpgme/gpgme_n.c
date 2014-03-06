@@ -815,7 +815,10 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
   rb_iv_set (vkey, "@uids", vuids);
   for (user_id = key->uids; user_id; user_id = user_id->next)
     {
-      VALUE vuser_id = rb_class_new_instance(0, NULL, cUserID), vsignatures;
+      VALUE vuser_id, vsignatures;
+      gpgme_key_sig_t key_sig;
+
+      vuser_id = rb_class_new_instance(0, NULL, cUserID);
       rb_iv_set (vuser_id, "@revoked", INT2FIX(user_id->revoked));
       rb_iv_set (vuser_id, "@invalid", INT2FIX(user_id->invalid));
       rb_iv_set (vuser_id, "@validity", INT2FIX(user_id->validity));
@@ -826,7 +829,6 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
 
       vsignatures = rb_ary_new ();
       rb_iv_set (vuser_id, "@signatures", vsignatures);
-      gpgme_key_sig_t key_sig;
       for (key_sig = user_id->signatures; key_sig; key_sig = key_sig->next)
 	{
 	  VALUE vkey_sig = rb_class_new_instance(0, NULL, cKeySig);
