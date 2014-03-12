@@ -37,18 +37,18 @@ describe GPGME::Ctx do
 
         GPGME::Ctx.new(:password => 'gpgme') do |ctx|
           ctx.decrypt_verify input, output
+
+          output.seek 0
+          assert_equal "Hi there", output.read.chomp
+
+          recipients = ctx.decrypt_result.recipients
+          assert_equal 1, recipients.size
+
+          recipient_key = ctx.get_key(recipient.keyid)
+          key = ctx.get_key(PASSWORD_KEY[:sha])
+
+          assert_equal recipient_key, key
         end
-
-        output.seek 0
-        assert_equal "Hi there", output.read.chomp
-
-        recipients = ctx.decrypt_result.recipients
-        assert_equal 1, recipients.size
-
-        recipient_key = ctx.get_key(recipient.keyid)
-        key = ctx.get_key(PASSWORD_KEY[:sha])
-
-        assert_equal recipient_key, key
       end
     end
 
