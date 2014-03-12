@@ -12,10 +12,17 @@ module GPGME
     attr_reader :signatures
   end
 
+  class Recipient
+    private_class_method :new
+
+    attr_reader :pubkey_algo, :keyid, :status
+  end
+
   class DecryptResult
     private_class_method :new
 
     attr_reader :unsupported_algorithm, :wrong_key_usage
+    attr_reader :recipients, :file_name
   end
 
   class SignResult
