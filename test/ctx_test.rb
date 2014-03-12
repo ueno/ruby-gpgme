@@ -44,7 +44,7 @@ describe GPGME::Ctx do
           recipients = ctx.decrypt_result.recipients
           assert_equal 1, recipients.size
 
-          recipient_key = ctx.get_key(recipient.keyid)
+          recipient_key = ctx.get_key(recipients.first.keyid)
           key = ctx.get_key(PASSWORD_KEY[:sha])
 
           assert_equal recipient_key, key
