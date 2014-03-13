@@ -1,6 +1,40 @@
 require 'mkmf'
 
+# Available options:
+#
+# --enable-clean (default)
+# --disable-clean
+#
+# This file is largely based on Nokogiri's extconf.rb.
+
 ROOT = File.expand_path(File.join(File.dirname(__FILE__), '..', '..'))
+
+if arg_config('--clean')
+  require 'pathname'
+  require 'fileutils'
+
+  root = Pathname(ROOT)
+  pwd  = Pathname(Dir.pwd)
+
+  # Skip if this is a development work tree
+  unless (root + '.git').exist?
+    message "Cleaning files only used during build.\n"
+
+    # (root + 'tmp') cannot be removed at this stage because
+    # gpgme_n.so is yet to be copied to lib.
+
+    # clean the ports build directory
+    Pathname.glob(pwd.join('tmp', '*', 'ports')) { |dir|
+      FileUtils.rm_rf(dir, verbose: true)
+      FileUtils.rmdir(dir.parent, parents: true, verbose: true)
+    }
+
+    # ports installation can be safely removed if statically linked.
+    FileUtils.rm_rf(root + 'ports', verbose: true)
+  end
+
+  exit
+end
 
 if arg_config('--use-system-libraries', ENV['RUBY_GPGME_USE_SYSTEM_LIBRARIES'])
   unless find_executable('gpgme-config')
@@ -11,7 +45,6 @@ if arg_config('--use-system-libraries', ENV['RUBY_GPGME_USE_SYSTEM_LIBRARIES'])
   $CFLAGS += ' ' << `gpgme-config --cflags`.chomp
   $libs += ' ' << `gpgme-config --libs`.chomp
 else
-  # borrowed from Nokogiri
   def message!(important_message)
     message important_message
     if !$stdout.tty? && File.chardev?('/dev/tty')
@@ -91,7 +124,6 @@ EOS
   end
 
   # special treatment to link with static libraries
-  # borrowed from Nokogiri
   $libs = $libs.shellsplit.tap {|libs|
     File.join(gpgme_recipe.path, "bin", "gpgme-config").tap {|config|
       # call config scripts explicit with 'sh' for compat with Windows
@@ -160,3 +192,15 @@ end
 have_func('gpgme_op_export_keys')
 
 create_makefile ('gpgme_n')
+
+if enable_config('clean', true)
+  # Do not clean if run in a development work tree.
+  File.open('Makefile', 'at') { |mk|
+    mk.print <<EOF
+all: clean-ports
+
+clean-ports: $(DLLIB)
+	-$(Q)$(RUBY) $(srcdir)/extconf.rb --clean --#{static_p ? 'enable' : 'disable'}-static
+EOF
+  }
+end
