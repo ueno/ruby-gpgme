@@ -25,12 +25,12 @@ if arg_config('--clean')
 
     # clean the ports build directory
     Pathname.glob(pwd.join('tmp', '*', 'ports')) { |dir|
-      FileUtils.rm_rf(dir, verbose: true)
-      FileUtils.rmdir(dir.parent, parents: true, verbose: true)
+      FileUtils.rm_rf(dir, { :verbose => true })
+      FileUtils.rmdir(dir.parent, { :parents => true, :verbose => true })
     }
 
     # ports installation can be safely removed if statically linked.
-    FileUtils.rm_rf(root + 'ports', verbose: true)
+    FileUtils.rm_rf(root + 'ports', { :verbose => true })
   end
 
   exit
@@ -195,7 +195,7 @@ create_makefile ('gpgme_n')
 
 if enable_config('clean', true)
   # Do not clean if run in a development work tree.
-  File.open('Makefile', 'at') { |mk|
+  File.open('Makefile', 'a') { |mk|
     mk.print <<EOF
 all: clean-ports
 
