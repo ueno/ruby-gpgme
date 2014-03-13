@@ -200,7 +200,7 @@ if enable_config('clean', true)
 all: clean-ports
 
 clean-ports: $(DLLIB)
-	-$(Q)$(RUBY) $(srcdir)/extconf.rb --clean --#{static_p ? 'enable' : 'disable'}-static
+	-$(Q)$(RUBY) $(srcdir)/extconf.rb --clean
 EOF
   }
 end
