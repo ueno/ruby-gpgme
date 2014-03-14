@@ -45,16 +45,7 @@ if arg_config('--use-system-libraries', ENV['RUBY_GPGME_USE_SYSTEM_LIBRARIES'])
   $CFLAGS += ' ' << `gpgme-config --cflags`.chomp
   $libs += ' ' << `gpgme-config --libs`.chomp
 else
-  def message!(important_message)
-    message important_message
-    if !$stdout.tty? && File.chardev?('/dev/tty')
-      File.open('/dev/tty', 'w') { |tty|
-        tty.print important_message
-      }
-    end
-  end
-
-  message! <<-'EOS'
+  message <<-'EOS'
 ************************************************************************
 IMPORTANT!  gpgme gem uses locally built versions of required C libraries,
 namely libgpg-error, libassuan, and gpgme.
