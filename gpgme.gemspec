@@ -1,8 +1,8 @@
 Gem::Specification.new do |s|
   s.name              = 'gpgme'
-  s.version           = '2.0.5'
+  s.version           = '2.0.6'
   s.authors           = ['Daiki Ueno', 'Albert Llop']
-  s.date              = '2014-03-14'
+  s.date              = '2014-06-26'
   s.email             = 'ueno@gnu.org'
   s.extensions        = ['ext/gpgme/extconf.rb']
   s.files             = Dir['{lib,ext,test,examples}/**/*'] +
