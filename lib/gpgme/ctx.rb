@@ -463,6 +463,13 @@ module GPGME
       cipher
     end
 
+    def spawn(file, argv, datain, dataout, dataerr, flags = 0)
+      err = GPGME::gpgme_op_spawn(self, file, argv, datain, dataout, dataerr,
+                                  flags)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+    end
+
     def inspect
       "#<#{self.class} protocol=#{PROTOCOL_NAMES[protocol] || protocol}, \
 armor=#{armor}, textmode=#{textmode}, \

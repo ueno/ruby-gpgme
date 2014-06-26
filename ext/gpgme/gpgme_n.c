@@ -132,6 +132,15 @@ static VALUE cEngineInfo,
   cImportStatus,
   cImportResult;
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+static VALUE
+rb_s_gpgme_get_dirinfo (VALUE dummy, VALUE vwhat)
+{
+  const char *result = gpgme_get_dirinfo (StringValueCStr(vwhat));
+  return result ? rb_str_new2 (result) : Qnil;
+}
+#endif
+
 static VALUE
 rb_s_gpgme_check_version (VALUE dummy, VALUE vreq)
 {
@@ -809,6 +818,9 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
         rb_iv_set (vsubkey, "@fpr", rb_str_new2 (subkey->fpr));
       rb_iv_set (vsubkey, "@timestamp", LONG2NUM(subkey->timestamp));
       rb_iv_set (vsubkey, "@expires", LONG2NUM(subkey->expires));
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+      rb_iv_set (vsubkey, "@curve", rb_str_new2 (subkey->curve));
+#endif
       rb_ary_push (vsubkeys, vsubkey);
     }
   vuids = rb_ary_new ();
@@ -1988,6 +2000,96 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
   return Qnil;
 }
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+static VALUE
+rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
+			   VALUE vargv, VALUE vdatain, VALUE vdataout,
+			   VALUE vdataerr, VALUE vflags)
+{
+  gpgme_ctx_t ctx;
+  const char *file;
+  const char **argv;
+  gpgme_data_t datain = NULL;
+  gpgme_data_t dataout = NULL;
+  gpgme_data_t dataerr = NULL;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  file = StringValueCStr(vfile);
+
+  if (NIL_P(vargv))
+    argv = NULL;
+  else
+    {
+      int i;
+
+      argv = ALLOC_N(const char *, RARRAY_LEN(vargv) + 1);
+      for (i = 0; i < RARRAY_LEN(vargv); i++)
+	argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
+      argv[i] = NULL;
+    }
+
+  UNWRAP_GPGME_DATA(vdatain, datain);
+  UNWRAP_GPGME_DATA(vdataout, dataout);
+  UNWRAP_GPGME_DATA(vdataerr, dataerr);
+
+  err = gpgme_op_spawn_start (ctx, file, argv, datain, dataout, dataerr,
+			      NUM2INT(vflags));
+  if (argv)
+    xfree (argv);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
+		     VALUE vargv, VALUE vdatain, VALUE vdataout,
+		     VALUE vdataerr, VALUE vflags)
+{
+  gpgme_ctx_t ctx;
+  const char *file;
+  const char **argv;
+  gpgme_data_t datain = NULL;
+  gpgme_data_t dataout = NULL;
+  gpgme_data_t dataerr = NULL;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  file = StringValueCStr(vfile);
+
+  if (NIL_P(vargv))
+    argv = NULL;
+  else
+    {
+      int i;
+
+      argv = ALLOC_N(const char *, RARRAY_LEN(vargv) + 1);
+      for (i = 0; i < RARRAY_LEN(vargv); i++)
+	argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
+      argv[i] = NULL;
+    }
+
+  UNWRAP_GPGME_DATA(vdatain, datain);
+  UNWRAP_GPGME_DATA(vdataout, dataout);
+  UNWRAP_GPGME_DATA(vdataerr, dataerr);
+
+  err = gpgme_op_spawn (ctx, file, argv, datain, dataout, dataerr,
+			NUM2INT(vflags));
+  if (argv)
+    xfree (argv);
+  return LONG2NUM(err);
+}
+#endif
+
 void
 Init_gpgme_n (void)
 {
@@ -1995,6 +2097,10 @@ Init_gpgme_n (void)
 
   mGPGME = rb_define_module ("GPGME");
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+  rb_define_module_function (mGPGME, "gpgme_get_dirinfo",
+			     rb_s_gpgme_get_dirinfo, 1);
+#endif
   rb_define_module_function (mGPGME, "gpgme_check_version",
 			     rb_s_gpgme_check_version, 1);
   rb_define_module_function (mGPGME, "gpgme_engine_check_version",
@@ -2238,11 +2344,23 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_wait",
 			     rb_s_gpgme_wait, 3);
 
+  /* Running other Programs */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+  rb_define_module_function (mGPGME, "gpgme_op_spawn",
+			     rb_s_gpgme_op_spawn, 7);
+  rb_define_module_function (mGPGME, "gpgme_op_spawn_start",
+			     rb_s_gpgme_op_spawn_start, 7);
+#endif
+
   /* gpgme_pubkey_algo_t */
   rb_define_const (mGPGME, "GPGME_PK_RSA", INT2FIX(GPGME_PK_RSA));
   rb_define_const (mGPGME, "GPGME_PK_DSA", INT2FIX(GPGME_PK_DSA));
   rb_define_const (mGPGME, "GPGME_PK_ELG", INT2FIX(GPGME_PK_ELG));
   rb_define_const (mGPGME, "GPGME_PK_ELG_E", INT2FIX(GPGME_PK_ELG_E));
+  /* This algorithm was added in 1.5.0. */
+#ifdef GPGME_PK_ECC
+  rb_define_const (mGPGME, "GPGME_PK_ECC", INT2FIX(GPGME_PK_ECC));
+#endif
 
   /* gpgme_hash_algo_t */
   rb_define_const (mGPGME, "GPGME_MD_MD5", INT2FIX(GPGME_MD_MD5));
@@ -2251,6 +2369,10 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_MD_MD2", INT2FIX(GPGME_MD_MD2));
   rb_define_const (mGPGME, "GPGME_MD_TIGER", INT2FIX(GPGME_MD_TIGER));
   rb_define_const (mGPGME, "GPGME_MD_HAVAL", INT2FIX(GPGME_MD_HAVAL));
+  /* This algorithm was added in 1.5.0. */
+#ifdef GPGME_MD_SHA224
+  rb_define_const (mGPGME, "GPGME_MD_SHA224", INT2FIX(GPGME_MD_SHA224));
+#endif
   rb_define_const (mGPGME, "GPGME_MD_SHA256", INT2FIX(GPGME_MD_SHA256));
   rb_define_const (mGPGME, "GPGME_MD_SHA384", INT2FIX(GPGME_MD_SHA384));
   rb_define_const (mGPGME, "GPGME_MD_SHA512", INT2FIX(GPGME_MD_SHA512));
@@ -2497,6 +2619,11 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_PROTOCOL_ASSUAN",
 		   INT2FIX(GPGME_PROTOCOL_ASSUAN))
 #endif
+  /* This protocol was added in 1.5.0. */
+#ifdef GPGME_PROTOCOL_SPAWN
+  rb_define_const (mGPGME, "GPGME_PROTOCOL_SPAWN",
+                   INT2FIX(GPGME_PROTOCOL_SPAWN));
+#endif
 
   /* gpgme_status_code_t */
   rb_define_const (mGPGME, "GPGME_STATUS_EOF",
@@ -2653,6 +2780,21 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_GOOD",
 		   INT2FIX(GPGME_STATUS_PKA_TRUST_GOOD));
 #endif
+  /* These status codes were added in 1.5.0. */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+  rb_define_const (mGPGME, "GPGME_STATUS_PLAINTEXT_LENGTH",
+                   INT2FIX(GPGME_STATUS_PLAINTEXT_LENGTH));
+  rb_define_const (mGPGME, "GPGME_STATUS_MOUNTPOINT",
+                   INT2FIX(GPGME_STATUS_MOUNTPOINT));
+  rb_define_const (mGPGME, "GPGME_STATUS_PINENTRY_LAUNCHED",
+                   INT2FIX(GPGME_STATUS_PINENTRY_LAUNCHED));
+  rb_define_const (mGPGME, "GPGME_STATUS_ATTRIBUTE",
+                   INT2FIX(GPGME_STATUS_ATTRIBUTE));
+  rb_define_const (mGPGME, "GPGME_STATUS_BEGIN_SIGNING",
+                   INT2FIX(GPGME_STATUS_BEGIN_SIGNING));
+  rb_define_const (mGPGME, "GPGME_STATUS_KEY_NOT_CREATED",
+		   INT2FIX(GPGME_STATUS_KEY_NOT_CREATED));
+#endif
 
   /* The available keylist mode flags.  */
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_LOCAL",
@@ -2704,5 +2846,13 @@ Init_gpgme_n (void)
                    INT2FIX(GPGME_PINENTRY_MODE_ERROR));
   rb_define_const (mGPGME, "GPGME_PINENTRY_MODE_LOOPBACK",
                    INT2FIX(GPGME_PINENTRY_MODE_LOOPBACK));
+#endif
+
+  /* These flags were added in 1.5.0. */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+  rb_define_const (mGPGME, "GPGME_SPAWN_DETACHED",
+                   INT2FIX(GPGME_SPAWN_DETACHED));
+  rb_define_const (mGPGME, "GPGME_SPAWN_ALLOW_SET_FG",
+                   INT2FIX(GPGME_SPAWN_ALLOW_SET_FG));
 #endif
 }

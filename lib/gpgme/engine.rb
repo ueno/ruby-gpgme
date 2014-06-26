@@ -71,6 +71,17 @@ module GPGME
         current = info.first
         set_info current.protocol, current.file_name, home_dir
       end
+
+      ##
+      # Return the default configuration.
+      #
+      # @example
+      #   GPGME::Engine.dirinfo('homedir')
+      #   # => '/home/user/.gnupg"
+      #
+      def dirinfo(what)
+        GPGME::gpgme_get_dirinfo(what)
+      end
     end # class << self
   end # class Engine
 end # module GPGME
