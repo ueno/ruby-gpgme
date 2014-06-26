@@ -62,7 +62,7 @@ EOS
   require 'rubygems'
   require 'mini_portile'
 
-  libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.12').tap do |recipe|
+  libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.13').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = ["ftp://ftp.gnupg.org/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2"]
     recipe.configure_options = [
@@ -96,7 +96,7 @@ EOS
     recipe.activate
   end
 
-  gpgme_recipe = MiniPortile.new('gpgme', '1.4.3').tap do |recipe|
+  gpgme_recipe = MiniPortile.new('gpgme', '1.5.0').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = ["ftp://ftp.gnupg.org/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2"]
     recipe.configure_options = [
