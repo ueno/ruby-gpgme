@@ -5,4 +5,4 @@ rvm:
   - 1.9.3
 script: bundle exec rake
 after_failure:
-  "cat tmp/*/ports/*/*/compile.log"
+  "find tmp -name compile.log -exec cat {} \;"
