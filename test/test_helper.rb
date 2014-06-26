@@ -1,5 +1,8 @@
 # -*- encoding: utf-8 -*-
 
+require 'coveralls'
+Coveralls.wear!
+
 # include compiled gpgme_n.bundle
 tmp_dir = File.join(File.dirname(__FILE__), '..', 'tmp')
 $:.unshift(tmp_dir) if File.directory?(tmp_dir)
