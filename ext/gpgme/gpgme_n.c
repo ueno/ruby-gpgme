@@ -819,7 +819,8 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
       rb_iv_set (vsubkey, "@timestamp", LONG2NUM(subkey->timestamp));
       rb_iv_set (vsubkey, "@expires", LONG2NUM(subkey->expires));
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
-      rb_iv_set (vsubkey, "@curve", rb_str_new2 (subkey->curve));
+      if (subkey->curve)
+	rb_iv_set (vsubkey, "@curve", rb_str_new2 (subkey->curve));
 #endif
       rb_ary_push (vsubkeys, vsubkey);
     }
