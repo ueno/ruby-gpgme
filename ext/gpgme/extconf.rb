@@ -104,6 +104,10 @@ EOS
       '--enable-static',
       "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
       "--with-libassuan-prefix=#{libassuan_recipe.path}",
+      # GPGME 1.5.0 assumes gpgsm is present if gpgconf is found.
+      # However, on some systems (e.g. Debian), they are splitted into
+      # separate packages.
+      '--disable-gpgsm-test',
       "CFLAGS='-fPIC #{ENV["CFLAGS"]}'",
     ]
     checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
