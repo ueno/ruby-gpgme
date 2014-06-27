@@ -5,6 +5,7 @@ http://rdoc.info/github/ueno/ruby-gpgme/frames for latest github
 version, or http://rdoc.info/gems/gpgme for latest gem release.
 
 {<img src="https://travis-ci.org/ueno/ruby-gpgme.png?branch=master" alt="Build Status" />}[https://travis-ci.org/ueno/ruby-gpgme]
+{<img src="https://coveralls.io/repos/ueno/ruby-gpgme/badge.png" alt="Coverage Status" />}[https://coveralls.io/r/ueno/ruby-gpgme]
 
 == Requirements
 
