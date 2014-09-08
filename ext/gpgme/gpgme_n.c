@@ -2816,6 +2816,11 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_EPHEMERAL",
 		   INT2FIX(GPGME_KEYLIST_MODE_EPHEMERAL));
 #endif
+  /* This flag was added in 1.5.1. */
+#ifdef GPGME_KEYLIST_MODE_WITH_SECRET
+  rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_WITH_SECRET",
+		   INT2FIX(GPGME_KEYLIST_MODE_WITH_SECRET));
+#endif
 
   /* The available flags for status field of gpgme_import_status_t.  */
   rb_define_const (mGPGME, "GPGME_IMPORT_NEW", INT2FIX(GPGME_IMPORT_NEW));
