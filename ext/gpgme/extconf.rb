@@ -133,8 +133,20 @@ EOS
           else
             $LIBPATH = $LIBPATH | [lpath]
           end
-        when /\A-l./
-          libs.push(arg)
+        when /\A-l(.+)\z/
+          # Resolve absolute paths of local static libraries to avoid
+          # linking with system libraries.
+          libname_to_recipe = {
+            'gpgme' => gpgme_recipe,
+            'assuan' => libassuan_recipe,
+            'gpg-error' => libgpg_error_recipe
+          }
+          recipe = libname_to_recipe[$1]
+          if recipe
+            libs.push(File.join(recipe.path, 'lib', "lib#{$1}.#{$LIBEXT}"))
+          else
+            libs.push(arg)
+          end
         else
           $LDFLAGS << ' ' << arg.shellescape
         end
