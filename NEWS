@@ -1,4 +1,45 @@
-2.0.2 Mar 5, 2013
+2.0.7 September 9, 2014
+
+- API change
+ * Update to GPGME 1.5.1 interface
+- Bug fixes
+ * Update included libraries (GPGME 1.5.1, libassuan 2.1.2)
+ * Fix build when a static library is available in system's libdir (Issue#50)
+ * Remove rcov support, which is incompatible with ruby 2.x
+
+2.0.6 June 26, 2014
+
+- API change
+ * Update to GPGME 1.5.0 interface
+- Bug fixes
+ * Update included libraries (GPGME 1.5.0, libgpg-error 1.13)
+ * Depend on newer mini_portile, if available (Issue#44)
+ * Don't refer to missing PINENTRY_MODE_* constants (Issue#39)
+
+2.0.5 March 14, 2014
+
+- Bug fixes
+ * Fix build on Capistrano (Issue#37)
+
+2.0.4 March 13, 2014
+
+- Bug fixes
+ * Fix build with ruby 1.8
+
+2.0.3 March 13, 2014
+
+- API change
+ * Expose gpgme_recipient_t to ruby (Issue#36)
+- Build enhancement
+ * Support system GPGME libraries (Issue#21)
+- Bug fixes
+ * Better support for UTF-8 input (Issue#24, Issue#27)
+ * Update included libraries (GPGME 1.4.3, libassuan 2.1.1)
+ * Rework the build stuff using mini_portile
+ * Specify license in gpgme.gemspec
+ * Bump required debugger gem version
+
+2.0.2 March 5, 2013
 
 - Bug fixes
  * Update included libraries
