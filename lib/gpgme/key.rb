@@ -152,6 +152,12 @@ module GPGME
     end
 
     ##
+    # Returns true if the key has an expiry date else false
+    def expires?
+      primary_subkey.expires?
+    end
+
+    ##
     # Returns the expiry date for this key
     def expires
       primary_subkey.expires

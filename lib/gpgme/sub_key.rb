@@ -11,13 +11,16 @@ module GPGME
       Time.at(@timestamp)
     end
 
+    def expires?
+      @expires != 0
+    end
+
     def expires
-      Time.at(@expires)
+      expires? ? Time.at(@expires) : nil
     end
 
     def expired
-      return false if @expires == 0
-      @expires < Time.now.to_i
+      expires? && @expires < Time.now.to_i
     end
 
     def sha
