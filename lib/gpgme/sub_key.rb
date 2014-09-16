@@ -8,7 +8,13 @@ module GPGME
     include KeyCommon
 
     def timestamp
-      Time.at(@timestamp)
+      case @timestamp
+      when -1, 0
+        # FIXME: add a special value for invalid timestamp, or throw an error
+        return nil
+      else
+        return Time.at(@timestamp)
+      end
     end
 
     def expires?
