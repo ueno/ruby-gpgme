@@ -18,7 +18,7 @@ Made Easy). GnuPG Made Easy (GPGME) is a library designed to make access to
 GnuPG easier for applications. It provides a High-Level Crypto API for
 encryption, decryption, signing, signature verification and key management.}
 
-  s.add_runtime_dependency "mini_portile", ">= 0.5.0", "<= 0.6.0"
+  s.add_runtime_dependency "mini_portile", ">= 0.5.0"
 
   s.add_development_dependency "mocha",     "~> 0.9.12"
   s.add_development_dependency "minitest",  "~> 2.1.0"
