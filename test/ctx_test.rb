@@ -138,15 +138,16 @@ describe GPGME::Ctx do
       end
     end
 
-#    it "should not segfault" do
-#      cipher = GPGME::Data.new(KEY_1_ENCRYPTED)
-#      ouput = GPGME::Data.new
-#      
-#      GPGME::Ctx.new do |ctx|
-#        # This should fail more gracefully
-#        ctx.decrypt_result
-#      end
-#    end
+    it "should not segfault" do
+      cipher = GPGME::Data.new(KEY_1_ENCRYPTED)
+      ouput = GPGME::Data.new
+      
+      GPGME::Ctx.new do |ctx|
+        assert_raises ArgumentError do
+          ctx.decrypt_result
+        end
+      end
+    end
   end
 
   describe :armor do
