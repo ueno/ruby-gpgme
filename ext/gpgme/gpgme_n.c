@@ -1532,7 +1532,8 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
       rb_iv_set (vrecipient, "@status", UINT2NUM(recipient->status));
       rb_ary_push (vrecipients, vrecipient);
     }
-  rb_iv_set (vresult, "@file_name", rb_str_new2 (result->file_name));
+  if (result->file_name)
+    rb_iv_set (vresult, "@file_name", rb_str_new2 (result->file_name));
   return vresult;
 }
 
