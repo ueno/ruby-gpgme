@@ -16,8 +16,13 @@ require 'minitest/autorun'
 require 'minitest/spec'
 require 'minitest/pride'
 require 'mocha'
-require 'ruby-debug'
 require 'gpgme'
+
+if RUBY_VERSION.split('.').first.to_i > 1
+  require 'byebug'
+else
+  require 'ruby-debug'
+end
 
 require File.dirname(__FILE__) + "/support/resources"
 

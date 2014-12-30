@@ -127,6 +127,28 @@ describe GPGME::Ctx do
     # it ":progress_callback_value"
   end
 
+  describe :decrypt_result do
+    it "returns the list of encyption recipients" do
+      cipher = GPGME::Data.new(KEY_1_ENCRYPTED)
+      output = GPGME::Data.new
+
+      GPGME::Ctx.new do |ctx|
+        ctx.decrypt_verify(cipher, output)
+        assert_equal 1, ctx.decrypt_result.recipients.size
+      end
+    end
+
+#    it "should not segfault" do
+#      cipher = GPGME::Data.new(KEY_1_ENCRYPTED)
+#      ouput = GPGME::Data.new
+#      
+#      GPGME::Ctx.new do |ctx|
+#        # This should fail more gracefully
+#        ctx.decrypt_result
+#      end
+#    end
+  end
+
   describe :armor do
     it "sets false by default" do
       ctx = GPGME::Ctx.new
