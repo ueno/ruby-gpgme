@@ -1205,6 +1205,9 @@ rb_s_gpgme_op_import_result (VALUE dummy, VALUE vctx)
     rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_import_result (ctx);
+  if (!result)
+    rb_raise (rb_eArgError, "no result");
+
   vresult = rb_class_new_instance (0, NULL, cImportResult);
   rb_iv_set (vresult, "@considered", INT2NUM(result->considered));
   rb_iv_set (vresult, "@no_user_id", INT2NUM(result->no_user_id));
@@ -1517,6 +1520,9 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
     rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_decrypt_result (ctx);
+  if (!result)
+    rb_raise (rb_eArgError, "no result");
+
   vresult = rb_class_new_instance (0, NULL, cDecryptResult);
   if (result->unsupported_algorithm)
     rb_iv_set (vresult, "@unsupported_algorithm",
@@ -1596,6 +1602,9 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
     rb_raise (rb_eArgError, "released ctx");
 
   verify_result = gpgme_op_verify_result (ctx);
+  if (!verify_result)
+    rb_raise (rb_eArgError, "no result");
+
   vverify_result = rb_class_new_instance(0, NULL, cVerifyResult);
   rb_iv_set (vverify_result, "@signatures", vsignatures);
   for (signature = verify_result->signatures; signature;
@@ -1779,6 +1788,9 @@ rb_s_gpgme_op_sign_result (VALUE dummy, VALUE vctx)
     rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_sign_result (ctx);
+  if (!result)
+    rb_raise (rb_eArgError, "no result");
+
   vresult = rb_class_new_instance (0, NULL, cSignResult);
   vinvalid_signers = rb_ary_new ();
   rb_iv_set (vresult, "@invalid_signers", vinvalid_signers);
@@ -1894,6 +1906,9 @@ rb_s_gpgme_op_encrypt_result (VALUE dummy, VALUE vctx)
     rb_raise (rb_eArgError, "released ctx");
 
   result = gpgme_op_encrypt_result (ctx);
+  if (!result)
+    rb_raise (rb_eArgError, "no result");
+
   vresult = rb_class_new_instance (0, NULL, cEncryptResult);
   vinvalid_recipients = rb_ary_new ();
   rb_iv_set (vresult, "@invalid_recipients", vinvalid_recipients);
