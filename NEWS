@@ -1,3 +1,14 @@
+2.0.8 December 31, 2014
+
+- API change
+ * New convenience methods: Key#expires? and SubKey#expires?
+- Bug fixes
+ * Update included libraries (GPGME 1.5.3, libassuan 2.2.0, libgpg-error 1.17)
+ * Signal error if gpgme_op_*_result is called with an invalid state (Issue#57)
+ * Switch to byebug instead of debugger, when building with ruby 2.x
+ * Add NULL check of gpgme_op_decrypt_result_t->file_name (Issue#56)
+ * Relax mini_portile dependency (Issue#52)
+
 2.0.7 September 9, 2014
 
 - API change
