@@ -492,6 +492,8 @@ KEYS << { :sha => 'test2@example.com', :public => key2_public, :secret => key2_s
 KEYS << { :sha => 'test3@example.com', :public => key3_public, :secret => key3_secret}
 KEYS << { :sha => 'test4@example.com', :public => key4_public, :secret => key4_secret}
 
+PLAIN_KEY = { :sha => 'test1@example.com', :public => key1_public, :secret => key1_secret }
+
 PASSWORD_KEY = {
   :sha    => 'test_with_password@example.com',
   :public => password_key_public,
@@ -514,3 +516,17 @@ TEXT = {
   :passwored        => passwored.chomp,
   :expired_key_sign => signed_with_expired_key_text.chomp
 }
+
+KEY_1_ENCRYPTED = <<-RUBY
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v1
+
+hIwDbJ4P+uQnvtQBBACOzUqiKHRS8cEDPpQl1dQznpxcWW3Md8X3eFRx3+qD0X7+
+aEadz/cUXf7nO9KimeO7qhqNBJoPQEzZTqirebLgq2pq+Rtp2zGCvU1hUnAmVm27
+CZE/quNaBV33V0haddWm4Y8AD7e7T2a2LBDrMNGsD9eKjREJ+g/Pmm5WLRDx69JP
+AaXe0Msjfyapj07hCPZptE8iP2/tCSvRDmiSgidPAZM4NnL2ANwfT6kslVha0mos
+MH+qcPlxAMrMnjuWs+wFiVnWLEYfIqNzH7Z2irC2NA==
+=O59i
+-----END PGP MESSAGE-----
+RUBY
+
