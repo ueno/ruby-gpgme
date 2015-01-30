@@ -1,3 +1,4 @@
 module GPGME
-  VERSION = "1.0.8"
+  # The version of GPGME ruby binding you are using
+  VERSION = "2.0.8"
 end
