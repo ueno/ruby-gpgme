@@ -79,7 +79,7 @@ EOS
     recipe.activate
   end
 
-  libassuan_recipe = MiniPortile.new('libassuan', '2.1.2').tap do |recipe|
+  libassuan_recipe = MiniPortile.new('libassuan', '2.2.1').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = ["ftp://ftp.gnupg.org/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2"]
     recipe.configure_options = [
