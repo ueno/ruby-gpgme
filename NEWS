@@ -1,3 +1,8 @@
+2.0.10 August 27, 2015
+
+- Bug fixes
+ * Update included libraries (GPGME 1.6.5, libassuan 2.2.1, libgpg-error 1.20)
+
 2.0.9 July 24, 2015
 
 - Bug fixes
