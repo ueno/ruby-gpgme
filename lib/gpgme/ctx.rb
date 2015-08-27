@@ -23,11 +23,14 @@ module GPGME
     #  * +:pinentry_mode+ One of: +PINENTRY_MODE_DEFAULT+,
     #    +PINENTRY_MODE_ASK+, +PINENTRY_MODE_CANCEL+,
     #    +PINENTRY_MODE_ERROR+, or +PINENTRY_MODE_LOOPBACK+.
+    #  * +:offline+ if set to true, dirmngr will not contact external services
     #  * +:password+ password of the passphrased password being used.
     #  * +:passphrase_callback+ A callback function. See {#set_passphrase_callback}.
     #  * +:passphrase_callback_value+ An object passed to passphrase_callback.
     #  * +:progress_callback+  A callback function. See {#set_progress_callback}.
     #  * +:progress_callback_value+ An object passed to progress_callback.
+    #  * +:status_callback+ A callback function. See {#set_status_callback}.
+    #  * +:status_callback_value+ An object passed to status_callback.
     #
     # @example
     #   ctx = GPGME::Ctx.new
@@ -51,6 +54,7 @@ module GPGME
       ctx.textmode      = options[:textmode]      if options[:textmode]
       ctx.keylist_mode  = options[:keylist_mode]  if options[:keylist_mode]
       ctx.pinentry_mode = options[:pinentry_mode] if options[:pinentry_mode]
+      ctx.offline       = options[:offline]       if options[:offline]
 
       if options[:password]
         ctx.set_passphrase_callback GPGME::Ctx.method(:pass_function),
@@ -64,6 +68,10 @@ module GPGME
       if options[:progress_callback]
         ctx.set_progress_callback options[:progress_callback],
           options[:progress_callback_value]
+      end
+      if options[:status_callback]
+        ctx.set_status_callback options[:status_callback],
+          options[:status_callback_value]
       end
 
       if block_given?
@@ -153,6 +161,18 @@ module GPGME
       GPGME::gpgme_get_pinentry_mode(self)
     end
 
+    # Change the default behaviour of the dirmngr that might require
+    # connections to external services.
+    def offline=(mode)
+      GPGME::gpgme_set_offline(self, mode)
+      mode
+    end
+
+    # Return the current offline mode.
+    def offline
+      GPGME::gpgme_get_offline(self)
+    end
+
     ##
     # Passphrase and progress callbacks
     ##
@@ -222,6 +242,23 @@ module GPGME
       GPGME::gpgme_set_progress_cb(self, progfunc, hook_value)
     end
     alias set_progress_cb set_progress_callback
+
+    # Set the status callback with given hook value.
+    # +statusfunc+ should respond to +call+ with 3 arguments.
+    #
+    # * +obj+ the parameter +:status_callback_value+ passed when creating
+    #   the {GPGME::Ctx} object.
+    # * +keyword+ the name of the status message
+    # * +args+ any arguments for the status message
+    #
+    #  def status_function(obj, keyword, args)
+    #    $stderr.puts("#{keyword} #{args}")
+    #    return 0
+    #  end
+    def set_status_callback(statusfunc, hook_value = nil)
+      GPGME::gpgme_set_status_cb(self, statusfunc, hook_value)
+    end
+    alias set_status_cb set_status_callback
 
     ##
     # Searching and iterating through keys. Used by {GPGME::Key.find}

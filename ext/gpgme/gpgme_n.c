@@ -622,6 +622,54 @@ rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
   return Qnil;
 }
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010600
+static gpgme_error_t
+status_cb (void *hook, const char *keyword, const char *args)
+{
+  VALUE vcb = (VALUE)hook, vstatusfunc, vhook_value;
+
+  vstatusfunc = RARRAY_PTR(vcb)[0];
+  vhook_value = RARRAY_PTR(vcb)[1];
+
+  rb_funcall (vstatusfunc, rb_intern ("call"), 3,
+	      vhook_value,
+	      keyword ? rb_str_new2 (keyword) : Qnil,
+	      args ? rb_str_new2 (args) : Qnil);
+  return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
+}
+
+static VALUE
+rb_s_gpgme_set_status_cb (VALUE dummy, VALUE vctx, VALUE vstatusfunc,
+			  VALUE vhook_value)
+{
+  gpgme_ctx_t ctx;
+  VALUE vcb = rb_ary_new ();
+
+  rb_ary_push (vcb, vstatusfunc);
+  rb_ary_push (vcb, vhook_value);
+  /* Keep a reference to avoid GC. */
+  rb_iv_set (vctx, "@status_cb", vcb);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  gpgme_set_status_cb (ctx, status_cb, (void*)vcb);
+  return Qnil;
+}
+
+static VALUE
+rb_s_gpgme_get_status_cb (VALUE dummy, VALUE vctx, VALUE rstatusfunc,
+			  VALUE rhook_value)
+{
+  VALUE vcb = rb_iv_get (vctx, "@status_cb");
+
+  /* No need to call gpgme_get_status_cb. */
+  rb_ary_store (rstatusfunc, 0, RARRAY_PTR(vcb)[0]);
+  rb_ary_store (rhook_value, 0, RARRAY_PTR(vcb)[1]);
+  return Qnil;
+}
+#endif
+
 static void
 progress_cb (void *hook, const char *what, int type, int current, int total)
 {
@@ -706,6 +754,35 @@ rb_s_gpgme_get_pinentry_mode (VALUE dummy, VALUE vctx)
 
   mode = gpgme_get_pinentry_mode (ctx);
   return INT2FIX(mode);
+}
+#endif
+
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010600
+static VALUE
+rb_s_gpgme_set_offline (VALUE dummy, VALUE vctx, VALUE vyes)
+{
+  gpgme_ctx_t ctx;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  gpgme_set_offline (ctx, vyes == Qtrue);
+  return Qnil;
+}
+
+static VALUE
+rb_s_gpgme_get_offline (VALUE dummy, VALUE vctx)
+{
+  gpgme_ctx_t ctx;
+  int yes;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  yes = gpgme_get_offline (ctx);
+  return yes ? Qtrue : Qfalse;
 }
 #endif
 
@@ -2246,6 +2323,16 @@ Init_gpgme_n (void)
 			     rb_s_gpgme_get_progress_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_set_locale",
 			     rb_s_gpgme_set_locale, 3);
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010600
+  rb_define_module_function (mGPGME, "gpgme_set_offline",
+			     rb_s_gpgme_set_offline, 2);
+  rb_define_module_function (mGPGME, "gpgme_get_offline",
+			     rb_s_gpgme_get_offline, 1);
+  rb_define_module_function (mGPGME, "gpgme_set_status_cb",
+			     rb_s_gpgme_set_status_cb, 3);
+  rb_define_module_function (mGPGME, "gpgme_get_status_cb",
+			     rb_s_gpgme_get_status_cb, 3);
+#endif
 
   /* Key Management */
   rb_define_module_function (mGPGME, "gpgme_op_keylist_start",
@@ -2876,5 +2963,27 @@ Init_gpgme_n (void)
                    INT2FIX(GPGME_SPAWN_DETACHED));
   rb_define_const (mGPGME, "GPGME_SPAWN_ALLOW_SET_FG",
                    INT2FIX(GPGME_SPAWN_ALLOW_SET_FG));
+#endif
+
+  /* This flag was added in 1.2.0. */
+#ifdef GPGME_EXPORT_MODE_EXTERN
+  rb_define_const (mGPGME, "GPGME_EXPORT_MODE_EXTERN",
+                   INT2FIX(GPGME_EXPORT_MODE_EXTERN));
+#endif
+
+  /* This flag was added in 1.3.0. */
+#ifdef GPGME_EXPORT_MODE_MINIMAL
+  rb_define_const (mGPGME, "GPGME_EXPORT_MODE_MINIMAL",
+                   INT2FIX(GPGME_EXPORT_MODE_MINIMAL));
+#endif
+
+  /* These flags were added in 1.6.0. */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010600
+  rb_define_const (mGPGME, "GPGME_EXPORT_MODE_SECRET",
+                   INT2FIX(GPGME_EXPORT_MODE_SECRET));
+  rb_define_const (mGPGME, "GPGME_EXPORT_MODE_RAW",
+                   INT2FIX(GPGME_EXPORT_MODE_RAW));
+  rb_define_const (mGPGME, "GPGME_EXPORT_MODE_PKCS12",
+                   INT2FIX(GPGME_EXPORT_MODE_PKCS12));
 #endif
 }
