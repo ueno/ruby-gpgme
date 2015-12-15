@@ -69,7 +69,7 @@ EOS
       '--disable-shared',
       '--enable-static',
       '--disable-nls',
-      "CFLAGS='-fPIC #{ENV["CFLAGS"]}'",
+      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
     ]
     checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
     unless File.exist?(checkpoint)
@@ -86,7 +86,7 @@ EOS
       '--disable-shared',
       '--enable-static',
       "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
-      "CFLAGS='-fPIC #{ENV["CFLAGS"]}'",
+      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
     ]
     checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
     unless File.exist?(checkpoint)
@@ -108,7 +108,7 @@ EOS
       # However, on some systems (e.g. Debian), they are splitted into
       # separate packages.
       '--disable-gpgsm-test',
-      "CFLAGS='-fPIC #{ENV["CFLAGS"]}'",
+      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
     ]
     checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
     unless File.exist?(checkpoint)
