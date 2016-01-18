@@ -60,7 +60,7 @@ follows:
 EOS
 
   require 'rubygems'
-  require 'mini_portile'
+  require 'mini_portile2'
 
   libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.21').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
