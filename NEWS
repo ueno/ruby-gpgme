@@ -1,3 +1,8 @@
+2.0.12 January 19, 2016
+
+- Bug fixes
+ * Switch to mini_portile2 (Issue#74)
+
 2.0.11 December 15, 2015
 
 - Bug fixes
