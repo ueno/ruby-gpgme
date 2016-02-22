@@ -843,7 +843,13 @@ utf8_str_new (const char *data)
 {
     VALUE string = rb_str_new2 (data);
 #ifdef HAVE_RUBY_ENCODING_H
+    /* We assume all the C strings from GPGME are in UTF-8 encoding.
+       If there is any string which cannot be represented in UTF-8,
+       set the string's encoding to ASCII-8BIT and leave the caller to
+       detect the encoding.  */
     rb_enc_associate_index (string, rb_enc_find_index ("UTF-8"));
+    if (rb_enc_str_coderange (string) == ENC_CODERANGE_BROKEN)
+      rb_enc_associate_index (string, rb_enc_find_index ("ASCII-8BIT"));
 #endif
     return string;
 }
