@@ -197,6 +197,53 @@ rb_s_gpgme_set_engine_info (VALUE dummy, VALUE vproto, VALUE vfile_name,
 }
 
 static VALUE
+rb_s_gpgme_ctx_get_engine_info (VALUE dummy, VALUE vctx, VALUE rinfo)
+{
+  long idx;
+
+  gpgme_ctx_t ctx;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  gpgme_engine_info_t info = gpgme_ctx_get_engine_info (ctx);
+      for (idx = 0; info; info = info->next, idx++)
+	{
+	  VALUE vinfo = rb_class_new_instance (0, NULL, cEngineInfo);
+	  rb_iv_set (vinfo, "@protocol", INT2FIX(info->protocol));
+	  if (info->file_name)
+	    rb_iv_set (vinfo, "@file_name", rb_str_new2 (info->file_name));
+	  if (info->version)
+	    rb_iv_set (vinfo, "@version", rb_str_new2 (info->version));
+	  if (info->req_version)
+	    rb_iv_set (vinfo, "@req_version", rb_str_new2 (info->req_version));
+	  if (info->home_dir)
+	    rb_iv_set (vinfo, "@home_dir", rb_str_new2 (info->home_dir));
+	  rb_ary_store (rinfo, idx, vinfo);
+	}
+  return Qnil;
+}
+
+static VALUE
+rb_s_gpgme_ctx_set_engine_info (VALUE dummy, VALUE vctx, VALUE vproto, VALUE vfile_name,
+			    VALUE vhome_dir)
+{
+  gpgme_ctx_t ctx;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  gpgme_error_t err = gpgme_ctx_set_engine_info (ctx,
+               NUM2INT(vproto),
+					     NIL_P(vfile_name) ? NULL :
+					     StringValueCStr(vfile_name),
+					     NIL_P(vhome_dir) ? NULL :
+					     StringValueCStr(vhome_dir));
+  return LONG2NUM(err);
+}
+
+static VALUE
 rb_s_gpgme_pubkey_algo_name (VALUE dummy, VALUE valgo)
 {
   const char *name = gpgme_pubkey_algo_name (NUM2INT(valgo));
@@ -2209,7 +2256,10 @@ Init_gpgme_n (void)
 			     rb_s_gpgme_get_engine_info, 1);
   rb_define_module_function (mGPGME, "gpgme_set_engine_info",
 			     rb_s_gpgme_set_engine_info, 3);
-
+  rb_define_module_function (mGPGME, "gpgme_ctx_get_engine_info",
+           rb_s_gpgme_ctx_get_engine_info, 2);
+  rb_define_module_function (mGPGME, "gpgme_ctx_set_engine_info",
+           rb_s_gpgme_ctx_set_engine_info, 4);
   rb_define_module_function (mGPGME, "gpgme_pubkey_algo_name",
 			     rb_s_gpgme_pubkey_algo_name, 1);
   rb_define_module_function (mGPGME, "gpgme_hash_algo_name",
