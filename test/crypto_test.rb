@@ -43,7 +43,7 @@ describe GPGME::Crypto do
 
   describe :encrypt do
     it "should raise an error if the recipients aren't trusted" do
-      assert_raises GPGME::Error::General do
+      assert_raises GPGME::Error::UnusablePublicKey do
         GPGME::Crypto.new.encrypt TEXT[:plain]
       end
     end
