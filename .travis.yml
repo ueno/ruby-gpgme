@@ -9,6 +9,6 @@ matrix:
   allow_failures:
     - rvm: 1.9.3
 
-script: travis_wait bundle exec rake
+script: travis_wait bundle exec rake TESTOPTS="-v"
 after_failure:
   "find tmp -name compile.log -exec cat {} \\;"
