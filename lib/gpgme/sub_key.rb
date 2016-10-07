@@ -30,7 +30,7 @@ module GPGME
     end
 
     def sha
-      (@fingerprint || @keyid)[-8 .. -1]
+      (@fpr || @keyid)[-8 .. -1]
     end
 
     PUBKEY_ALGO_LETTERS = {
@@ -49,7 +49,7 @@ module GPGME
               secret? ? 'ssc' : 'sub',
               length,
               pubkey_algo_letter,
-              (@fingerprint || @keyid)[-8 .. -1],
+              (@fpr || @keyid)[-8 .. -1],
               timestamp.strftime('%Y-%m-%d'),
               trust.inspect,
               capability.inspect)
@@ -60,7 +60,7 @@ module GPGME
               secret? ? 'ssc' : 'sub',
               length,
               pubkey_algo_letter,
-              (@fingerprint || @keyid)[-8 .. -1],
+              (@fpr || @keyid)[-8 .. -1],
               timestamp.strftime('%Y-%m-%d'))
     end
   end
