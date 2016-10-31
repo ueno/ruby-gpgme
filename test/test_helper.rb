@@ -87,7 +87,12 @@ if GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
   # installation
 
   require 'tmpdir'
-  GPGME::Engine.home_dir = Dir.tmpdir
+  dir = Dir.mktmpdir
+  at_exit do
+    FileUtils.remove_entry dir
+  end
+  GPGME::Engine.home_dir = dir
+
   remove_all_keys
   import_keys
 end
