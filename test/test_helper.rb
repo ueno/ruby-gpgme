@@ -82,17 +82,33 @@ def without_key(key, &block)
   end
 end
 
-if GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
-  # We use a different home directory for the keys to not disturb current
-  # installation
+DIRS = []
 
-  require 'tmpdir'
-  dir = Dir.mktmpdir
-  at_exit do
+at_exit do
+  DIRS.each do |dir|
     FileUtils.remove_entry dir
   end
-  GPGME::Engine.home_dir = dir
+  DIRS.clear
+end
 
-  remove_all_keys
-  import_keys
+def ensure_keys(proto)
+  return false unless GPGME::Engine.check_version proto
+
+  case proto
+  when GPGME::PROTOCOL_OpenPGP
+    # We use a different home directory for the keys to not disturb current
+    # installation
+    require 'tmpdir'
+
+    if DIRS.empty?
+      dir = Dir.mktmpdir
+      GPGME::Engine.home_dir = dir
+      DIRS.push(dir)
+      remove_all_keys
+      import_keys
+    end
+    true
+  else
+    return false
+  end
 end

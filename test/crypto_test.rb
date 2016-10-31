@@ -4,7 +4,7 @@ require 'tempfile'
 
 describe GPGME::Crypto do
   before do
-    skip unless GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
+    skip unless ensure_keys GPGME::PROTOCOL_OpenPGP
   end
 
   describe "default options functionality" do

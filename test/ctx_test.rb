@@ -3,7 +3,7 @@ require 'test_helper'
 
 describe GPGME::Ctx do
   before do
-    skip unless GPGME::Engine.check_version GPGME::PROTOCOL_OpenPGP
+    skip unless ensure_keys GPGME::PROTOCOL_OpenPGP
   end
 
   it "can instantiate" do
