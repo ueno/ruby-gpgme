@@ -1,6 +1,11 @@
 #!/usr/bin/env ruby
 require 'gpgme'
 
+# newer versions of GPGME require that the library be initialized and part of
+# the process is checking the version or the library will not work at all:
+# http://does-not-exist.org/mail-archives/mutt-dev/msg14945.html
+GPGME::check_version(nil)
+
 # If you do not have gpg-agent installed, comment out the following
 # and set it as :passphrase_callback.
 #
