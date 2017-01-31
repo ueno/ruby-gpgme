@@ -10,7 +10,7 @@ version, or http://rdoc.info/gems/gpgme for latest gem release.
 == Requirements
 
 * Ruby 1.8 or later
-* GPGME 1.1.2 or later
+* GPGME 1.1.3 or later
 * gpg-agent (optional, but recommended)
 
 == Installation
