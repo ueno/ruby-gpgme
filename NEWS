@@ -1,3 +1,14 @@
+2.0.13 July 2, 2017
+
+- API change
+ * Expose gpgme_ctx_get_engine_info and gpgme_ctx_set_engine_info (Issue#83)
+
+- Bug fixes
+ * Update included libraries (GPGME 1.9.0, libgpg-error 1.27)
+ * Use HTTPS to retrieve tarballs and check the checksums (Issue#91)
+ * Relax dependency on mini_portile2 (Issue#88)
+ * Fix constructing capabilities value for GPGME::Key (Issue#76)
+
 2.0.12 January 19, 2016
 
 - Bug fixes
