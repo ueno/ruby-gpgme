@@ -117,6 +117,8 @@ EOS
       # However, on some systems (e.g. Debian), they are splitted into
       # separate packages.
       '--disable-gpgsm-test',
+      # We only need the C API.
+      '--disable-languages',
       "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
     ]
     checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
