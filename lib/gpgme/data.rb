@@ -177,6 +177,23 @@ module GPGME
     end
 
     ##
+    # Return the file name of the underlying data.
+    def file_name
+      GPGME::gpgme_data_get_file_name(self)
+    end
+
+    ##
+    # Sets the file name for this buffer.
+    #
+    # @raise [GPGME::Error::InvalidValue] if the value isn't accepted.
+    def file_name=(file_name)
+      err = GPGME::gpgme_data_set_file_name(self, file_name)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+      file_name
+    end
+
+    ##
     # Return the entire content of the data object as string.
     def to_s
       pos = seek(0, IO::SEEK_CUR)
