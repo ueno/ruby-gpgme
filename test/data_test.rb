@@ -113,6 +113,21 @@ describe GPGME::Data do
     end
   end
 
+  describe :file_name do
+    it "has no name by default" do
+      data = GPGME::Data.new("wadus")
+      assert_nil data.file_name
+    end
+
+    it "can set file_name" do
+      data = GPGME::Data.new("wadus")
+      [ "foo.bar", nil ].each do |file_name|
+        data.file_name = file_name
+        assert_equal file_name, data.file_name
+      end
+    end
+  end
+
   describe :to_s do
     it "returns the entire content of data" do
       data = GPGME::Data.new("wadus")

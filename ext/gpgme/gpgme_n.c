@@ -469,6 +469,28 @@ rb_s_gpgme_data_set_encoding (VALUE dummy, VALUE vdh, VALUE venc)
 }
 
 static VALUE
+rb_s_gpgme_data_get_file_name (VALUE dummy, VALUE vdh)
+{
+  gpgme_data_t dh;
+
+  UNWRAP_GPGME_DATA(vdh, dh);
+  const char *result = gpgme_data_get_file_name (dh);
+  return result ? rb_str_new2 (result) : Qnil;
+}
+
+static VALUE
+rb_s_gpgme_data_set_file_name (VALUE dummy, VALUE vdh, VALUE vfile_name)
+{
+  gpgme_data_t dh;
+  gpgme_error_t err;
+
+  UNWRAP_GPGME_DATA(vdh, dh);
+  err = gpgme_data_set_file_name (dh,
+      NIL_P(vfile_name) ? NULL : StringValueCStr(vfile_name));
+  return LONG2NUM(err);
+}
+
+static VALUE
 rb_s_gpgme_new (VALUE dummy, VALUE rctx)
 {
   gpgme_ctx_t ctx;
@@ -2335,6 +2357,10 @@ Init_gpgme_n (void)
 			     rb_s_gpgme_data_get_encoding, 1);
   rb_define_module_function (mGPGME, "gpgme_data_set_encoding",
 			     rb_s_gpgme_data_set_encoding, 2);
+  rb_define_module_function (mGPGME, "gpgme_data_get_file_name",
+			     rb_s_gpgme_data_get_file_name, 1);
+  rb_define_module_function (mGPGME, "gpgme_data_set_file_name",
+			     rb_s_gpgme_data_set_file_name, 2);
 
   /* Creating Contexts */
   rb_define_module_function (mGPGME, "gpgme_new",
