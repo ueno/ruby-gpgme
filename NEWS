@@ -1,3 +1,8 @@
+2.0.14 October 30, 2017
+
+- Bug fixes
+ * Fix build issues on Ubuntu by only compiling needed APIs (Issue#93)
+
 2.0.13 July 2, 2017
 
 - API change
