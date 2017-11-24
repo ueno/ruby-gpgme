@@ -60,6 +60,15 @@ module GPGME
         raise exc if exc
       end
 
+      #
+      # this method is supposed to not harming the global GPG status
+      #
+      def set_info_safely(proto, ctx, file_name, home_dir)
+        err = GPGME::gpgme_ctx_set_engine_info(proto, ctx, file_name, home_dir)
+        exc = GPGME::error_to_exception(err)
+        raise exc if exc
+      end
+
       ##
       # Sets the home dir for the configuration options. This way one could,
       # for example, load the keys from a customized keychain.
