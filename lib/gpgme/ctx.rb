@@ -466,6 +466,15 @@ module GPGME
       end
     end
 
+    #
+    # this method is supposed to not harming the global GPG status
+    #
+    def set_info_safely(proto, file_name, home_dir)
+      err = GPGME::gpgme_ctx_set_engine_info(proto, self, file_name, home_dir)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+    end
+
     # Create a signature for the text.
     # +plain+ is a data object which contains the text.
     # +sig+ is a data object where the generated signature is stored.
