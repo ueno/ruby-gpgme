@@ -39,6 +39,7 @@
 #include "ruby.h"
 #ifdef HAVE_RUBY_ENCODING_H
 #include "ruby/encoding.h"
+static rb_encoding *utf8Encoding;
 #endif
 #include "gpgme.h"
 #include <errno.h>
@@ -345,6 +346,14 @@ write_cb (void *handle, const void *buffer, size_t size)
   vcbs = RARRAY_PTR(vcb)[0];
   vhook_value = RARRAY_PTR(vcb)[1];
   vbuffer = rb_str_new (buffer, size);
+
+#ifdef HAVE_RUBY_ENCODING_H
+    rb_encoding *default_internal_enc = rb_default_internal_encoding();
+    rb_enc_associate(vbuffer, utf8Encoding);
+    if (default_internal_enc) {
+      vbuffer = rb_str_export_to_enc(vbuffer, default_internal_enc);
+    }
+#endif
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
 			vhook_value, vbuffer, LONG2NUM(size));
@@ -3067,5 +3076,9 @@ Init_gpgme_n (void)
                    INT2FIX(GPGME_EXPORT_MODE_RAW));
   rb_define_const (mGPGME, "GPGME_EXPORT_MODE_PKCS12",
                    INT2FIX(GPGME_EXPORT_MODE_PKCS12));
+#endif
+
+#ifdef HAVE_RUBY_ENCODING_H
+  utf8Encoding = rb_utf8_encoding();
 #endif
 }
