@@ -66,7 +66,6 @@ EOS
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      #:sha256 => '4f93aac6fecb7da2b92871bb9ee33032be6a87b174f54abf8ddf0911a22d29d2'
       :sha256 => 'c345c5e73cc2332f8d50db84a2280abfb1d8f6d4f1858b9daa30404db44540ca'
     }]
     recipe.configure_options = [
