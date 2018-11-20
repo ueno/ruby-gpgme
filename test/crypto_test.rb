@@ -63,7 +63,7 @@ describe GPGME::Crypto do
 
       remove_key key
       encrypted.seek 0
-      assert_raises GPGME::Error::DecryptFailed do
+      assert_raises GPGME::Error::NoSecretKey do
         crypto.decrypt(encrypted)
       end
       import_key key
@@ -79,7 +79,7 @@ describe GPGME::Crypto do
 
       remove_key key
       encrypted.seek 0
-      assert_raises GPGME::Error::DecryptFailed do
+      assert_raises GPGME::Error::NoSecretKey do
         crypto.decrypt(encrypted)
       end
       import_key key
@@ -195,7 +195,7 @@ describe GPGME::Crypto do
     # it "raises WrongKeyUsage"
 
     it "raises DecryptFailed when the decrypting key isn't available" do
-      assert_raises GPGME::Error::DecryptFailed do
+      assert_raises GPGME::Error::NoSecretKey do
         GPGME::Crypto.new.decrypt(TEXT[:unavailable])
       end
     end
