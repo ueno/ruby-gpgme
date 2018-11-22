@@ -1,3 +1,10 @@
+2.0.17 November 22, 2018
+
+- Dependency updates to help with Docker/gpgme 1.9 poor performance
+  * gpgme 1.12.0
+  * assuan 2.5.1
+  * error 1.32
+
 2.0.16 January 3, 2018
 
 - API change
