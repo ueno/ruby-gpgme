@@ -1,3 +1,7 @@
+2.0.18 November 22, 2018
+
+- Broken build fix
+
 2.0.17 November 22, 2018
 
 - Dependency updates to help with Docker/gpgme 1.9 poor performance
