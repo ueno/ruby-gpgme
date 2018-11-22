@@ -116,7 +116,10 @@ EOS
       # GPGME 1.5.0 assumes gpgsm is present if gpgconf is found.
       # However, on some systems (e.g. Debian), they are splitted into
       # separate packages.
+      '--disable-gpgconf-test',
+      '--disable-gpg-test',
       '--disable-gpgsm-test',
+      '--disable-g13-test',
       # We only need the C API.
       '--disable-languages',
       "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
