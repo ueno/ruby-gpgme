@@ -135,6 +135,61 @@ one is currently using. For example:
 * Changing home directory to work with different settings:
  GPGME::Engine.home_dir = '/tmp'
 
+=== Round trip example using keychain keys
+
+Rather than importing the keys it's possible to specify the recipient
+when performing crypto functions. Here's a roundtrip example,
+and note that as this is for a console, the +conf.echo = false+
+line is to stop IRB complaining when echoing binary data
+
+  conf.echo = false # Stop IRB echoing everything, which errors with binary data. Not required for production code
+
+  class PassphraseCallback
+    def initialize(passphrase)
+      @passphrase = passphrase
+    end
+
+    def call(*args)
+      fd = args.last
+      io = IO.for_fd(fd, 'w')
+      io.puts(@passphrase)
+      io.flush
+    end
+  end
+
+  # recipients can be found using $ gpg --list-keys --homedir ./keychain_location
+  # pub   2048R/A1B2C3D4 2014-01-17
+  # Use that line to substitute your own. 2048R is the key length and type (RSA in this case)
+
+  # If you want to substitute a non-default keychain into the engine do this:
+  # home_dir = Rails.root.join('keychain_location').to_s
+  # GPGME::Engine.set_info(GPGME::PROTOCOL_OpenPGP, '/usr/local/bin/gpg', home_dir)
+  # Note GPG executable location will change across platforms
+
+
+  crypto = GPGME::Crypto.new
+  options = {:recipients => 'A1B2C3D4'}
+
+  plaintext = GPGME::Data.new(File.open(Rails.root.join('Gemfile')))
+
+  data = crypto.encrypt plaintext, options
+
+  f = File.open(Rails.root.join('Gemfile.gpg'), 'wb')
+  bytes_written = f.write(data)
+  f.close
+
+  puts bytes_written
+
+
+  crypto = GPGME::Crypto.new
+  options = {:recipients => 'A1B2C3D4', :passphrase_callback => PassphraseCallback.new('my_passphrase')}
+
+  cipthertext = GPGME::Data.new(File.open(Rails.root.join('Gemfile.gpg')))
+
+  data = crypto.decrypt cipthertext, options
+  puts data
+
+
 == Contributing
 
 To run the local test suite you need bundler and gpg:
