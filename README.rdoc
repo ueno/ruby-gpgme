@@ -61,22 +61,22 @@ might be useful.
 
 == Usage
 
-All the high level methods attack the mid level {GPGME::Ctx} API. It is
-recommended to read through the #{GPGME::Ctx.new} methods for common options.
+All the high level methods attack the mid level <tt>GPGME::Ctx</tt> API. It is
+recommended to read through the <tt>GPGME::Ctx.new</tt> methods for common options.
 
-Also, most of the input/output is done via {GPGME::Data} objects that create a
+Also, most of the input/output is done via <tt>GPGME::Data</tt> objects that create a
 common interface for reading/writing to normal strings, or other common
-objects like files. Read the {GPGME::Data} documentation to understand
-how it works. Every time the lib needs a {GPGME::Data} object, it will be
+objects like files. Read the <tt>GPGME::Data</tt> documentation to understand
+how it works. Every time the lib needs a <tt>GPGME::Data</tt> object, it will be
 automatically converted to it.
 
 === Crypto
 
-The {GPGME::Crypto} class has the high level convenience methods to encrypt,
+The <tt>GPGME::Crypto</tt> class has the high level convenience methods to encrypt,
 decrypt, sign and verify signatures. Here are some examples, but it is
-recommended to read through the {GPGME::Crypto} class to see all the options.
+recommended to read through the <tt>GPGME::Crypto</tt> class to see all the options.
 
-* Document encryption via {GPGME::Crypto#encrypt}:
+* Document encryption via <tt>GPGME::Crypto#encrypt</tt>:
  crypto = GPGME::Crypto.new
  crypto.encrypt "Hello world!", :recipients => "someone@example.com"
 
@@ -85,13 +85,13 @@ recommended to read through the {GPGME::Crypto} class to see all the options.
  crypto.encrypt "Hello world!", :symmetric => true
 
 
-* Document decryption via {GPGME::Crypto#decrypt} (including signature verification):
+* Document decryption via <tt>GPGME::Crypto#decrypt</tt> (including signature verification):
  crypto.decrypt File.open("text.gpg")
 
-* Document signing via {GPGME::Crypto#sign}. Also the clearsigning and detached signing.
+* Document signing via <tt>GPGME::Crypto#sign</tt>. Also the clearsigning and detached signing.
  crypto.sign "I hereby proclaim Github the beneficiary of all my money when I die"
 
-* Sign verification via {GPGME::Crypto#verify}
+* Sign verification via <tt>GPGME::Crypto#verify</tt>
  sign = crypto.sign "Some text"
  data = crypto.verify(sign) { |signature| signature.valid? }
 
@@ -108,11 +108,11 @@ creation.
 
 * Key exporting
  GPGME::Key.export("someone@example.com")
- # => Returns a {GPGME::Data} object with the exported key.
+ # => Returns a GPGME::Data object with the exported key.
 
  key = GPGME::Key.find(:secret, "someone@example.com").first
  key.export
- # => Returns a {GPGME::Data} object with the exported key.
+ # => Returns a GPGME::Data object with the exported key.
 
 * Key importing
  GPGME::Key.import(File.open("my.key"))
