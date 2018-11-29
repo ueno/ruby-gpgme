@@ -97,7 +97,7 @@ recommended to read through the {GPGME::Crypto} class to see all the options.
 
 === Key
 
-The {GPGME::Key} object represents a key, and has the high level related
+The <tt>GPGME::Key</tt> object represents a key, and has the high level related
 methods to work with them and find them, export, import, deletetion and
 creation.
 
@@ -139,10 +139,12 @@ one is currently using. For example:
 
 Rather than importing the keys it's possible to specify the recipient
 when performing crypto functions. Here's a roundtrip example,
-and note that as this is for a console, the +conf.echo = false+
+and note that as this is for a console, the <tt>conf.echo = false</tt>
 line is to stop IRB complaining when echoing binary data
 
-  conf.echo = false # Stop IRB echoing everything, which errors with binary data. Not required for production code
+  # Stop IRB echoing everything, which errors with binary data.
+  # Not required for production code
+  conf.echo = false
 
   class PassphraseCallback
     def initialize(passphrase)
