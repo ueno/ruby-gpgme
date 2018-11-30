@@ -22,6 +22,9 @@ before_install:
   - sudo mknod -m 0666 /dev/random c 1 9
   - echo HRNGDEVICE=/dev/urandom | sudo tee /etc/default/rng-tools
   - sudo /etc/init.d/rng-tools restart
+  - gpg --version
+  - gpg2 --version
+  - gpgconf --list-options gpg-agent
 
 script: travis_wait bundle exec rake TESTOPTS="-v"
 
