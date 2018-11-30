@@ -27,6 +27,11 @@ describe GPGME::Ctx do
   end
 
   describe :new do
+    before do
+      info = GPGME::Engine.info.first
+      skip if /\A2\.[01]|\A1\./ === info.version
+    end
+
     # We consider :armor, :protocol, :textmode and :keylist_mode as tested
     # with the other tests of this file. Here we test the rest
 
