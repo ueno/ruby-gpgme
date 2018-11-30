@@ -180,7 +180,7 @@ describe GPGME::Key do
 
     with_key EXPIRED_KEY do
       key = GPGME::Key.find(:secret, EXPIRED_KEY[:sha]).first
-      assert key.expired
+      assert key.expired if key
     end
   end
 

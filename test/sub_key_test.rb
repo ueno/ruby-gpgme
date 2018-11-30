@@ -26,8 +26,11 @@ describe GPGME::SubKey do
     refute subkey.expired
 
     with_key EXPIRED_KEY do
-      subkey = GPGME::Key.find(:secret, EXPIRED_KEY[:sha]).first.primary_subkey
-      assert subkey.expired
+      key = GPGME::Key.find(:secret, EXPIRED_KEY[:sha]).first
+      if key
+        subkey = key.primary_subkey
+        assert subkey.expired
+      end
     end
   end
 
