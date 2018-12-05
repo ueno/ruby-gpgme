@@ -128,6 +128,11 @@ describe GPGME::Crypto do
   end
 
   describe "symmetric encryption/decryption" do
+    before do
+      info = GPGME::Engine.info.first
+      skip if /\A2\.[01]|\A1\./ === info.version
+    end
+
     it "requires a password to encrypt" do
       assert_raises GPGME::Error::BadPassphrase do
         GPGME::Crypto.new.encrypt TEXT[:plain], :symmetric => true
