@@ -9,6 +9,10 @@ rvm:
   - 2.4.3
   - 2.5.0
 
+env:
+  - RUBY_GPGME_USE_SYSTEM_LIBRARIES=1
+  -
+
 matrix:
   allow_failures:
     - rvm: 1.9.3
@@ -17,6 +21,7 @@ matrix:
 before_install:
   # this is a fix to get rng-tools to work in travis-ci
   - sudo apt-get update -qq
+  - '[ -z "$RUBY_GPGME_USE_SYSTEM_LIBRARIES" ] || sudo apt-get install --yes libgpgme11-dev'
   - sudo apt-get install --yes rng-tools
   - sudo rm -f /dev/random
   - sudo mknod -m 0666 /dev/random c 1 9
