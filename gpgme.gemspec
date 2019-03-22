@@ -7,7 +7,6 @@ Gem::Specification.new do |s|
   s.extensions        = ['ext/gpgme/extconf.rb']
   s.files             = Dir['{lib,ext,test,examples}/**/*'] +
                         Dir['ports/archives/*']
-  s.has_rdoc          = true
   s.rubyforge_project = 'ruby-gpgme'
   s.homepage          = 'http://github.com/ueno/ruby-gpgme'
   s.license           = 'LGPL-2.1+'
