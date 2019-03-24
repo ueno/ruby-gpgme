@@ -2,18 +2,18 @@ language: ruby
 
 rvm:
   - 1.9.3
-  - 2.0.0
-  - 2.1.10
-  - 2.2.9
-  - 2.3.6
-  - 2.4.3
-  - 2.5.0
-  - 2.6.1
+  - 2.0
+  - 2.1
+  - 2.2
+  - 2.3
+  - 2.4
+  - 2.5
+  - 2.6
 
 matrix:
   allow_failures:
     - rvm: 1.9.3
-    - rvm: 2.0.0
+    - rvm: 2.0
 
 before_install:
   # this is a fix to get rng-tools to work in travis-ci
