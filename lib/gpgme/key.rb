@@ -81,6 +81,7 @@ module GPGME
       # @param [Hash] options
       #   * +:output+ specify where to write the key to. It will be converted to
       #     a {GPGME::Data}, so it could be a file, for example.
+      #   * +:minimal+ set to true to let the export mode be 'minimal'.
       #   * Any other option accepted by {GPGME::Ctx.new}
       #
       # @return [GPGME::Data] the exported key.
@@ -94,9 +95,14 @@ module GPGME
       #
       def export(pattern, options = {})
         output = Data.new(options[:output])
+        if options.delete(:minimal) == true
+          export_mode = 4
+        else
+          export_mode = 0
+        end
 
         GPGME::Ctx.new(options) do |ctx|
-          ctx.export_keys(pattern, output)
+          ctx.export_keys(pattern, output, export_mode)
         end
 
         output.seek(0)
