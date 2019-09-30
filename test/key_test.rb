@@ -199,6 +199,18 @@ describe GPGME::Key do
     end
   end
 
+  describe :valid? do
+    it "returns true on a valid key" do
+      valid_key = File.read("test/files/testkey_pub.gpg")
+      assert GPGME::Key.valid?(valid_key)
+    end
+
+    it "returns false on an invalid key" do
+      invalid_key = File.read("test/files/testkey_pub_invalid.gpg")
+      assert !GPGME::Key.valid?(invalid_key)
+    end
+  end
+
   describe :to_s do
     it "can be coerced into a String" do
       key = GPGME::Key.find(:secret).first
@@ -206,4 +218,3 @@ describe GPGME::Key do
     end
   end
 end
-
