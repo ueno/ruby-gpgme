@@ -404,6 +404,26 @@ RUBY
       import_keys # If the test fails for some reason, it won't break others.
     end
 
+    it "exports a minimal key if given the mode" do
+      remove_all_keys
+      GPGME::Key.import(KEY_WITH_SIGNATURE[:public])
+      key = GPGME::Key.find(KEY_WITH_SIGNATURE[:sha]).first
+      output_normal = GPGME::Data.new
+      output_minimal = GPGME::Data.new
+      ctx = GPGME::Ctx.new
+
+      ctx.export_keys(key.sha, output_normal)
+      ctx.export_keys(key.sha, output_minimal, 4)
+
+      output_normal.seek(0)
+      output_minimal.seek(0)
+
+      assert_equal output_normal.read.size, 849
+      assert_equal output_minimal.read.size, 668
+
+      import_keys # If the test fails for some reason, it won't break others.
+    end
+
     it "exports only one key" do
       original_keys = GPGME::Key.find(:public)
       key           = original_keys.first
