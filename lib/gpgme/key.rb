@@ -128,6 +128,12 @@ module GPGME
           ctx.import_result
         end
       end
+
+      # Checks if a key is valid
+      def valid?(key)
+        GPGME::Key.import(key).considered == 1
+      end
+
     end
 
     ##
