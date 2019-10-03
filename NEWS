@@ -1,3 +1,13 @@
+2.0.19 November 3, 2019
+
+- Significant test/CI improvements
+  * Sebastian Skałacki <skalee@gmail.com>
+  * Daiki Ueno <ueno@gnu.org>
+- New features
+  * Enable minimal key exports. (#132)
+  * Added GPGME::Key.valid? method (#133)
+
+
 2.0.18 November 22, 2018
 
 - Broken build fix
