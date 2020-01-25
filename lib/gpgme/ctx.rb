@@ -517,6 +517,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
 
     def self.pass_function(pass, uid_hint, passphrase_info, prev_was_bad, fd)
       io = IO.for_fd(fd, 'w')
+      io.autoclose = false
       io.puts pass
       io.flush
     end
