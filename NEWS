@@ -1,3 +1,12 @@
+2.0.20 February 18, 2020
+
+- Update dependencies (Issue#134)
+  * libgpg-error 1.37
+  * libassuan 2.5.3
+  * gpgme to 1.13.1
+- Set `IO#autoclose = false` on the pass_function `IO` object to avoid GC race conditions
+  * Vicent Martí <vicent@github.com>
+
 2.0.19 October 3, 2019
 
 - Significant test/CI improvements
