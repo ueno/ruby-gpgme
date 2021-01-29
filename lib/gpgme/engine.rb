@@ -52,7 +52,7 @@ module GPGME
       #   The directory name of the configuration directory.
       #
       # @example
-      #   GPGME::Engine.set
+      #   GPGME::Engine.set_info(GPGME::PROTOCOL_OpenPGP, '/usr/local/bin/gpg', home_dir)
       #
       def set_info(proto, file_name, home_dir)
         err = GPGME::gpgme_set_engine_info(proto, file_name, home_dir)
