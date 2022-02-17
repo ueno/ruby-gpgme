@@ -31,6 +31,8 @@ encryption, decryption, signing, signature verification and key management.}
     s.add_development_dependency "ruby-debug19" , "~> 0.11.6"
   when /\A2\./
     s.add_development_dependency "byebug" , "~> 3.5.1"
+  when /\A3\./
+    s.add_development_dependency "byebug" , "~> 11.1"
   else
     s.add_development_dependency "ruby-debug" , "~> 0.10.4"
   end
