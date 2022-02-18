@@ -102,11 +102,11 @@ EOS
     recipe.activate
   end
 
-  gpgme_recipe = MiniPortile.new('gpgme', '1.13.1').tap do |recipe|
+  gpgme_recipe = MiniPortile.new('gpgme', '1.17.0').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => 'c4e30b227682374c23cddc7fdb9324a99694d907e79242a25a4deeedb393be46'
+      :sha256 => '4ed3f50ceb7be2fce2c291414256b20c9ebf4c03fddb922c88cda99c119a69f5'
     }]
     recipe.configure_options = [
       '--disable-shared',
