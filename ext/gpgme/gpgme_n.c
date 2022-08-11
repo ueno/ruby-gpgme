@@ -46,15 +46,15 @@
 /* Define this if you use GPGME 1.1.2 and earlier.
    https://bugs.g10code.com/gnupg/issue715 */
 #ifdef RUBY_GPGME_NEED_WORKAROUND_KEYLIST_NEXT
-#define CHECK_KEYLIST_IN_PROGRESS(vctx)					\
-  if (rb_iv_get (vctx, "ruby_gpgme_keylist_in_progress") != Qtrue)	\
+#define CHECK_KEYLIST_IN_PROGRESS(vctx)                                   \
+  if (rb_iv_get (vctx, "ruby_gpgme_keylist_in_progress") != Qtrue)        \
     return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE))
-#define CHECK_KEYLIST_NOT_IN_PROGRESS(vctx)				\
-  if (rb_iv_get (vctx, "ruby_gpgme_keylist_in_progress") == Qtrue)	\
+#define CHECK_KEYLIST_NOT_IN_PROGRESS(vctx)                               \
+  if (rb_iv_get (vctx, "ruby_gpgme_keylist_in_progress") == Qtrue)        \
     return LONG2NUM(gpgme_error (GPG_ERR_INV_STATE))
-#define SET_KEYLIST_IN_PROGRESS(vctx)				\
+#define SET_KEYLIST_IN_PROGRESS(vctx)                                \
   rb_iv_set (vctx, "ruby_gpgme_keylist_in_progress", Qtrue)
-#define RESET_KEYLIST_IN_PROGRESS(vctx)				\
+#define RESET_KEYLIST_IN_PROGRESS(vctx)                              \
   rb_iv_set (vctx, "ruby_gpgme_keylist_in_progress", Qfalse)
 #else
 #define CHECK_KEYLIST_IN_PROGRESS(vctx)
@@ -88,28 +88,28 @@
 #define RSTRING_LEN(a) RSTRING(a)->len
 #endif
 
-#define WRAP_GPGME_DATA(dh)					\
+#define WRAP_GPGME_DATA(dh)                                        \
   Data_Wrap_Struct(cData, 0, gpgme_data_release, dh)
 /* `gpgme_data_t' is typedef'ed as `struct gpgme_data *'. */
-#define UNWRAP_GPGME_DATA(vdh, dh)				\
+#define UNWRAP_GPGME_DATA(vdh, dh)                                \
   Data_Get_Struct(vdh, struct gpgme_data, dh);
 
-#define WRAP_GPGME_CTX(ctx)					\
+#define WRAP_GPGME_CTX(ctx)                                        \
   Data_Wrap_Struct(cCtx, 0, gpgme_release, ctx)
 /* `gpgme_ctx_t' is typedef'ed as `struct gpgme_context *'. */
-#define UNWRAP_GPGME_CTX(vctx, ctx)				\
+#define UNWRAP_GPGME_CTX(vctx, ctx)                                \
   Data_Get_Struct(vctx, struct gpgme_context, ctx)
 
-#define WRAP_GPGME_KEY(key)					\
+#define WRAP_GPGME_KEY(key)                                        \
   Data_Wrap_Struct(cKey, 0, gpgme_key_unref, key)
 /* `gpgme_key_t' is typedef'ed as `struct _gpgme_key *'. */
-#define UNWRAP_GPGME_KEY(vkey, key)				\
+#define UNWRAP_GPGME_KEY(vkey, key)                                \
   Data_Get_Struct(vkey, struct _gpgme_key, key)
 
-#define WRAP_GPGME_TRUST_ITEM(item)					  \
+#define WRAP_GPGME_TRUST_ITEM(item)                                          \
   Data_Wrap_Struct(cTrustItem, 0, gpgme_trust_item_unref, item)
 /* `gpgme_trust_item_t' is typedef'ed as `struct _gpgme_trust_item *'. */
-#define UNWRAP_GPGME_TRUST_ITEM(vitem, item)			\
+#define UNWRAP_GPGME_TRUST_ITEM(vitem, item)                        \
   Data_Get_Struct(vitem, struct _gpgme_trust_item, item)
 
 static VALUE cEngineInfo,
@@ -145,7 +145,7 @@ static VALUE
 rb_s_gpgme_check_version (VALUE dummy, VALUE vreq)
 {
   const char *result = gpgme_check_version (NIL_P(vreq) ? NULL :
-					    StringValueCStr(vreq));
+                                            StringValueCStr(vreq));
   return result ? rb_str_new2 (result) : Qnil;
 }
 
@@ -167,32 +167,32 @@ rb_s_gpgme_get_engine_info (VALUE dummy, VALUE rinfo)
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       for (idx = 0; info; info = info->next, idx++)
-	{
-	  VALUE vinfo = rb_class_new_instance (0, NULL, cEngineInfo);
-	  rb_iv_set (vinfo, "@protocol", INT2FIX(info->protocol));
-	  if (info->file_name)
-	    rb_iv_set (vinfo, "@file_name", rb_str_new2 (info->file_name));
-	  if (info->version)
-	    rb_iv_set (vinfo, "@version", rb_str_new2 (info->version));
-	  if (info->req_version)
-	    rb_iv_set (vinfo, "@req_version", rb_str_new2 (info->req_version));
-	  if (info->home_dir)
-	    rb_iv_set (vinfo, "@home_dir", rb_str_new2 (info->home_dir));
-	  rb_ary_store (rinfo, idx, vinfo);
-	}
+        {
+          VALUE vinfo = rb_class_new_instance (0, NULL, cEngineInfo);
+          rb_iv_set (vinfo, "@protocol", INT2FIX(info->protocol));
+          if (info->file_name)
+            rb_iv_set (vinfo, "@file_name", rb_str_new2 (info->file_name));
+          if (info->version)
+            rb_iv_set (vinfo, "@version", rb_str_new2 (info->version));
+          if (info->req_version)
+            rb_iv_set (vinfo, "@req_version", rb_str_new2 (info->req_version));
+          if (info->home_dir)
+            rb_iv_set (vinfo, "@home_dir", rb_str_new2 (info->home_dir));
+          rb_ary_store (rinfo, idx, vinfo);
+        }
     }
   return LONG2NUM(err);
 }
 
 static VALUE
 rb_s_gpgme_set_engine_info (VALUE dummy, VALUE vproto, VALUE vfile_name,
-			    VALUE vhome_dir)
+                            VALUE vhome_dir)
 {
   gpgme_error_t err = gpgme_set_engine_info (NUM2INT(vproto),
-					     NIL_P(vfile_name) ? NULL :
-					     StringValueCStr(vfile_name),
-					     NIL_P(vhome_dir) ? NULL :
-					     StringValueCStr(vhome_dir));
+                                             NIL_P(vfile_name) ? NULL :
+                                             StringValueCStr(vfile_name),
+                                             NIL_P(vhome_dir) ? NULL :
+                                             StringValueCStr(vhome_dir));
   return LONG2NUM(err);
 }
 
@@ -209,25 +209,25 @@ rb_s_gpgme_ctx_get_engine_info (VALUE dummy, VALUE vctx, VALUE rinfo)
 
   gpgme_engine_info_t info = gpgme_ctx_get_engine_info (ctx);
       for (idx = 0; info; info = info->next, idx++)
-	{
-	  VALUE vinfo = rb_class_new_instance (0, NULL, cEngineInfo);
-	  rb_iv_set (vinfo, "@protocol", INT2FIX(info->protocol));
-	  if (info->file_name)
-	    rb_iv_set (vinfo, "@file_name", rb_str_new2 (info->file_name));
-	  if (info->version)
-	    rb_iv_set (vinfo, "@version", rb_str_new2 (info->version));
-	  if (info->req_version)
-	    rb_iv_set (vinfo, "@req_version", rb_str_new2 (info->req_version));
-	  if (info->home_dir)
-	    rb_iv_set (vinfo, "@home_dir", rb_str_new2 (info->home_dir));
-	  rb_ary_store (rinfo, idx, vinfo);
-	}
+        {
+          VALUE vinfo = rb_class_new_instance (0, NULL, cEngineInfo);
+          rb_iv_set (vinfo, "@protocol", INT2FIX(info->protocol));
+          if (info->file_name)
+            rb_iv_set (vinfo, "@file_name", rb_str_new2 (info->file_name));
+          if (info->version)
+            rb_iv_set (vinfo, "@version", rb_str_new2 (info->version));
+          if (info->req_version)
+            rb_iv_set (vinfo, "@req_version", rb_str_new2 (info->req_version));
+          if (info->home_dir)
+            rb_iv_set (vinfo, "@home_dir", rb_str_new2 (info->home_dir));
+          rb_ary_store (rinfo, idx, vinfo);
+        }
   return Qnil;
 }
 
 static VALUE
 rb_s_gpgme_ctx_set_engine_info (VALUE dummy, VALUE vctx, VALUE vproto, VALUE vfile_name,
-			    VALUE vhome_dir)
+                            VALUE vhome_dir)
 {
   gpgme_ctx_t ctx;
 
@@ -236,10 +236,10 @@ rb_s_gpgme_ctx_set_engine_info (VALUE dummy, VALUE vctx, VALUE vproto, VALUE vfi
     rb_raise (rb_eArgError, "released ctx");
   gpgme_error_t err = gpgme_ctx_set_engine_info (ctx,
                NUM2INT(vproto),
-					     NIL_P(vfile_name) ? NULL :
-					     StringValueCStr(vfile_name),
-					     NIL_P(vhome_dir) ? NULL :
-					     StringValueCStr(vhome_dir));
+                                             NIL_P(vfile_name) ? NULL :
+                                             StringValueCStr(vfile_name),
+                                             NIL_P(vhome_dir) ? NULL :
+                                             StringValueCStr(vhome_dir));
   return LONG2NUM(err);
 }
 
@@ -292,7 +292,7 @@ rb_s_gpgme_data_new (VALUE dummy, VALUE rdh)
 
 static VALUE
 rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
-			      VALUE vsize)
+                              VALUE vsize)
 {
   gpgme_data_t dh;
   VALUE vdh;
@@ -330,7 +330,7 @@ read_cb (void *handle, void *buffer, size_t size)
   vhook_value = RARRAY_PTR(vcb)[1];
 
   vbuffer = rb_funcall (vcbs, rb_intern ("read"), 2, vhook_value,
-			LONG2NUM(size));
+                        LONG2NUM(size));
   if (NIL_P(vbuffer))
     return 0;
   memcpy (buffer, StringValuePtr(vbuffer), RSTRING_LEN(vbuffer));
@@ -347,7 +347,7 @@ write_cb (void *handle, const void *buffer, size_t size)
   vbuffer = rb_str_new (buffer, size);
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
-			vhook_value, vbuffer, LONG2NUM(size));
+                        vhook_value, vbuffer, LONG2NUM(size));
   return NUM2LONG(vnwrite);
 }
 
@@ -363,7 +363,7 @@ seek_cb (void *handle, off_t offset, int whence)
   if (rb_respond_to (vcbs, id_seek))
     {
       vpos = rb_funcall (vcbs, id_seek, 3,
-			 vhook_value, LONG2NUM(offset), INT2FIX(whence));
+                         vhook_value, LONG2NUM(offset), INT2FIX(whence));
       return NUM2LONG(vpos);
     }
   errno = ENOSYS;
@@ -380,7 +380,7 @@ static struct gpgme_data_cbs cbs =
 
 static VALUE
 rb_s_gpgme_data_new_from_cbs (VALUE dummy, VALUE rdh, VALUE vcbs,
-			      VALUE vhandle)
+                              VALUE vhandle)
 {
   gpgme_data_t dh;
   gpgme_error_t err;
@@ -644,7 +644,7 @@ rb_s_gpgme_get_keylist_mode (VALUE dummy, VALUE vctx)
 
 static gpgme_error_t
 passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info,
-	       int prev_was_bad, int fd)
+               int prev_was_bad, int fd)
 {
   VALUE vcb = (VALUE)hook, vpassfunc, vhook_value;
 
@@ -652,17 +652,17 @@ passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info,
   vhook_value = RARRAY_PTR(vcb)[1];
 
   rb_funcall (vpassfunc, rb_intern ("call"), 5,
-	      vhook_value,
-	      uid_hint ? rb_str_new2 (uid_hint) : Qnil,
-	      passphrase_info ? rb_str_new2 (passphrase_info) : Qnil,
-	      INT2FIX(prev_was_bad),
-	      INT2NUM(fd));
+              vhook_value,
+              uid_hint ? rb_str_new2 (uid_hint) : Qnil,
+              passphrase_info ? rb_str_new2 (passphrase_info) : Qnil,
+              INT2FIX(prev_was_bad),
+              INT2NUM(fd));
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
 static VALUE
 rb_s_gpgme_set_passphrase_cb (VALUE dummy, VALUE vctx, VALUE vpassfunc,
-			      VALUE vhook_value)
+                              VALUE vhook_value)
 {
   gpgme_ctx_t ctx;
   VALUE vcb = rb_ary_new ();
@@ -681,7 +681,7 @@ rb_s_gpgme_set_passphrase_cb (VALUE dummy, VALUE vctx, VALUE vpassfunc,
 
 static VALUE
 rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
-			      VALUE rhook_value)
+                              VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@passphrase_cb");
 
@@ -701,15 +701,15 @@ status_cb (void *hook, const char *keyword, const char *args)
   vhook_value = RARRAY_PTR(vcb)[1];
 
   rb_funcall (vstatusfunc, rb_intern ("call"), 3,
-	      vhook_value,
-	      keyword ? rb_str_new2 (keyword) : Qnil,
-	      args ? rb_str_new2 (args) : Qnil);
+              vhook_value,
+              keyword ? rb_str_new2 (keyword) : Qnil,
+              args ? rb_str_new2 (args) : Qnil);
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
 static VALUE
 rb_s_gpgme_set_status_cb (VALUE dummy, VALUE vctx, VALUE vstatusfunc,
-			  VALUE vhook_value)
+                          VALUE vhook_value)
 {
   gpgme_ctx_t ctx;
   VALUE vcb = rb_ary_new ();
@@ -728,7 +728,7 @@ rb_s_gpgme_set_status_cb (VALUE dummy, VALUE vctx, VALUE vstatusfunc,
 
 static VALUE
 rb_s_gpgme_get_status_cb (VALUE dummy, VALUE vctx, VALUE rstatusfunc,
-			  VALUE rhook_value)
+                          VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@status_cb");
 
@@ -748,13 +748,13 @@ progress_cb (void *hook, const char *what, int type, int current, int total)
   vhook_value = RARRAY_PTR(vcb)[1];
 
   rb_funcall (vprogfunc, rb_intern ("call"), 5, vhook_value,
-	      rb_str_new2 (what), INT2NUM(type), INT2NUM(current),
-	      INT2NUM(total));
+              rb_str_new2 (what), INT2NUM(type), INT2NUM(current),
+              INT2NUM(total));
 }
 
 static VALUE
 rb_s_gpgme_set_progress_cb (VALUE dummy, VALUE vctx, VALUE vprogfunc,
-			    VALUE vhook_value)
+                            VALUE vhook_value)
 {
   gpgme_ctx_t ctx;
   VALUE vcb = rb_ary_new ();
@@ -774,7 +774,7 @@ rb_s_gpgme_set_progress_cb (VALUE dummy, VALUE vctx, VALUE vprogfunc,
 
 static VALUE
 rb_s_gpgme_get_progress_cb (VALUE dummy, VALUE vctx, VALUE rprogfunc,
-			    VALUE rhook_value)
+                            VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@progress_cb");
   rb_ary_store (rprogfunc, 0, RARRAY_PTR(vcb)[0]);
@@ -857,7 +857,7 @@ rb_s_gpgme_get_offline (VALUE dummy, VALUE vctx)
 
 static VALUE
 rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-			     VALUE vsecret_only)
+                             VALUE vsecret_only)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
@@ -869,8 +869,8 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
     rb_raise (rb_eArgError, "released ctx");
 
   err = gpgme_op_keylist_start (ctx, NIL_P(vpattern) ? NULL :
-				StringValueCStr(vpattern),
-				NUM2INT(vsecret_only));
+                                StringValueCStr(vpattern),
+                                NUM2INT(vsecret_only));
   if (gpgme_err_code (err) == GPG_ERR_NO_ERROR)
     SET_KEYLIST_IN_PROGRESS(vctx);
   return LONG2NUM(err);
@@ -878,7 +878,7 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 
 static VALUE
 rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-				 VALUE vsecret_only)
+                                 VALUE vsecret_only)
 {
   gpgme_ctx_t ctx;
   const char **pattern = NULL;
@@ -895,7 +895,7 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
       /* Convert RARRAY into `const char *' array. */
       pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern) + 1);
       for (i = 0; i<RARRAY_LEN(vpattern); i++)
-	pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
+        pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
       pattern[RARRAY_LEN(vpattern)] = NULL;
     }
 
@@ -961,7 +961,7 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
       rb_iv_set (vsubkey, "@can_sign", INT2FIX(subkey->can_sign));
       rb_iv_set (vsubkey, "@can_certify", INT2FIX(subkey->can_certify));
       rb_iv_set (vsubkey, "@can_authenticate",
-		 INT2FIX(subkey->can_authenticate));
+                 INT2FIX(subkey->can_authenticate));
       rb_iv_set (vsubkey, "@secret", INT2FIX(subkey->secret));
       rb_iv_set (vsubkey, "@pubkey_algo", INT2FIX(subkey->pubkey_algo));
       rb_iv_set (vsubkey, "@length", UINT2NUM(subkey->length));
@@ -972,7 +972,7 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
       rb_iv_set (vsubkey, "@expires", LONG2NUM(subkey->expires));
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
       if (subkey->curve)
-	rb_iv_set (vsubkey, "@curve", rb_str_new2 (subkey->curve));
+        rb_iv_set (vsubkey, "@curve", rb_str_new2 (subkey->curve));
 #endif
       rb_ary_push (vsubkeys, vsubkey);
     }
@@ -995,18 +995,18 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
       vsignatures = rb_ary_new ();
       rb_iv_set (vuser_id, "@signatures", vsignatures);
       for (key_sig = user_id->signatures; key_sig; key_sig = key_sig->next)
-	{
-	  VALUE vkey_sig = rb_class_new_instance(0, NULL, cKeySig);
-	  rb_iv_set (vkey_sig, "@revoked", INT2FIX(key_sig->revoked));
-	  rb_iv_set (vkey_sig, "@expired", INT2FIX(key_sig->expired));
-	  rb_iv_set (vkey_sig, "@invalid", INT2FIX(key_sig->invalid));
-	  rb_iv_set (vkey_sig, "@exportable", INT2FIX(key_sig->exportable));
-	  rb_iv_set (vkey_sig, "@pubkey_algo", INT2FIX(key_sig->pubkey_algo));
-	  rb_iv_set (vkey_sig, "@keyid", rb_str_new2 (key_sig->keyid));
-	  rb_iv_set (vkey_sig, "@timestamp", LONG2NUM(key_sig->timestamp));
-	  rb_iv_set (vkey_sig, "@expires", LONG2NUM(key_sig->expires));
-	  rb_ary_push (vsignatures, vkey_sig);
-	}
+        {
+          VALUE vkey_sig = rb_class_new_instance(0, NULL, cKeySig);
+          rb_iv_set (vkey_sig, "@revoked", INT2FIX(key_sig->revoked));
+          rb_iv_set (vkey_sig, "@expired", INT2FIX(key_sig->expired));
+          rb_iv_set (vkey_sig, "@invalid", INT2FIX(key_sig->invalid));
+          rb_iv_set (vkey_sig, "@exportable", INT2FIX(key_sig->exportable));
+          rb_iv_set (vkey_sig, "@pubkey_algo", INT2FIX(key_sig->pubkey_algo));
+          rb_iv_set (vkey_sig, "@keyid", rb_str_new2 (key_sig->keyid));
+          rb_iv_set (vkey_sig, "@timestamp", LONG2NUM(key_sig->timestamp));
+          rb_iv_set (vkey_sig, "@expires", LONG2NUM(key_sig->expires));
+          rb_ary_push (vsignatures, vkey_sig);
+        }
       rb_ary_push (vuids, vuser_id);
     }
   return vkey;
@@ -1054,7 +1054,7 @@ rb_s_gpgme_op_keylist_end (VALUE dummy, VALUE vctx)
 
 static VALUE
 rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey,
-		    VALUE vsecret)
+                    VALUE vsecret)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
@@ -1076,7 +1076,7 @@ rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey,
 
 static VALUE
 rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
-		      VALUE vseckey)
+                      VALUE vseckey)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t pubkey = NULL, seckey = NULL;
@@ -1098,7 +1098,7 @@ rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
 
 static VALUE
 rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
-			    VALUE vpubkey, VALUE vseckey)
+                            VALUE vpubkey, VALUE vseckey)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t pubkey = NULL, seckey = NULL;
@@ -1120,7 +1120,7 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
 
 static VALUE
 rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
-		      VALUE vkeydata)
+                      VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
@@ -1134,13 +1134,13 @@ rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_export (ctx, StringValueCStr(vpattern), NUM2UINT(vmode),
-			 keydata);
+                         keydata);
   return LONG2NUM(err);
 }
 
 static VALUE
 rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-			    VALUE vmode, VALUE vkeydata)
+                            VALUE vmode, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
@@ -1154,13 +1154,13 @@ rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_export_start (ctx, StringValueCStr(vpattern),
-			       NUM2UINT(vmode), keydata);
+                               NUM2UINT(vmode), keydata);
   return LONG2NUM(err);
 }
 
 static VALUE
 rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
-			  VALUE vkeydata)
+                          VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
@@ -1184,7 +1184,7 @@ rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
 
 static VALUE
 rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-			    VALUE vmode, VALUE vkeydata)
+                            VALUE vmode, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
@@ -1209,7 +1209,7 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 #ifdef HAVE_GPGME_OP_EXPORT_KEYS
 static VALUE
 rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
-			   VALUE vmode, VALUE vkeydata)
+                           VALUE vmode, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *keys;
@@ -1235,7 +1235,7 @@ rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
 
 static VALUE
 rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
-				 VALUE vmode, VALUE vkeydata)
+                                 VALUE vmode, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *keys;
@@ -1258,7 +1258,7 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
   err = gpgme_op_export_keys_start (ctx, keys, NUM2UINT(vmode), keydata);
   return LONG2NUM(err);
 }
-#endif	/*HAVE_GPGME_OP_EXPORT_KEYS*/
+#endif        /*HAVE_GPGME_OP_EXPORT_KEYS*/
 
 static VALUE
 rb_s_gpgme_op_import (VALUE dummy, VALUE vctx, VALUE vkeydata)
@@ -1342,7 +1342,7 @@ rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
   err = gpgme_op_import_keys_start (ctx, keys);
   return LONG2NUM(err);
 }
-#endif	/*HAVE_GPGME_OP_EXPORT_KEYS*/
+#endif        /*HAVE_GPGME_OP_EXPORT_KEYS*/
 
 static VALUE
 rb_s_gpgme_op_import_result (VALUE dummy, VALUE vctx)
@@ -1380,7 +1380,7 @@ rb_s_gpgme_op_import_result (VALUE dummy, VALUE vctx)
        status = status->next)
     {
       VALUE vstatus =
-	rb_class_new_instance (0, NULL, cImportStatus);
+        rb_class_new_instance (0, NULL, cImportStatus);
       rb_iv_set (vstatus, "@fpr", rb_str_new2 (status->fpr));
       rb_iv_set (vstatus, "@result", LONG2NUM(status->result));
       rb_iv_set (vstatus, "@status", UINT2NUM(status->status));
@@ -1409,7 +1409,7 @@ rb_s_gpgme_op_delete (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_secret)
 
 static VALUE
 rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
-			    VALUE vallow_secret)
+                            VALUE vallow_secret)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
@@ -1436,13 +1436,13 @@ edit_cb (void *hook, gpgme_status_code_t status, const char *args, int fd)
   vhook_value = RARRAY_PTR(vcb)[1];
 
   rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(status),
-	      rb_str_new2 (args), INT2NUM(fd));
+              rb_str_new2 (args), INT2NUM(fd));
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
 static VALUE
 rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
-		    VALUE veditfunc, VALUE vhook_value, VALUE vout)
+                    VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
@@ -1471,7 +1471,7 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
 
 static VALUE
 rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
-			  VALUE veditfunc, VALUE vhook_value, VALUE vout)
+                          VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
@@ -1500,7 +1500,7 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
 
 static VALUE
 rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
-		    VALUE veditfunc, VALUE vhook_value, VALUE vout)
+                    VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
@@ -1529,7 +1529,7 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
 
 static VALUE
 rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
-			       VALUE veditfunc, VALUE vhook_value, VALUE vout)
+                               VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
@@ -1558,7 +1558,7 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
 
 static VALUE
 rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-			       VALUE vmax_level)
+                               VALUE vmax_level)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
@@ -1569,7 +1569,7 @@ rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   err = gpgme_op_trustlist_start (ctx, StringValueCStr(vpattern),
-				  NUM2INT(vmax_level));
+                                  NUM2INT(vmax_level));
   return LONG2NUM(err);
 }
 
@@ -1595,10 +1595,10 @@ rb_s_gpgme_op_trustlist_next (VALUE dummy, VALUE vctx, VALUE ritem)
       rb_iv_set (vitem, "@type", INT2FIX(item->type));
       rb_iv_set (vitem, "@level", INT2FIX(item->level));
       if (item->owner_trust)
-	rb_iv_set (vitem, "@owner_trust", rb_str_new2 (item->owner_trust));
+        rb_iv_set (vitem, "@owner_trust", rb_str_new2 (item->owner_trust));
       rb_iv_set (vitem, "@validity", rb_str_new2 (item->validity));
       if (item->name)
-	rb_iv_set (vitem, "@name", rb_str_new2 (item->name));
+        rb_iv_set (vitem, "@name", rb_str_new2 (item->name));
       rb_ary_store (ritem, 0, vitem);
     }
   return LONG2NUM(err);
@@ -1641,7 +1641,7 @@ rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
 
 static VALUE
 rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher,
-			     VALUE vplain)
+                             VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
@@ -1678,7 +1678,7 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
   vresult = rb_class_new_instance (0, NULL, cDecryptResult);
   if (result->unsupported_algorithm)
     rb_iv_set (vresult, "@unsupported_algorithm",
-	       rb_str_new2 (result->unsupported_algorithm));
+               rb_str_new2 (result->unsupported_algorithm));
   rb_iv_set (vresult, "@wrong_key_usage", INT2FIX(result->wrong_key_usage));
   vrecipients = rb_ary_new ();
   rb_iv_set (vresult, "@recipients", vrecipients);
@@ -1697,7 +1697,7 @@ rb_s_gpgme_op_decrypt_result (VALUE dummy, VALUE vctx)
 
 static VALUE
 rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
-		      VALUE vplain)
+                      VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
@@ -1720,7 +1720,7 @@ rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
 
 static VALUE
 rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig,
-			    VALUE vsigned_text, VALUE vplain)
+                            VALUE vsigned_text, VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
@@ -1763,39 +1763,39 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
        signature = signature->next)
     {
       VALUE vsignature = rb_class_new_instance(0, NULL, cSignature),
-	vnotations = rb_ary_new ();
+        vnotations = rb_ary_new ();
       gpgme_sig_notation_t notation;
       rb_iv_set (vsignature, "@summary", INT2FIX(signature->summary));
       rb_iv_set (vsignature, "@fpr", rb_str_new2 (signature->fpr));
       rb_iv_set (vsignature, "@status", LONG2NUM(signature->status));
       rb_iv_set (vsignature, "@notations", vnotations);
       for (notation = signature->notations; notation;
-	   notation = notation->next)
-	{
-	  VALUE vnotation = rb_class_new_instance(0, NULL, cSigNotation);
-	  /* The docs say:
-	   * The name of the notation field. If this is NULL, then the member
-	   * value will contain a policy URL. */
-	  if (notation->name == NULL)
-	    rb_iv_set (vnotation, "@name", Qnil);
-	  else
-	    rb_iv_set (vnotation, "@name", rb_str_new2 (notation->name));
-	  rb_iv_set (vnotation, "@value", rb_str_new2 (notation->value));
-	  rb_ary_push (vnotations, vnotation);
-	}
+           notation = notation->next)
+        {
+          VALUE vnotation = rb_class_new_instance(0, NULL, cSigNotation);
+          /* The docs say:
+           * The name of the notation field. If this is NULL, then the member
+           * value will contain a policy URL. */
+          if (notation->name == NULL)
+            rb_iv_set (vnotation, "@name", Qnil);
+          else
+            rb_iv_set (vnotation, "@name", rb_str_new2 (notation->name));
+          rb_iv_set (vnotation, "@value", rb_str_new2 (notation->value));
+          rb_ary_push (vnotations, vnotation);
+        }
       rb_iv_set (vsignature, "@timestamp", ULONG2NUM(signature->timestamp));
       rb_iv_set (vsignature, "@exp_timestamp",
-		 ULONG2NUM(signature->exp_timestamp));
+                 ULONG2NUM(signature->exp_timestamp));
       rb_iv_set (vsignature, "@wrong_key_usage",
-		 INT2FIX(signature->wrong_key_usage));
+                 INT2FIX(signature->wrong_key_usage));
       rb_iv_set (vsignature, "@validity", INT2FIX(signature->validity));
       rb_iv_set (vsignature, "@validity_reason",
-		 LONG2NUM(signature->validity_reason));
+                 LONG2NUM(signature->validity_reason));
       /* PKA related fields were added in 1.1.1. */
 #ifdef GPGME_STATUS_PKA_TRUST_BAD
       rb_iv_set (vsignature, "@pka_trust", INT2FIX(signature->pka_trust));
       rb_iv_set (vsignature, "@pka_address",
-		 rb_str_new2 (signature->pka_address));
+                 rb_str_new2 (signature->pka_address));
 #endif
       rb_ary_push (vsignatures, vsignature);
     }
@@ -1804,7 +1804,7 @@ rb_s_gpgme_op_verify_result (VALUE dummy, VALUE vctx)
 
 static VALUE
 rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
-			      VALUE vplain)
+                              VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
@@ -1824,7 +1824,7 @@ rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
 
 static VALUE
 rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher,
-				    VALUE vplain)
+                                    VALUE vplain)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
@@ -1888,7 +1888,7 @@ rb_s_gpgme_signers_enum (VALUE dummy, VALUE vctx, VALUE vseq)
 
 static VALUE
 rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
-		    VALUE vmode)
+                    VALUE vmode)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t plain, sig;
@@ -1908,7 +1908,7 @@ rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
 
 static VALUE
 rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
-			  VALUE vmode)
+                          VALUE vmode)
 {
   gpgme_ctx_t ctx;
   gpgme_data_t plain, sig;
@@ -1950,7 +1950,7 @@ rb_s_gpgme_op_sign_result (VALUE dummy, VALUE vctx)
        invalid_key = invalid_key->next)
     {
       VALUE vinvalid_key =
-	rb_class_new_instance (0, NULL, cInvalidKey);
+        rb_class_new_instance (0, NULL, cInvalidKey);
       rb_iv_set (vinvalid_key, "@fpr", rb_str_new2 (invalid_key->fpr));
       rb_iv_set (vinvalid_key, "@reason", LONG2NUM(invalid_key->reason));
       rb_ary_push (vinvalid_signers, vinvalid_key);
@@ -1961,16 +1961,16 @@ rb_s_gpgme_op_sign_result (VALUE dummy, VALUE vctx)
        new_signature = new_signature->next)
     {
       VALUE vnew_signature =
-	rb_class_new_instance (0, NULL, cNewSignature);
+        rb_class_new_instance (0, NULL, cNewSignature);
       rb_iv_set (vnew_signature, "@type", INT2FIX(new_signature->type));
       rb_iv_set (vnew_signature, "@pubkey_algo",
-		 INT2FIX(new_signature->pubkey_algo));
+                 INT2FIX(new_signature->pubkey_algo));
       rb_iv_set (vnew_signature, "@hash_algo",
-		 INT2FIX(new_signature->hash_algo));
+                 INT2FIX(new_signature->hash_algo));
       rb_iv_set (vnew_signature, "@sig_class",
-		 UINT2NUM(new_signature->sig_class));
+                 UINT2NUM(new_signature->sig_class));
       rb_iv_set (vnew_signature, "@timestamp",
-		 LONG2NUM(new_signature->timestamp));
+                 LONG2NUM(new_signature->timestamp));
       rb_iv_set (vnew_signature, "@fpr", rb_str_new2 (new_signature->fpr));
       rb_ary_push (vsignatures, vnew_signature);
     }
@@ -1979,7 +1979,7 @@ rb_s_gpgme_op_sign_result (VALUE dummy, VALUE vctx)
 
 static VALUE
 rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
-		       VALUE vplain, VALUE vcipher)
+                       VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
@@ -1998,7 +1998,7 @@ rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
       int i;
       recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
-	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
+        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
     }
   UNWRAP_GPGME_DATA(vplain, plain);
@@ -2012,7 +2012,7 @@ rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
 
 static VALUE
 rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp,
-			     VALUE vflags, VALUE vplain, VALUE vcipher)
+                             VALUE vflags, VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
@@ -2031,7 +2031,7 @@ rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp,
       int i;
       recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
-	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
+        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
     }
   UNWRAP_GPGME_DATA(vplain, plain);
@@ -2068,7 +2068,7 @@ rb_s_gpgme_op_encrypt_result (VALUE dummy, VALUE vctx)
        invalid_key = invalid_key->next)
     {
       VALUE vinvalid_key =
-	rb_class_new_instance (0, NULL, cInvalidKey);
+        rb_class_new_instance (0, NULL, cInvalidKey);
       rb_iv_set (vinvalid_key, "@fpr", rb_str_new2 (invalid_key->fpr));
       rb_iv_set (vinvalid_key, "@reason", LONG2NUM(invalid_key->reason));
       rb_ary_push (vinvalid_recipients, vinvalid_key);
@@ -2078,7 +2078,7 @@ rb_s_gpgme_op_encrypt_result (VALUE dummy, VALUE vctx)
 
 static VALUE
 rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
-			    VALUE vplain, VALUE vcipher)
+                            VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
@@ -2097,7 +2097,7 @@ rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
       int i;
       recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
-	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
+        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
     }
   UNWRAP_GPGME_DATA(vplain, plain);
@@ -2111,7 +2111,7 @@ rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
 
 static VALUE
 rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
-				  VALUE vflags, VALUE vplain, VALUE vcipher)
+                                  VALUE vflags, VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t *recp = NULL;
@@ -2130,14 +2130,14 @@ rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
       int i;
       recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
       for (i = 0; i < RARRAY_LEN(vrecp); i++)
-	UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
+        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
       recp[i] = NULL;
     }
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
   err = gpgme_op_encrypt_sign_start (ctx, recp, NUM2INT(vflags), plain,
-				     cipher);
+                                     cipher);
   if (recp)
     xfree (recp);
   return LONG2NUM(err);
@@ -2155,7 +2155,7 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
     {
       UNWRAP_GPGME_CTX(vctx, ctx);
       if (!ctx)
-	rb_raise (rb_eArgError, "released ctx");
+        rb_raise (rb_eArgError, "released ctx");
     }
 
   ret = gpgme_wait (ctx, &status, NUM2INT(vhang));
@@ -2163,7 +2163,7 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
     {
       rb_ary_store (rstatus, 0, INT2NUM(status));
       if (ret != ctx)
-	vctx = WRAP_GPGME_CTX(ret);
+        vctx = WRAP_GPGME_CTX(ret);
       return vctx;
     }
   return Qnil;
@@ -2172,8 +2172,8 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
 static VALUE
 rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
-			   VALUE vargv, VALUE vdatain, VALUE vdataout,
-			   VALUE vdataerr, VALUE vflags)
+                           VALUE vargv, VALUE vdatain, VALUE vdataout,
+                           VALUE vdataerr, VALUE vflags)
 {
   gpgme_ctx_t ctx;
   const char *file;
@@ -2199,7 +2199,7 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
 
       argv = ALLOC_N(const char *, RARRAY_LEN(vargv) + 1);
       for (i = 0; i < RARRAY_LEN(vargv); i++)
-	argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
+        argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
       argv[i] = NULL;
     }
 
@@ -2208,7 +2208,7 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
   UNWRAP_GPGME_DATA(vdataerr, dataerr);
 
   err = gpgme_op_spawn_start (ctx, file, argv, datain, dataout, dataerr,
-			      NUM2INT(vflags));
+                              NUM2INT(vflags));
   if (argv)
     xfree (argv);
   return LONG2NUM(err);
@@ -2216,8 +2216,8 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
 
 static VALUE
 rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
-		     VALUE vargv, VALUE vdatain, VALUE vdataout,
-		     VALUE vdataerr, VALUE vflags)
+                     VALUE vargv, VALUE vdatain, VALUE vdataout,
+                     VALUE vdataerr, VALUE vflags)
 {
   gpgme_ctx_t ctx;
   const char *file;
@@ -2243,7 +2243,7 @@ rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
 
       argv = ALLOC_N(const char *, RARRAY_LEN(vargv) + 1);
       for (i = 0; i < RARRAY_LEN(vargv); i++)
-	argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
+        argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
       argv[i] = NULL;
     }
 
@@ -2252,7 +2252,7 @@ rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
   UNWRAP_GPGME_DATA(vdataerr, dataerr);
 
   err = gpgme_op_spawn (ctx, file, argv, datain, dataout, dataerr,
-			NUM2INT(vflags));
+                        NUM2INT(vflags));
   if (argv)
     xfree (argv);
   return LONG2NUM(err);
@@ -2268,31 +2268,31 @@ Init_gpgme_n (void)
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
   rb_define_module_function (mGPGME, "gpgme_get_dirinfo",
-			     rb_s_gpgme_get_dirinfo, 1);
+                             rb_s_gpgme_get_dirinfo, 1);
 #endif
   rb_define_module_function (mGPGME, "gpgme_check_version",
-			     rb_s_gpgme_check_version, 1);
+                             rb_s_gpgme_check_version, 1);
   rb_define_module_function (mGPGME, "gpgme_engine_check_version",
-			     rb_s_gpgme_engine_check_version, 1);
+                             rb_s_gpgme_engine_check_version, 1);
   rb_define_module_function (mGPGME, "gpgme_get_engine_info",
-			     rb_s_gpgme_get_engine_info, 1);
+                             rb_s_gpgme_get_engine_info, 1);
   rb_define_module_function (mGPGME, "gpgme_set_engine_info",
-			     rb_s_gpgme_set_engine_info, 3);
+                             rb_s_gpgme_set_engine_info, 3);
   rb_define_module_function (mGPGME, "gpgme_ctx_get_engine_info",
            rb_s_gpgme_ctx_get_engine_info, 2);
   rb_define_module_function (mGPGME, "gpgme_ctx_set_engine_info",
            rb_s_gpgme_ctx_set_engine_info, 4);
   rb_define_module_function (mGPGME, "gpgme_pubkey_algo_name",
-			     rb_s_gpgme_pubkey_algo_name, 1);
+                             rb_s_gpgme_pubkey_algo_name, 1);
   rb_define_module_function (mGPGME, "gpgme_hash_algo_name",
-			     rb_s_gpgme_hash_algo_name, 1);
+                             rb_s_gpgme_hash_algo_name, 1);
 
   rb_define_module_function (mGPGME, "gpgme_err_code",
-			     rb_s_gpgme_err_code, 1);
+                             rb_s_gpgme_err_code, 1);
   rb_define_module_function (mGPGME, "gpgme_err_source",
-			     rb_s_gpgme_err_source, 1);
+                             rb_s_gpgme_err_source, 1);
   rb_define_module_function (mGPGME, "gpgme_strerror",
-			     rb_s_gpgme_strerror, 1);
+                             rb_s_gpgme_strerror, 1);
 
   cEngineInfo =
     rb_define_class_under (mGPGME, "EngineInfo", rb_cObject);
@@ -2338,204 +2338,204 @@ Init_gpgme_n (void)
    * gpgme_data_new_from_filepart is not currently supported.
    */
   rb_define_module_function (mGPGME, "gpgme_data_new",
-			     rb_s_gpgme_data_new, 1);
+                             rb_s_gpgme_data_new, 1);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_mem",
-			     rb_s_gpgme_data_new_from_mem, 3);
+                             rb_s_gpgme_data_new_from_mem, 3);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_fd",
-			     rb_s_gpgme_data_new_from_fd, 2);
+                             rb_s_gpgme_data_new_from_fd, 2);
   rb_define_module_function (mGPGME, "gpgme_data_new_from_cbs",
-			     rb_s_gpgme_data_new_from_cbs, 3);
+                             rb_s_gpgme_data_new_from_cbs, 3);
 
   /* Manipulating Data Buffers */
   rb_define_module_function (mGPGME, "gpgme_data_read",
-			     rb_s_gpgme_data_read, 2);
+                             rb_s_gpgme_data_read, 2);
   rb_define_module_function (mGPGME, "gpgme_data_seek",
-			     rb_s_gpgme_data_seek, 3);
+                             rb_s_gpgme_data_seek, 3);
   rb_define_module_function (mGPGME, "gpgme_data_write",
-			     rb_s_gpgme_data_write, 3);
+                             rb_s_gpgme_data_write, 3);
   rb_define_module_function (mGPGME, "gpgme_data_get_encoding",
-			     rb_s_gpgme_data_get_encoding, 1);
+                             rb_s_gpgme_data_get_encoding, 1);
   rb_define_module_function (mGPGME, "gpgme_data_set_encoding",
-			     rb_s_gpgme_data_set_encoding, 2);
+                             rb_s_gpgme_data_set_encoding, 2);
   rb_define_module_function (mGPGME, "gpgme_data_get_file_name",
-			     rb_s_gpgme_data_get_file_name, 1);
+                             rb_s_gpgme_data_get_file_name, 1);
   rb_define_module_function (mGPGME, "gpgme_data_set_file_name",
-			     rb_s_gpgme_data_set_file_name, 2);
+                             rb_s_gpgme_data_set_file_name, 2);
 
   /* Creating Contexts */
   rb_define_module_function (mGPGME, "gpgme_new",
-			     rb_s_gpgme_new, 1);
+                             rb_s_gpgme_new, 1);
   rb_define_module_function (mGPGME, "gpgme_release",
-			     rb_s_gpgme_release, 1);
+                             rb_s_gpgme_release, 1);
 
   /* Context Attributes */
   rb_define_module_function (mGPGME, "gpgme_set_protocol",
-			     rb_s_gpgme_set_protocol, 2);
+                             rb_s_gpgme_set_protocol, 2);
   rb_define_module_function (mGPGME, "gpgme_get_protocol",
-			     rb_s_gpgme_get_protocol, 1);
+                             rb_s_gpgme_get_protocol, 1);
   rb_define_module_function (mGPGME, "gpgme_set_armor",
-			     rb_s_gpgme_set_armor, 2);
+                             rb_s_gpgme_set_armor, 2);
   rb_define_module_function (mGPGME, "gpgme_get_armor",
-			     rb_s_gpgme_get_armor, 1);
+                             rb_s_gpgme_get_armor, 1);
   rb_define_module_function (mGPGME, "gpgme_set_textmode",
-			     rb_s_gpgme_set_textmode, 2);
+                             rb_s_gpgme_set_textmode, 2);
   rb_define_module_function (mGPGME, "gpgme_get_textmode",
-			     rb_s_gpgme_get_textmode, 1);
+                             rb_s_gpgme_get_textmode, 1);
   rb_define_module_function (mGPGME, "gpgme_set_include_certs",
-			     rb_s_gpgme_set_include_certs, 2);
+                             rb_s_gpgme_set_include_certs, 2);
   rb_define_module_function (mGPGME, "gpgme_get_include_certs",
-			     rb_s_gpgme_get_include_certs, 1);
+                             rb_s_gpgme_get_include_certs, 1);
   rb_define_module_function (mGPGME, "gpgme_set_keylist_mode",
-			     rb_s_gpgme_set_keylist_mode, 2);
+                             rb_s_gpgme_set_keylist_mode, 2);
   rb_define_module_function (mGPGME, "gpgme_get_keylist_mode",
-			     rb_s_gpgme_get_keylist_mode, 1);
+                             rb_s_gpgme_get_keylist_mode, 1);
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010400
   rb_define_module_function (mGPGME, "gpgme_set_pinentry_mode",
-			     rb_s_gpgme_set_pinentry_mode, 2);
+                             rb_s_gpgme_set_pinentry_mode, 2);
   rb_define_module_function (mGPGME, "gpgme_get_pinentry_mode",
-			     rb_s_gpgme_get_pinentry_mode, 1);
+                             rb_s_gpgme_get_pinentry_mode, 1);
 #endif
   rb_define_module_function (mGPGME, "gpgme_set_passphrase_cb",
-			     rb_s_gpgme_set_passphrase_cb, 3);
+                             rb_s_gpgme_set_passphrase_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_get_passphrase_cb",
-			     rb_s_gpgme_get_passphrase_cb, 3);
+                             rb_s_gpgme_get_passphrase_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_set_progress_cb",
-			     rb_s_gpgme_set_progress_cb, 3);
+                             rb_s_gpgme_set_progress_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_get_progress_cb",
-			     rb_s_gpgme_get_progress_cb, 3);
+                             rb_s_gpgme_get_progress_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_set_locale",
-			     rb_s_gpgme_set_locale, 3);
+                             rb_s_gpgme_set_locale, 3);
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010600
   rb_define_module_function (mGPGME, "gpgme_set_offline",
-			     rb_s_gpgme_set_offline, 2);
+                             rb_s_gpgme_set_offline, 2);
   rb_define_module_function (mGPGME, "gpgme_get_offline",
-			     rb_s_gpgme_get_offline, 1);
+                             rb_s_gpgme_get_offline, 1);
   rb_define_module_function (mGPGME, "gpgme_set_status_cb",
-			     rb_s_gpgme_set_status_cb, 3);
+                             rb_s_gpgme_set_status_cb, 3);
   rb_define_module_function (mGPGME, "gpgme_get_status_cb",
-			     rb_s_gpgme_get_status_cb, 3);
+                             rb_s_gpgme_get_status_cb, 3);
 #endif
 
   /* Key Management */
   rb_define_module_function (mGPGME, "gpgme_op_keylist_start",
-			     rb_s_gpgme_op_keylist_start, 3);
+                             rb_s_gpgme_op_keylist_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_keylist_ext_start",
-			     rb_s_gpgme_op_keylist_ext_start, 4);
+                             rb_s_gpgme_op_keylist_ext_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_keylist_next",
-			     rb_s_gpgme_op_keylist_next, 2);
+                             rb_s_gpgme_op_keylist_next, 2);
   rb_define_module_function (mGPGME, "gpgme_op_keylist_end",
-			     rb_s_gpgme_op_keylist_end, 1);
+                             rb_s_gpgme_op_keylist_end, 1);
   rb_define_module_function (mGPGME, "gpgme_get_key",
-			     rb_s_gpgme_get_key, 4);
+                             rb_s_gpgme_get_key, 4);
   rb_define_module_function (mGPGME, "gpgme_op_genkey",
-			     rb_s_gpgme_op_genkey, 4);
+                             rb_s_gpgme_op_genkey, 4);
   rb_define_module_function (mGPGME, "gpgme_op_genkey_start",
-			     rb_s_gpgme_op_genkey_start, 4);
+                             rb_s_gpgme_op_genkey_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export",
-			     rb_s_gpgme_op_export, 4);
+                             rb_s_gpgme_op_export, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_start",
-			     rb_s_gpgme_op_export_start, 4);
+                             rb_s_gpgme_op_export_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_ext",
-			     rb_s_gpgme_op_export_ext, 4);
+                             rb_s_gpgme_op_export_ext, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_ext_start",
-			     rb_s_gpgme_op_export_ext_start, 4);
+                             rb_s_gpgme_op_export_ext_start, 4);
 #ifdef HAVE_GPGME_OP_EXPORT_KEYS
   rb_define_module_function (mGPGME, "gpgme_op_export_keys",
-			     rb_s_gpgme_op_export_keys, 4);
+                             rb_s_gpgme_op_export_keys, 4);
   rb_define_module_function (mGPGME, "gpgme_op_export_keys_start",
-			     rb_s_gpgme_op_export_keys_start, 4);
+                             rb_s_gpgme_op_export_keys_start, 4);
 #endif
   rb_define_module_function (mGPGME, "gpgme_op_import",
-			     rb_s_gpgme_op_import, 2);
+                             rb_s_gpgme_op_import, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_start",
-			     rb_s_gpgme_op_import_start, 2);
+                             rb_s_gpgme_op_import_start, 2);
 #ifdef HAVE_GPGME_OP_EXPORT_KEYS
   rb_define_module_function (mGPGME, "gpgme_op_import_keys",
-			     rb_s_gpgme_op_import_keys, 2);
+                             rb_s_gpgme_op_import_keys, 2);
   rb_define_module_function (mGPGME, "gpgme_op_import_keys_start",
-			     rb_s_gpgme_op_import_keys_start, 2);
+                             rb_s_gpgme_op_import_keys_start, 2);
 #endif
   rb_define_module_function (mGPGME, "gpgme_op_import_result",
-			     rb_s_gpgme_op_import_result, 1);
+                             rb_s_gpgme_op_import_result, 1);
   rb_define_module_function (mGPGME, "gpgme_op_delete",
-			     rb_s_gpgme_op_delete, 3);
+                             rb_s_gpgme_op_delete, 3);
   rb_define_module_function (mGPGME, "gpgme_op_delete_start",
-			     rb_s_gpgme_op_delete_start, 3);
+                             rb_s_gpgme_op_delete_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_edit",
-			     rb_s_gpgme_op_edit, 5);
+                             rb_s_gpgme_op_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_edit_start",
-			     rb_s_gpgme_op_edit_start, 5);
+                             rb_s_gpgme_op_edit_start, 5);
   rb_define_module_function (mGPGME, "gpgme_op_card_edit",
-			     rb_s_gpgme_op_card_edit, 5);
+                             rb_s_gpgme_op_card_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_card_edit_start",
-			     rb_s_gpgme_op_card_edit_start, 5);
+                             rb_s_gpgme_op_card_edit_start, 5);
 
   /* Trust Item Management */
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_start",
-			     rb_s_gpgme_op_trustlist_start, 3);
+                             rb_s_gpgme_op_trustlist_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_next",
-			     rb_s_gpgme_op_trustlist_next, 2);
+                             rb_s_gpgme_op_trustlist_next, 2);
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_end",
-			     rb_s_gpgme_op_trustlist_end, 1);
+                             rb_s_gpgme_op_trustlist_end, 1);
 
   /* Decrypt */
   rb_define_module_function (mGPGME, "gpgme_op_decrypt",
-			     rb_s_gpgme_op_decrypt, 3);
+                             rb_s_gpgme_op_decrypt, 3);
   rb_define_module_function (mGPGME, "gpgme_op_decrypt_start",
-			     rb_s_gpgme_op_decrypt_start, 3);
+                             rb_s_gpgme_op_decrypt_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_decrypt_result",
-			     rb_s_gpgme_op_decrypt_result, 1);
+                             rb_s_gpgme_op_decrypt_result, 1);
 
   /* Verify */
   rb_define_module_function (mGPGME, "gpgme_op_verify",
-			     rb_s_gpgme_op_verify, 4);
+                             rb_s_gpgme_op_verify, 4);
   rb_define_module_function (mGPGME, "gpgme_op_verify_start",
-			     rb_s_gpgme_op_verify_start, 4);
+                             rb_s_gpgme_op_verify_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_verify_result",
-			     rb_s_gpgme_op_verify_result, 1);
+                             rb_s_gpgme_op_verify_result, 1);
 
   /* Decrypt and Verify */
   rb_define_module_function (mGPGME, "gpgme_op_decrypt_verify",
-			     rb_s_gpgme_op_decrypt_verify, 3);
+                             rb_s_gpgme_op_decrypt_verify, 3);
   rb_define_module_function (mGPGME, "gpgme_op_decrypt_verify_start",
-			     rb_s_gpgme_op_decrypt_verify_start, 3);
+                             rb_s_gpgme_op_decrypt_verify_start, 3);
 
   /* Sign */
   rb_define_module_function (mGPGME, "gpgme_signers_clear",
-			     rb_s_gpgme_signers_clear, 1);
+                             rb_s_gpgme_signers_clear, 1);
   rb_define_module_function (mGPGME, "gpgme_signers_add",
-			     rb_s_gpgme_signers_add, 2);
+                             rb_s_gpgme_signers_add, 2);
   rb_define_module_function (mGPGME, "gpgme_signers_enum",
-			     rb_s_gpgme_signers_enum, 2);
+                             rb_s_gpgme_signers_enum, 2);
   rb_define_module_function (mGPGME, "gpgme_op_sign",
-			     rb_s_gpgme_op_sign, 4);
+                             rb_s_gpgme_op_sign, 4);
   rb_define_module_function (mGPGME, "gpgme_op_sign_start",
-			     rb_s_gpgme_op_sign_start, 4);
+                             rb_s_gpgme_op_sign_start, 4);
   rb_define_module_function (mGPGME, "gpgme_op_sign_result",
-			     rb_s_gpgme_op_sign_result, 1);
+                             rb_s_gpgme_op_sign_result, 1);
 
   /* Encrypt */
   rb_define_module_function (mGPGME, "gpgme_op_encrypt",
-			     rb_s_gpgme_op_encrypt, 5);
+                             rb_s_gpgme_op_encrypt, 5);
   rb_define_module_function (mGPGME, "gpgme_op_encrypt_start",
-			     rb_s_gpgme_op_encrypt_start, 5);
+                             rb_s_gpgme_op_encrypt_start, 5);
   rb_define_module_function (mGPGME, "gpgme_op_encrypt_result",
-			     rb_s_gpgme_op_encrypt_result, 1);
+                             rb_s_gpgme_op_encrypt_result, 1);
   rb_define_module_function (mGPGME, "gpgme_op_encrypt_sign",
-			     rb_s_gpgme_op_encrypt_sign, 5);
+                             rb_s_gpgme_op_encrypt_sign, 5);
   rb_define_module_function (mGPGME, "gpgme_op_encrypt_sign_start",
-			     rb_s_gpgme_op_encrypt_sign_start, 5);
+                             rb_s_gpgme_op_encrypt_sign_start, 5);
 
   /* Run Control */
   rb_define_module_function (mGPGME, "gpgme_wait",
-			     rb_s_gpgme_wait, 3);
+                             rb_s_gpgme_wait, 3);
 
   /* Running other Programs */
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
   rb_define_module_function (mGPGME, "gpgme_op_spawn",
-			     rb_s_gpgme_op_spawn, 7);
+                             rb_s_gpgme_op_spawn, 7);
   rb_define_module_function (mGPGME, "gpgme_op_spawn_start",
-			     rb_s_gpgme_op_spawn_start, 7);
+                             rb_s_gpgme_op_spawn_start, 7);
 #endif
 
   /* gpgme_pubkey_algo_t */
@@ -2565,245 +2565,245 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_MD_MD4", INT2FIX(GPGME_MD_MD4));
   rb_define_const (mGPGME, "GPGME_MD_CRC32", INT2FIX(GPGME_MD_CRC32));
   rb_define_const (mGPGME, "GPGME_MD_CRC32_RFC1510",
-		   INT2FIX(GPGME_MD_CRC32_RFC1510));
+                   INT2FIX(GPGME_MD_CRC32_RFC1510));
   rb_define_const (mGPGME, "GPGME_MD_CRC24_RFC2440",
-		   INT2FIX(GPGME_MD_CRC24_RFC2440));
+                   INT2FIX(GPGME_MD_CRC24_RFC2440));
 
   /* gpgme_err_code_t */
   rb_define_const (mGPGME, "GPG_ERR_EOF",
-		   INT2FIX(GPG_ERR_EOF));
+                   INT2FIX(GPG_ERR_EOF));
   rb_define_const (mGPGME, "GPG_ERR_NO_ERROR",
-		   INT2FIX(GPG_ERR_NO_ERROR));
+                   INT2FIX(GPG_ERR_NO_ERROR));
   rb_define_const (mGPGME, "GPG_ERR_GENERAL",
-		   INT2FIX(GPG_ERR_GENERAL));
+                   INT2FIX(GPG_ERR_GENERAL));
   rb_define_const (mGPGME, "GPG_ERR_ENOMEM",
-		   INT2FIX(GPG_ERR_ENOMEM));
+                   INT2FIX(GPG_ERR_ENOMEM));
   rb_define_const (mGPGME, "GPG_ERR_INV_VALUE",
-		   INT2FIX(GPG_ERR_INV_VALUE));
+                   INT2FIX(GPG_ERR_INV_VALUE));
   rb_define_const (mGPGME, "GPG_ERR_UNUSABLE_PUBKEY",
-		   INT2FIX(GPG_ERR_UNUSABLE_PUBKEY));
+                   INT2FIX(GPG_ERR_UNUSABLE_PUBKEY));
   rb_define_const (mGPGME, "GPG_ERR_UNUSABLE_SECKEY",
-		   INT2FIX(GPG_ERR_UNUSABLE_SECKEY));
+                   INT2FIX(GPG_ERR_UNUSABLE_SECKEY));
   rb_define_const (mGPGME, "GPG_ERR_NO_DATA",
-		   INT2FIX(GPG_ERR_NO_DATA));
+                   INT2FIX(GPG_ERR_NO_DATA));
   rb_define_const (mGPGME, "GPG_ERR_CONFLICT",
-		   INT2FIX(GPG_ERR_CONFLICT));
+                   INT2FIX(GPG_ERR_CONFLICT));
   rb_define_const (mGPGME, "GPG_ERR_NOT_IMPLEMENTED",
-		   INT2FIX(GPG_ERR_NOT_IMPLEMENTED));
+                   INT2FIX(GPG_ERR_NOT_IMPLEMENTED));
   rb_define_const (mGPGME, "GPG_ERR_DECRYPT_FAILED",
-		   INT2FIX(GPG_ERR_DECRYPT_FAILED));
+                   INT2FIX(GPG_ERR_DECRYPT_FAILED));
   rb_define_const (mGPGME, "GPG_ERR_BAD_PASSPHRASE",
-		   INT2FIX(GPG_ERR_BAD_PASSPHRASE));
+                   INT2FIX(GPG_ERR_BAD_PASSPHRASE));
   rb_define_const (mGPGME, "GPG_ERR_KEY_EXPIRED",
-		   INT2FIX(GPG_ERR_KEY_EXPIRED));
+                   INT2FIX(GPG_ERR_KEY_EXPIRED));
   rb_define_const (mGPGME, "GPG_ERR_SIG_EXPIRED",
-		   INT2FIX(GPG_ERR_SIG_EXPIRED));
+                   INT2FIX(GPG_ERR_SIG_EXPIRED));
   rb_define_const (mGPGME, "GPG_ERR_CANCELED",
-		   INT2FIX(GPG_ERR_CANCELED));
+                   INT2FIX(GPG_ERR_CANCELED));
   rb_define_const (mGPGME, "GPG_ERR_INV_ENGINE",
-		   INT2FIX(GPG_ERR_INV_ENGINE));
+                   INT2FIX(GPG_ERR_INV_ENGINE));
   rb_define_const (mGPGME, "GPG_ERR_AMBIGUOUS_NAME",
-		   INT2FIX(GPG_ERR_AMBIGUOUS_NAME));
+                   INT2FIX(GPG_ERR_AMBIGUOUS_NAME));
   rb_define_const (mGPGME, "GPG_ERR_WRONG_KEY_USAGE",
-		   INT2FIX(GPG_ERR_WRONG_KEY_USAGE));
+                   INT2FIX(GPG_ERR_WRONG_KEY_USAGE));
   rb_define_const (mGPGME, "GPG_ERR_CERT_REVOKED",
-		   INT2FIX(GPG_ERR_CERT_REVOKED));
+                   INT2FIX(GPG_ERR_CERT_REVOKED));
   rb_define_const (mGPGME, "GPG_ERR_CERT_EXPIRED",
-		   INT2FIX(GPG_ERR_CERT_EXPIRED));
+                   INT2FIX(GPG_ERR_CERT_EXPIRED));
   rb_define_const (mGPGME, "GPG_ERR_NO_CRL_KNOWN",
-		   INT2FIX(GPG_ERR_NO_CRL_KNOWN));
+                   INT2FIX(GPG_ERR_NO_CRL_KNOWN));
   rb_define_const (mGPGME, "GPG_ERR_NO_POLICY_MATCH",
-		   INT2FIX(GPG_ERR_NO_POLICY_MATCH));
+                   INT2FIX(GPG_ERR_NO_POLICY_MATCH));
   rb_define_const (mGPGME, "GPG_ERR_NO_SECKEY",
-		   INT2FIX(GPG_ERR_NO_SECKEY));
+                   INT2FIX(GPG_ERR_NO_SECKEY));
   rb_define_const (mGPGME, "GPG_ERR_MISSING_CERT",
-		   INT2FIX(GPG_ERR_MISSING_CERT));
+                   INT2FIX(GPG_ERR_MISSING_CERT));
   rb_define_const (mGPGME, "GPG_ERR_BAD_CERT_CHAIN",
-		   INT2FIX(GPG_ERR_BAD_CERT_CHAIN));
+                   INT2FIX(GPG_ERR_BAD_CERT_CHAIN));
   rb_define_const (mGPGME, "GPG_ERR_UNSUPPORTED_ALGORITHM",
-		   INT2FIX(GPG_ERR_UNSUPPORTED_ALGORITHM));
+                   INT2FIX(GPG_ERR_UNSUPPORTED_ALGORITHM));
   rb_define_const (mGPGME, "GPG_ERR_BAD_SIGNATURE",
-		   INT2FIX(GPG_ERR_BAD_SIGNATURE));
+                   INT2FIX(GPG_ERR_BAD_SIGNATURE));
   rb_define_const (mGPGME, "GPG_ERR_NO_PUBKEY",
-		   INT2FIX(GPG_ERR_NO_PUBKEY));
+                   INT2FIX(GPG_ERR_NO_PUBKEY));
 
   /* gpgme_err_source_t */
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_UNKNOWN",
-		   INT2FIX(GPG_ERR_SOURCE_UNKNOWN));
+                   INT2FIX(GPG_ERR_SOURCE_UNKNOWN));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_GPGME",
-		   INT2FIX(GPG_ERR_SOURCE_GPGME));
+                   INT2FIX(GPG_ERR_SOURCE_GPGME));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_GPG",
-		   INT2FIX(GPG_ERR_SOURCE_GPG));
+                   INT2FIX(GPG_ERR_SOURCE_GPG));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_GPGSM",
-		   INT2FIX(GPG_ERR_SOURCE_GPGSM));
+                   INT2FIX(GPG_ERR_SOURCE_GPGSM));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_GCRYPT",
-		   INT2FIX(GPG_ERR_SOURCE_GCRYPT));
+                   INT2FIX(GPG_ERR_SOURCE_GCRYPT));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_GPGAGENT",
-		   INT2FIX(GPG_ERR_SOURCE_GPGAGENT));
+                   INT2FIX(GPG_ERR_SOURCE_GPGAGENT));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_PINENTRY",
-		   INT2FIX(GPG_ERR_SOURCE_PINENTRY));
+                   INT2FIX(GPG_ERR_SOURCE_PINENTRY));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_SCD",
-		   INT2FIX(GPG_ERR_SOURCE_SCD));
+                   INT2FIX(GPG_ERR_SOURCE_SCD));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_KEYBOX",
-		   INT2FIX(GPG_ERR_SOURCE_KEYBOX));
+                   INT2FIX(GPG_ERR_SOURCE_KEYBOX));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_USER_1",
-		   INT2FIX(GPG_ERR_SOURCE_USER_1));
+                   INT2FIX(GPG_ERR_SOURCE_USER_1));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_USER_2",
-		   INT2FIX(GPG_ERR_SOURCE_USER_2));
+                   INT2FIX(GPG_ERR_SOURCE_USER_2));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_USER_3",
-		   INT2FIX(GPG_ERR_SOURCE_USER_3));
+                   INT2FIX(GPG_ERR_SOURCE_USER_3));
   rb_define_const (mGPGME, "GPG_ERR_SOURCE_USER_4",
-		   INT2FIX(GPG_ERR_SOURCE_USER_4));
+                   INT2FIX(GPG_ERR_SOURCE_USER_4));
 
   /* gpgme_data_encoding_t */
   rb_define_const (mGPGME, "GPGME_DATA_ENCODING_NONE",
-		   INT2FIX(GPGME_DATA_ENCODING_NONE));
+                   INT2FIX(GPGME_DATA_ENCODING_NONE));
   rb_define_const (mGPGME, "GPGME_DATA_ENCODING_BINARY",
-		   INT2FIX(GPGME_DATA_ENCODING_BINARY));
+                   INT2FIX(GPGME_DATA_ENCODING_BINARY));
   rb_define_const (mGPGME, "GPGME_DATA_ENCODING_BASE64",
-		   INT2FIX(GPGME_DATA_ENCODING_BASE64));
+                   INT2FIX(GPGME_DATA_ENCODING_BASE64));
   rb_define_const (mGPGME, "GPGME_DATA_ENCODING_ARMOR",
-		   INT2FIX(GPGME_DATA_ENCODING_ARMOR));
+                   INT2FIX(GPGME_DATA_ENCODING_ARMOR));
 
   /* gpgme_sig_stat_t */
   rb_define_const (mGPGME, "GPGME_SIG_STAT_NONE",
-		   INT2FIX(GPGME_SIG_STAT_NONE));
+                   INT2FIX(GPGME_SIG_STAT_NONE));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_GOOD",
-		   INT2FIX(GPGME_SIG_STAT_GOOD));
+                   INT2FIX(GPGME_SIG_STAT_GOOD));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_BAD",
-		   INT2FIX(GPGME_SIG_STAT_BAD));
+                   INT2FIX(GPGME_SIG_STAT_BAD));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_NOKEY",
-		   INT2FIX(GPGME_SIG_STAT_NOKEY));
+                   INT2FIX(GPGME_SIG_STAT_NOKEY));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_NOSIG",
-		   INT2FIX(GPGME_SIG_STAT_NOSIG));
+                   INT2FIX(GPGME_SIG_STAT_NOSIG));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_ERROR",
-		   INT2FIX(GPGME_SIG_STAT_ERROR));
+                   INT2FIX(GPGME_SIG_STAT_ERROR));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_DIFF",
-		   INT2FIX(GPGME_SIG_STAT_DIFF));
+                   INT2FIX(GPGME_SIG_STAT_DIFF));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_GOOD_EXP",
-		   INT2FIX(GPGME_SIG_STAT_GOOD_EXP));
+                   INT2FIX(GPGME_SIG_STAT_GOOD_EXP));
   rb_define_const (mGPGME, "GPGME_SIG_STAT_GOOD_EXPKEY",
-		   INT2FIX(GPGME_SIG_STAT_GOOD_EXPKEY));
+                   INT2FIX(GPGME_SIG_STAT_GOOD_EXPKEY));
 
   /* gpgme_sigsum_t */
   rb_define_const (mGPGME, "GPGME_SIGSUM_VALID",
-		   INT2FIX(GPGME_SIGSUM_VALID));
+                   INT2FIX(GPGME_SIGSUM_VALID));
   rb_define_const (mGPGME, "GPGME_SIGSUM_GREEN",
-		   INT2FIX(GPGME_SIGSUM_GREEN));
+                   INT2FIX(GPGME_SIGSUM_GREEN));
   rb_define_const (mGPGME, "GPGME_SIGSUM_RED",
-		   INT2FIX(GPGME_SIGSUM_RED));
+                   INT2FIX(GPGME_SIGSUM_RED));
   rb_define_const (mGPGME, "GPGME_SIGSUM_KEY_REVOKED",
-		   INT2FIX(GPGME_SIGSUM_KEY_REVOKED));
+                   INT2FIX(GPGME_SIGSUM_KEY_REVOKED));
   rb_define_const (mGPGME, "GPGME_SIGSUM_KEY_EXPIRED",
-		   INT2FIX(GPGME_SIGSUM_KEY_EXPIRED));
+                   INT2FIX(GPGME_SIGSUM_KEY_EXPIRED));
   rb_define_const (mGPGME, "GPGME_SIGSUM_SIG_EXPIRED",
-		   INT2FIX(GPGME_SIGSUM_SIG_EXPIRED));
+                   INT2FIX(GPGME_SIGSUM_SIG_EXPIRED));
   rb_define_const (mGPGME, "GPGME_SIGSUM_KEY_MISSING",
-		   INT2FIX(GPGME_SIGSUM_KEY_MISSING));
+                   INT2FIX(GPGME_SIGSUM_KEY_MISSING));
   rb_define_const (mGPGME, "GPGME_SIGSUM_CRL_MISSING",
-		   INT2FIX(GPGME_SIGSUM_CRL_MISSING));
+                   INT2FIX(GPGME_SIGSUM_CRL_MISSING));
   rb_define_const (mGPGME, "GPGME_SIGSUM_CRL_TOO_OLD",
-		   INT2FIX(GPGME_SIGSUM_CRL_TOO_OLD));
+                   INT2FIX(GPGME_SIGSUM_CRL_TOO_OLD));
   rb_define_const (mGPGME, "GPGME_SIGSUM_BAD_POLICY",
-		   INT2FIX(GPGME_SIGSUM_BAD_POLICY));
+                   INT2FIX(GPGME_SIGSUM_BAD_POLICY));
   rb_define_const (mGPGME, "GPGME_SIGSUM_SYS_ERROR",
-		   INT2FIX(GPGME_SIGSUM_SYS_ERROR));
+                   INT2FIX(GPGME_SIGSUM_SYS_ERROR));
 
   /* gpgme_sig_mode_t */
   rb_define_const (mGPGME, "GPGME_SIG_MODE_NORMAL",
-		   INT2FIX(GPGME_SIG_MODE_NORMAL));
+                   INT2FIX(GPGME_SIG_MODE_NORMAL));
   rb_define_const (mGPGME, "GPGME_SIG_MODE_DETACH",
-		   INT2FIX(GPGME_SIG_MODE_DETACH));
+                   INT2FIX(GPGME_SIG_MODE_DETACH));
   rb_define_const (mGPGME, "GPGME_SIG_MODE_CLEAR",
-		   INT2FIX(GPGME_SIG_MODE_CLEAR));
+                   INT2FIX(GPGME_SIG_MODE_CLEAR));
 
   /* gpgme_attr_t */
   rb_define_const (mGPGME, "GPGME_ATTR_KEYID",
-		   INT2FIX(GPGME_ATTR_KEYID));
+                   INT2FIX(GPGME_ATTR_KEYID));
   rb_define_const (mGPGME, "GPGME_ATTR_FPR",
-		   INT2FIX(GPGME_ATTR_FPR));
+                   INT2FIX(GPGME_ATTR_FPR));
   rb_define_const (mGPGME, "GPGME_ATTR_ALGO",
-		   INT2FIX(GPGME_ATTR_ALGO));
+                   INT2FIX(GPGME_ATTR_ALGO));
   rb_define_const (mGPGME, "GPGME_ATTR_LEN",
-		   INT2FIX(GPGME_ATTR_LEN));
+                   INT2FIX(GPGME_ATTR_LEN));
   rb_define_const (mGPGME, "GPGME_ATTR_CREATED",
-		   INT2FIX(GPGME_ATTR_CREATED));
+                   INT2FIX(GPGME_ATTR_CREATED));
   rb_define_const (mGPGME, "GPGME_ATTR_EXPIRE",
-		   INT2FIX(GPGME_ATTR_EXPIRE));
+                   INT2FIX(GPGME_ATTR_EXPIRE));
   rb_define_const (mGPGME, "GPGME_ATTR_OTRUST",
-		   INT2FIX(GPGME_ATTR_OTRUST));
+                   INT2FIX(GPGME_ATTR_OTRUST));
   rb_define_const (mGPGME, "GPGME_ATTR_USERID",
-		   INT2FIX(GPGME_ATTR_USERID));
+                   INT2FIX(GPGME_ATTR_USERID));
   rb_define_const (mGPGME, "GPGME_ATTR_NAME",
-		   INT2FIX(GPGME_ATTR_NAME));
+                   INT2FIX(GPGME_ATTR_NAME));
   rb_define_const (mGPGME, "GPGME_ATTR_EMAIL",
-		   INT2FIX(GPGME_ATTR_EMAIL));
+                   INT2FIX(GPGME_ATTR_EMAIL));
   rb_define_const (mGPGME, "GPGME_ATTR_COMMENT",
-		   INT2FIX(GPGME_ATTR_COMMENT));
+                   INT2FIX(GPGME_ATTR_COMMENT));
   rb_define_const (mGPGME, "GPGME_ATTR_VALIDITY",
-		   INT2FIX(GPGME_ATTR_VALIDITY));
+                   INT2FIX(GPGME_ATTR_VALIDITY));
   rb_define_const (mGPGME, "GPGME_ATTR_LEVEL",
-		   INT2FIX(GPGME_ATTR_LEVEL));
+                   INT2FIX(GPGME_ATTR_LEVEL));
   rb_define_const (mGPGME, "GPGME_ATTR_TYPE",
-		   INT2FIX(GPGME_ATTR_TYPE));
+                   INT2FIX(GPGME_ATTR_TYPE));
   rb_define_const (mGPGME, "GPGME_ATTR_IS_SECRET",
-		   INT2FIX(GPGME_ATTR_IS_SECRET));
+                   INT2FIX(GPGME_ATTR_IS_SECRET));
   rb_define_const (mGPGME, "GPGME_ATTR_KEY_REVOKED",
-		   INT2FIX(GPGME_ATTR_KEY_REVOKED));
+                   INT2FIX(GPGME_ATTR_KEY_REVOKED));
   rb_define_const (mGPGME, "GPGME_ATTR_KEY_INVALID",
-		   INT2FIX(GPGME_ATTR_KEY_INVALID));
+                   INT2FIX(GPGME_ATTR_KEY_INVALID));
   rb_define_const (mGPGME, "GPGME_ATTR_UID_REVOKED",
-		   INT2FIX(GPGME_ATTR_UID_REVOKED));
+                   INT2FIX(GPGME_ATTR_UID_REVOKED));
   rb_define_const (mGPGME, "GPGME_ATTR_UID_INVALID",
-		   INT2FIX(GPGME_ATTR_UID_INVALID));
+                   INT2FIX(GPGME_ATTR_UID_INVALID));
   rb_define_const (mGPGME, "GPGME_ATTR_KEY_CAPS",
-		   INT2FIX(GPGME_ATTR_KEY_CAPS));
+                   INT2FIX(GPGME_ATTR_KEY_CAPS));
   rb_define_const (mGPGME, "GPGME_ATTR_CAN_ENCRYPT",
-		   INT2FIX(GPGME_ATTR_CAN_ENCRYPT));
+                   INT2FIX(GPGME_ATTR_CAN_ENCRYPT));
   rb_define_const (mGPGME, "GPGME_ATTR_CAN_SIGN",
-		   INT2FIX(GPGME_ATTR_CAN_SIGN));
+                   INT2FIX(GPGME_ATTR_CAN_SIGN));
   rb_define_const (mGPGME, "GPGME_ATTR_CAN_CERTIFY",
-		   INT2FIX(GPGME_ATTR_CAN_CERTIFY));
+                   INT2FIX(GPGME_ATTR_CAN_CERTIFY));
   rb_define_const (mGPGME, "GPGME_ATTR_KEY_EXPIRED",
-		   INT2FIX(GPGME_ATTR_KEY_EXPIRED));
+                   INT2FIX(GPGME_ATTR_KEY_EXPIRED));
   rb_define_const (mGPGME, "GPGME_ATTR_KEY_DISABLED",
-		   INT2FIX(GPGME_ATTR_KEY_DISABLED));
+                   INT2FIX(GPGME_ATTR_KEY_DISABLED));
   rb_define_const (mGPGME, "GPGME_ATTR_SERIAL",
-		   INT2FIX(GPGME_ATTR_SERIAL));
+                   INT2FIX(GPGME_ATTR_SERIAL));
   rb_define_const (mGPGME, "GPGME_ATTR_ISSUER",
-		   INT2FIX(GPGME_ATTR_ISSUER));
+                   INT2FIX(GPGME_ATTR_ISSUER));
   rb_define_const (mGPGME, "GPGME_ATTR_CHAINID",
-		   INT2FIX(GPGME_ATTR_CHAINID));
+                   INT2FIX(GPGME_ATTR_CHAINID));
   rb_define_const (mGPGME, "GPGME_ATTR_SIG_STATUS",
-		   INT2FIX(GPGME_ATTR_SIG_STATUS));
+                   INT2FIX(GPGME_ATTR_SIG_STATUS));
   rb_define_const (mGPGME, "GPGME_ATTR_ERRTOK",
-		   INT2FIX(GPGME_ATTR_ERRTOK));
+                   INT2FIX(GPGME_ATTR_ERRTOK));
   rb_define_const (mGPGME, "GPGME_ATTR_SIG_SUMMARY",
-		   INT2FIX(GPGME_ATTR_SIG_SUMMARY));
+                   INT2FIX(GPGME_ATTR_SIG_SUMMARY));
 
   /* gpgme_validity_t */
   rb_define_const (mGPGME, "GPGME_VALIDITY_UNKNOWN",
-		   INT2FIX(GPGME_VALIDITY_UNKNOWN));
+                   INT2FIX(GPGME_VALIDITY_UNKNOWN));
   rb_define_const (mGPGME, "GPGME_VALIDITY_UNDEFINED",
-		   INT2FIX(GPGME_VALIDITY_UNDEFINED));
+                   INT2FIX(GPGME_VALIDITY_UNDEFINED));
   rb_define_const (mGPGME, "GPGME_VALIDITY_NEVER",
-		   INT2FIX(GPGME_VALIDITY_NEVER));
+                   INT2FIX(GPGME_VALIDITY_NEVER));
   rb_define_const (mGPGME, "GPGME_VALIDITY_MARGINAL",
-		   INT2FIX(GPGME_VALIDITY_MARGINAL));
+                   INT2FIX(GPGME_VALIDITY_MARGINAL));
   rb_define_const (mGPGME, "GPGME_VALIDITY_FULL",
-		   INT2FIX(GPGME_VALIDITY_FULL));
+                   INT2FIX(GPGME_VALIDITY_FULL));
   rb_define_const (mGPGME, "GPGME_VALIDITY_ULTIMATE",
-		   INT2FIX(GPGME_VALIDITY_ULTIMATE));
+                   INT2FIX(GPGME_VALIDITY_ULTIMATE));
 
   /* gpgme_protocol_t */
   rb_define_const (mGPGME, "GPGME_PROTOCOL_OpenPGP",
-		   INT2FIX(GPGME_PROTOCOL_OpenPGP));
+                   INT2FIX(GPGME_PROTOCOL_OpenPGP));
   rb_define_const (mGPGME, "GPGME_PROTOCOL_CMS",
-		   INT2FIX(GPGME_PROTOCOL_CMS));
+                   INT2FIX(GPGME_PROTOCOL_CMS));
   /* This protocol was added in 1.2.0. */
 #ifdef GPGME_PROTOCOL_ASSUAN
   rb_define_const (mGPGME, "GPGME_PROTOCOL_ASSUAN",
-		   INT2FIX(GPGME_PROTOCOL_ASSUAN))
+                   INT2FIX(GPGME_PROTOCOL_ASSUAN))
 #endif
   /* This protocol was added in 1.5.0. */
 #ifdef GPGME_PROTOCOL_SPAWN
@@ -2813,158 +2813,158 @@ Init_gpgme_n (void)
 
   /* gpgme_status_code_t */
   rb_define_const (mGPGME, "GPGME_STATUS_EOF",
-		   INT2FIX(GPGME_STATUS_EOF));
+                   INT2FIX(GPGME_STATUS_EOF));
   /* mkstatus starts here */
   rb_define_const (mGPGME, "GPGME_STATUS_ENTER",
-		   INT2FIX(GPGME_STATUS_ENTER));
+                   INT2FIX(GPGME_STATUS_ENTER));
   rb_define_const (mGPGME, "GPGME_STATUS_LEAVE",
-		   INT2FIX(GPGME_STATUS_LEAVE));
+                   INT2FIX(GPGME_STATUS_LEAVE));
   rb_define_const (mGPGME, "GPGME_STATUS_ABORT",
-		   INT2FIX(GPGME_STATUS_ABORT));
+                   INT2FIX(GPGME_STATUS_ABORT));
 
   rb_define_const (mGPGME, "GPGME_STATUS_GOODSIG",
-		   INT2FIX(GPGME_STATUS_GOODSIG));
+                   INT2FIX(GPGME_STATUS_GOODSIG));
   rb_define_const (mGPGME, "GPGME_STATUS_BADSIG",
-		   INT2FIX(GPGME_STATUS_BADSIG));
+                   INT2FIX(GPGME_STATUS_BADSIG));
   rb_define_const (mGPGME, "GPGME_STATUS_ERRSIG",
-		   INT2FIX(GPGME_STATUS_ERRSIG));
+                   INT2FIX(GPGME_STATUS_ERRSIG));
 
   rb_define_const (mGPGME, "GPGME_STATUS_BADARMOR",
-		   INT2FIX(GPGME_STATUS_BADARMOR));
+                   INT2FIX(GPGME_STATUS_BADARMOR));
 
   rb_define_const (mGPGME, "GPGME_STATUS_RSA_OR_IDEA",
-		   INT2FIX(GPGME_STATUS_RSA_OR_IDEA));
+                   INT2FIX(GPGME_STATUS_RSA_OR_IDEA));
   rb_define_const (mGPGME, "GPGME_STATUS_KEYEXPIRED",
-		   INT2FIX(GPGME_STATUS_KEYEXPIRED));
+                   INT2FIX(GPGME_STATUS_KEYEXPIRED));
   rb_define_const (mGPGME, "GPGME_STATUS_KEYREVOKED",
-		   INT2FIX(GPGME_STATUS_KEYREVOKED));
+                   INT2FIX(GPGME_STATUS_KEYREVOKED));
 
   rb_define_const (mGPGME, "GPGME_STATUS_TRUST_UNDEFINED",
-		   INT2FIX(GPGME_STATUS_TRUST_UNDEFINED));
+                   INT2FIX(GPGME_STATUS_TRUST_UNDEFINED));
   rb_define_const (mGPGME, "GPGME_STATUS_TRUST_NEVER",
-		   INT2FIX(GPGME_STATUS_TRUST_NEVER));
+                   INT2FIX(GPGME_STATUS_TRUST_NEVER));
   rb_define_const (mGPGME, "GPGME_STATUS_TRUST_MARGINAL",
-		   INT2FIX(GPGME_STATUS_TRUST_MARGINAL));
+                   INT2FIX(GPGME_STATUS_TRUST_MARGINAL));
   rb_define_const (mGPGME, "GPGME_STATUS_TRUST_FULLY",
-		   INT2FIX(GPGME_STATUS_TRUST_FULLY));
+                   INT2FIX(GPGME_STATUS_TRUST_FULLY));
   rb_define_const (mGPGME, "GPGME_STATUS_TRUST_ULTIMATE",
-		   INT2FIX(GPGME_STATUS_TRUST_ULTIMATE));
+                   INT2FIX(GPGME_STATUS_TRUST_ULTIMATE));
 
   rb_define_const (mGPGME, "GPGME_STATUS_SHM_INFO",
-		   INT2FIX(GPGME_STATUS_SHM_INFO));
+                   INT2FIX(GPGME_STATUS_SHM_INFO));
   rb_define_const (mGPGME, "GPGME_STATUS_SHM_GET",
-		   INT2FIX(GPGME_STATUS_SHM_GET));
+                   INT2FIX(GPGME_STATUS_SHM_GET));
   rb_define_const (mGPGME, "GPGME_STATUS_SHM_GET_BOOL",
-		   INT2FIX(GPGME_STATUS_SHM_GET_BOOL));
+                   INT2FIX(GPGME_STATUS_SHM_GET_BOOL));
   rb_define_const (mGPGME, "GPGME_STATUS_SHM_GET_HIDDEN",
-		   INT2FIX(GPGME_STATUS_SHM_GET_HIDDEN));
+                   INT2FIX(GPGME_STATUS_SHM_GET_HIDDEN));
 
   rb_define_const (mGPGME, "GPGME_STATUS_NEED_PASSPHRASE",
-		   INT2FIX(GPGME_STATUS_NEED_PASSPHRASE));
+                   INT2FIX(GPGME_STATUS_NEED_PASSPHRASE));
   rb_define_const (mGPGME, "GPGME_STATUS_VALIDSIG",
-		   INT2FIX(GPGME_STATUS_VALIDSIG));
+                   INT2FIX(GPGME_STATUS_VALIDSIG));
   rb_define_const (mGPGME, "GPGME_STATUS_SIG_ID",
-		   INT2FIX(GPGME_STATUS_SIG_ID));
+                   INT2FIX(GPGME_STATUS_SIG_ID));
   rb_define_const (mGPGME, "GPGME_STATUS_ENC_TO",
-		   INT2FIX(GPGME_STATUS_ENC_TO));
+                   INT2FIX(GPGME_STATUS_ENC_TO));
   rb_define_const (mGPGME, "GPGME_STATUS_NODATA",
-		   INT2FIX(GPGME_STATUS_NODATA));
+                   INT2FIX(GPGME_STATUS_NODATA));
   rb_define_const (mGPGME, "GPGME_STATUS_BAD_PASSPHRASE",
-		   INT2FIX(GPGME_STATUS_BAD_PASSPHRASE));
+                   INT2FIX(GPGME_STATUS_BAD_PASSPHRASE));
   rb_define_const (mGPGME, "GPGME_STATUS_NO_PUBKEY",
-		   INT2FIX(GPGME_STATUS_NO_PUBKEY));
+                   INT2FIX(GPGME_STATUS_NO_PUBKEY));
   rb_define_const (mGPGME, "GPGME_STATUS_NO_SECKEY",
-		   INT2FIX(GPGME_STATUS_NO_SECKEY));
+                   INT2FIX(GPGME_STATUS_NO_SECKEY));
   rb_define_const (mGPGME, "GPGME_STATUS_NEED_PASSPHRASE_SYM",
-		   INT2FIX(GPGME_STATUS_NEED_PASSPHRASE_SYM));
+                   INT2FIX(GPGME_STATUS_NEED_PASSPHRASE_SYM));
   rb_define_const (mGPGME, "GPGME_STATUS_DECRYPTION_FAILED",
-		   INT2FIX(GPGME_STATUS_DECRYPTION_FAILED));
+                   INT2FIX(GPGME_STATUS_DECRYPTION_FAILED));
   rb_define_const (mGPGME, "GPGME_STATUS_DECRYPTION_OKAY",
-		   INT2FIX(GPGME_STATUS_DECRYPTION_OKAY));
+                   INT2FIX(GPGME_STATUS_DECRYPTION_OKAY));
   rb_define_const (mGPGME, "GPGME_STATUS_MISSING_PASSPHRASE",
-		   INT2FIX(GPGME_STATUS_MISSING_PASSPHRASE));
+                   INT2FIX(GPGME_STATUS_MISSING_PASSPHRASE));
   rb_define_const (mGPGME, "GPGME_STATUS_GOOD_PASSPHRASE",
-		   INT2FIX(GPGME_STATUS_GOOD_PASSPHRASE));
+                   INT2FIX(GPGME_STATUS_GOOD_PASSPHRASE));
   rb_define_const (mGPGME, "GPGME_STATUS_GOODMDC",
-		   INT2FIX(GPGME_STATUS_GOODMDC));
+                   INT2FIX(GPGME_STATUS_GOODMDC));
   rb_define_const (mGPGME, "GPGME_STATUS_BADMDC",
-		   INT2FIX(GPGME_STATUS_BADMDC));
+                   INT2FIX(GPGME_STATUS_BADMDC));
   rb_define_const (mGPGME, "GPGME_STATUS_ERRMDC",
-		   INT2FIX(GPGME_STATUS_ERRMDC));
+                   INT2FIX(GPGME_STATUS_ERRMDC));
   rb_define_const (mGPGME, "GPGME_STATUS_IMPORTED",
-		   INT2FIX(GPGME_STATUS_IMPORTED));
+                   INT2FIX(GPGME_STATUS_IMPORTED));
   rb_define_const (mGPGME, "GPGME_STATUS_IMPORT_RES",
-		   INT2FIX(GPGME_STATUS_IMPORT_RES));
+                   INT2FIX(GPGME_STATUS_IMPORT_RES));
   rb_define_const (mGPGME, "GPGME_STATUS_FILE_START",
-		   INT2FIX(GPGME_STATUS_FILE_START));
+                   INT2FIX(GPGME_STATUS_FILE_START));
   rb_define_const (mGPGME, "GPGME_STATUS_FILE_DONE",
-		   INT2FIX(GPGME_STATUS_FILE_DONE));
+                   INT2FIX(GPGME_STATUS_FILE_DONE));
   rb_define_const (mGPGME, "GPGME_STATUS_FILE_ERROR",
-		   INT2FIX(GPGME_STATUS_FILE_ERROR));
+                   INT2FIX(GPGME_STATUS_FILE_ERROR));
 
   rb_define_const (mGPGME, "GPGME_STATUS_BEGIN_DECRYPTION",
-		   INT2FIX(GPGME_STATUS_BEGIN_DECRYPTION));
+                   INT2FIX(GPGME_STATUS_BEGIN_DECRYPTION));
   rb_define_const (mGPGME, "GPGME_STATUS_END_DECRYPTION",
-		   INT2FIX(GPGME_STATUS_END_DECRYPTION));
+                   INT2FIX(GPGME_STATUS_END_DECRYPTION));
   rb_define_const (mGPGME, "GPGME_STATUS_BEGIN_ENCRYPTION",
-		   INT2FIX(GPGME_STATUS_BEGIN_ENCRYPTION));
+                   INT2FIX(GPGME_STATUS_BEGIN_ENCRYPTION));
   rb_define_const (mGPGME, "GPGME_STATUS_END_ENCRYPTION",
-		   INT2FIX(GPGME_STATUS_END_ENCRYPTION));
+                   INT2FIX(GPGME_STATUS_END_ENCRYPTION));
 
   rb_define_const (mGPGME, "GPGME_STATUS_DELETE_PROBLEM",
-		   INT2FIX(GPGME_STATUS_DELETE_PROBLEM));
+                   INT2FIX(GPGME_STATUS_DELETE_PROBLEM));
   rb_define_const (mGPGME, "GPGME_STATUS_GET_BOOL",
-		   INT2FIX(GPGME_STATUS_GET_BOOL));
+                   INT2FIX(GPGME_STATUS_GET_BOOL));
   rb_define_const (mGPGME, "GPGME_STATUS_GET_LINE",
-		   INT2FIX(GPGME_STATUS_GET_LINE));
+                   INT2FIX(GPGME_STATUS_GET_LINE));
   rb_define_const (mGPGME, "GPGME_STATUS_GET_HIDDEN",
-		   INT2FIX(GPGME_STATUS_GET_HIDDEN));
+                   INT2FIX(GPGME_STATUS_GET_HIDDEN));
   rb_define_const (mGPGME, "GPGME_STATUS_GOT_IT",
-		   INT2FIX(GPGME_STATUS_GOT_IT));
+                   INT2FIX(GPGME_STATUS_GOT_IT));
   rb_define_const (mGPGME, "GPGME_STATUS_PROGRESS",
-		   INT2FIX(GPGME_STATUS_PROGRESS));
+                   INT2FIX(GPGME_STATUS_PROGRESS));
   rb_define_const (mGPGME, "GPGME_STATUS_SIG_CREATED",
-		   INT2FIX(GPGME_STATUS_SIG_CREATED));
+                   INT2FIX(GPGME_STATUS_SIG_CREATED));
   rb_define_const (mGPGME, "GPGME_STATUS_SESSION_KEY",
-		   INT2FIX(GPGME_STATUS_SESSION_KEY));
+                   INT2FIX(GPGME_STATUS_SESSION_KEY));
   rb_define_const (mGPGME, "GPGME_STATUS_NOTATION_NAME",
-		   INT2FIX(GPGME_STATUS_NOTATION_NAME));
+                   INT2FIX(GPGME_STATUS_NOTATION_NAME));
   rb_define_const (mGPGME, "GPGME_STATUS_NOTATION_DATA",
-		   INT2FIX(GPGME_STATUS_NOTATION_DATA));
+                   INT2FIX(GPGME_STATUS_NOTATION_DATA));
   rb_define_const (mGPGME, "GPGME_STATUS_POLICY_URL",
-		   INT2FIX(GPGME_STATUS_POLICY_URL));
+                   INT2FIX(GPGME_STATUS_POLICY_URL));
   rb_define_const (mGPGME, "GPGME_STATUS_BEGIN_STREAM",
-		   INT2FIX(GPGME_STATUS_BEGIN_STREAM));
+                   INT2FIX(GPGME_STATUS_BEGIN_STREAM));
   rb_define_const (mGPGME, "GPGME_STATUS_END_STREAM",
-		   INT2FIX(GPGME_STATUS_END_STREAM));
+                   INT2FIX(GPGME_STATUS_END_STREAM));
   rb_define_const (mGPGME, "GPGME_STATUS_KEY_CREATED",
-		   INT2FIX(GPGME_STATUS_KEY_CREATED));
+                   INT2FIX(GPGME_STATUS_KEY_CREATED));
   rb_define_const (mGPGME, "GPGME_STATUS_USERID_HINT",
-		   INT2FIX(GPGME_STATUS_USERID_HINT));
+                   INT2FIX(GPGME_STATUS_USERID_HINT));
   rb_define_const (mGPGME, "GPGME_STATUS_UNEXPECTED",
-		   INT2FIX(GPGME_STATUS_UNEXPECTED));
+                   INT2FIX(GPGME_STATUS_UNEXPECTED));
   rb_define_const (mGPGME, "GPGME_STATUS_INV_RECP",
-		   INT2FIX(GPGME_STATUS_INV_RECP));
+                   INT2FIX(GPGME_STATUS_INV_RECP));
   rb_define_const (mGPGME, "GPGME_STATUS_NO_RECP",
-		   INT2FIX(GPGME_STATUS_NO_RECP));
+                   INT2FIX(GPGME_STATUS_NO_RECP));
   rb_define_const (mGPGME, "GPGME_STATUS_ALREADY_SIGNED",
-		   INT2FIX(GPGME_STATUS_ALREADY_SIGNED));
+                   INT2FIX(GPGME_STATUS_ALREADY_SIGNED));
   rb_define_const (mGPGME, "GPGME_STATUS_SIGEXPIRED",
-		   INT2FIX(GPGME_STATUS_SIGEXPIRED));
+                   INT2FIX(GPGME_STATUS_SIGEXPIRED));
   rb_define_const (mGPGME, "GPGME_STATUS_EXPSIG",
-		   INT2FIX(GPGME_STATUS_EXPSIG));
+                   INT2FIX(GPGME_STATUS_EXPSIG));
   rb_define_const (mGPGME, "GPGME_STATUS_EXPKEYSIG",
-		   INT2FIX(GPGME_STATUS_EXPKEYSIG));
+                   INT2FIX(GPGME_STATUS_EXPKEYSIG));
   rb_define_const (mGPGME, "GPGME_STATUS_TRUNCATED",
-		   INT2FIX(GPGME_STATUS_TRUNCATED));
+                   INT2FIX(GPGME_STATUS_TRUNCATED));
   rb_define_const (mGPGME, "GPGME_STATUS_ERROR",
-		   INT2FIX(GPGME_STATUS_ERROR));
+                   INT2FIX(GPGME_STATUS_ERROR));
   /* These status codes have been available since 1.1.1. */
 #ifdef GPGME_STATUS_PKA_TRUST_BAD
   rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_BAD",
-		   INT2FIX(GPGME_STATUS_PKA_TRUST_BAD));
+                   INT2FIX(GPGME_STATUS_PKA_TRUST_BAD));
   rb_define_const (mGPGME, "GPGME_STATUS_PKA_TRUST_GOOD",
-		   INT2FIX(GPGME_STATUS_PKA_TRUST_GOOD));
+                   INT2FIX(GPGME_STATUS_PKA_TRUST_GOOD));
 #endif
   /* These status codes were added in 1.5.0. */
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
@@ -2979,32 +2979,32 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_STATUS_BEGIN_SIGNING",
                    INT2FIX(GPGME_STATUS_BEGIN_SIGNING));
   rb_define_const (mGPGME, "GPGME_STATUS_KEY_NOT_CREATED",
-		   INT2FIX(GPGME_STATUS_KEY_NOT_CREATED));
+                   INT2FIX(GPGME_STATUS_KEY_NOT_CREATED));
 #endif
 
   /* The available keylist mode flags.  */
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_LOCAL",
-		   INT2FIX(GPGME_KEYLIST_MODE_LOCAL));
+                   INT2FIX(GPGME_KEYLIST_MODE_LOCAL));
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_EXTERN",
-		   INT2FIX(GPGME_KEYLIST_MODE_EXTERN));
+                   INT2FIX(GPGME_KEYLIST_MODE_EXTERN));
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIGS",
-		   INT2FIX(GPGME_KEYLIST_MODE_SIGS));
+                   INT2FIX(GPGME_KEYLIST_MODE_SIGS));
   /* This flag was added in 1.1.1. */
 #ifdef GPGME_KEYLIST_MODE_SIG_NOTATIONS
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_SIG_NOTATIONS",
-		   INT2FIX(GPGME_KEYLIST_MODE_SIG_NOTATIONS));
+                   INT2FIX(GPGME_KEYLIST_MODE_SIG_NOTATIONS));
 #endif
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_VALIDATE",
-		   INT2FIX(GPGME_KEYLIST_MODE_VALIDATE));
+                   INT2FIX(GPGME_KEYLIST_MODE_VALIDATE));
   /* This flag was added in 1.2.0. */
 #ifdef GPGME_KEYLIST_MODE_EPHEMERAL
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_EPHEMERAL",
-		   INT2FIX(GPGME_KEYLIST_MODE_EPHEMERAL));
+                   INT2FIX(GPGME_KEYLIST_MODE_EPHEMERAL));
 #endif
   /* This flag was added in 1.5.1. */
 #ifdef GPGME_KEYLIST_MODE_WITH_SECRET
   rb_define_const (mGPGME, "GPGME_KEYLIST_MODE_WITH_SECRET",
-		   INT2FIX(GPGME_KEYLIST_MODE_WITH_SECRET));
+                   INT2FIX(GPGME_KEYLIST_MODE_WITH_SECRET));
 #endif
 
   /* The available flags for status field of gpgme_import_status_t.  */
@@ -3012,17 +3012,17 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_IMPORT_UID", INT2FIX(GPGME_IMPORT_UID));
   rb_define_const (mGPGME, "GPGME_IMPORT_SIG", INT2FIX(GPGME_IMPORT_SIG));
   rb_define_const (mGPGME, "GPGME_IMPORT_SUBKEY",
-		   INT2FIX(GPGME_IMPORT_SUBKEY));
+                   INT2FIX(GPGME_IMPORT_SUBKEY));
   rb_define_const (mGPGME, "GPGME_IMPORT_SECRET",
-		   INT2FIX(GPGME_IMPORT_SECRET));
+                   INT2FIX(GPGME_IMPORT_SECRET));
 
   /* The available flags for gpgme_op_encrypt.  */
   rb_define_const (mGPGME, "GPGME_ENCRYPT_ALWAYS_TRUST",
-		   INT2FIX(GPGME_ENCRYPT_ALWAYS_TRUST));
+                   INT2FIX(GPGME_ENCRYPT_ALWAYS_TRUST));
   /* This flag was added in 1.2.0. */
 #ifdef GPGME_ENCRYPT_NO_ENCRYPT_TO
   rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_ENCRYPT_TO",
-		   INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
+                   INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
 #endif
 
   /* These flags were added in 1.4.0. */

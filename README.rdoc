@@ -61,22 +61,22 @@ might be useful.
 
 == Usage
 
-All the high level methods attack the mid level {GPGME::Ctx} API. It is
-recommended to read through the #{GPGME::Ctx.new} methods for common options.
+All the high level methods attack the mid level <tt>GPGME::Ctx</tt> API. It is
+recommended to read through the <tt>GPGME::Ctx.new</tt> methods for common options.
 
-Also, most of the input/output is done via {GPGME::Data} objects that create a
+Also, most of the input/output is done via <tt>GPGME::Data</tt> objects that create a
 common interface for reading/writing to normal strings, or other common
-objects like files. Read the {GPGME::Data} documentation to understand
-how it works. Every time the lib needs a {GPGME::Data} object, it will be
+objects like files. Read the <tt>GPGME::Data</tt> documentation to understand
+how it works. Every time the lib needs a <tt>GPGME::Data</tt> object, it will be
 automatically converted to it.
 
 === Crypto
 
-The {GPGME::Crypto} class has the high level convenience methods to encrypt,
+The <tt>GPGME::Crypto</tt> class has the high level convenience methods to encrypt,
 decrypt, sign and verify signatures. Here are some examples, but it is
-recommended to read through the {GPGME::Crypto} class to see all the options.
+recommended to read through the <tt>GPGME::Crypto</tt> class to see all the options.
 
-* Document encryption via {GPGME::Crypto#encrypt}:
+* Document encryption via <tt>GPGME::Crypto#encrypt</tt>:
  crypto = GPGME::Crypto.new
  crypto.encrypt "Hello world!", :recipients => "someone@example.com"
 
@@ -85,19 +85,19 @@ recommended to read through the {GPGME::Crypto} class to see all the options.
  crypto.encrypt "Hello world!", :symmetric => true
 
 
-* Document decryption via {GPGME::Crypto#decrypt} (including signature verification):
+* Document decryption via <tt>GPGME::Crypto#decrypt</tt> (including signature verification):
  crypto.decrypt File.open("text.gpg")
 
-* Document signing via {GPGME::Crypto#sign}. Also the clearsigning and detached signing.
+* Document signing via <tt>GPGME::Crypto#sign</tt>. Also the clearsigning and detached signing.
  crypto.sign "I hereby proclaim Github the beneficiary of all my money when I die"
 
-* Sign verification via {GPGME::Crypto#verify}
+* Sign verification via <tt>GPGME::Crypto#verify</tt>
  sign = crypto.sign "Some text"
  data = crypto.verify(sign) { |signature| signature.valid? }
 
 === Key
 
-The {GPGME::Key} object represents a key, and has the high level related
+The <tt>GPGME::Key</tt> object represents a key, and has the high level related
 methods to work with them and find them, export, import, deletetion and
 creation.
 
@@ -108,14 +108,19 @@ creation.
 
 * Key exporting
  GPGME::Key.export("someone@example.com")
- # => Returns a {GPGME::Data} object with the exported key.
+ # => Returns a GPGME::Data object with the exported key.
 
  key = GPGME::Key.find(:secret, "someone@example.com").first
  key.export
- # => Returns a {GPGME::Data} object with the exported key.
+ # => Returns a GPGME::Data object with the exported key.
 
 * Key importing
  GPGME::Key.import(File.open("my.key"))
+
+* Key validation
+ GPGME::Key.valid?(public_key)
+ # => Returns wheter this key is valid or not
+
 
 * TODO: Key generation
 
@@ -134,6 +139,63 @@ one is currently using. For example:
 
 * Changing home directory to work with different settings:
  GPGME::Engine.home_dir = '/tmp'
+
+=== Round trip example using keychain keys
+
+Rather than importing the keys it's possible to specify the recipient
+when performing crypto functions. Here's a roundtrip example,
+and note that as this is for a console, the <tt>conf.echo = false</tt>
+line is to stop IRB complaining when echoing binary data
+
+  # Stop IRB echoing everything, which errors with binary data.
+  # Not required for production code
+  conf.echo = false
+
+  class PassphraseCallback
+    def initialize(passphrase)
+      @passphrase = passphrase
+    end
+
+    def call(*args)
+      fd = args.last
+      io = IO.for_fd(fd, 'w')
+      io.puts(@passphrase)
+      io.flush
+    end
+  end
+
+  # recipients can be found using $ gpg --list-keys --homedir ./keychain_location
+  # pub   2048R/A1B2C3D4 2014-01-17
+  # Use that line to substitute your own. 2048R is the key length and type (RSA in this case)
+
+  # If you want to substitute a non-default keychain into the engine do this:
+  # home_dir = Rails.root.join('keychain_location').to_s
+  # GPGME::Engine.set_info(GPGME::PROTOCOL_OpenPGP, '/usr/local/bin/gpg', home_dir)
+  # Note GPG executable location will change across platforms
+
+
+  crypto = GPGME::Crypto.new
+  options = {:recipients => 'A1B2C3D4'}
+
+  plaintext = GPGME::Data.new(File.open(Rails.root.join('Gemfile')))
+
+  data = crypto.encrypt plaintext, options
+
+  f = File.open(Rails.root.join('Gemfile.gpg'), 'wb')
+  bytes_written = f.write(data)
+  f.close
+
+  puts bytes_written
+
+
+  crypto = GPGME::Crypto.new
+  options = {:recipients => 'A1B2C3D4', :passphrase_callback => PassphraseCallback.new('my_passphrase')}
+
+  cipthertext = GPGME::Data.new(File.open(Rails.root.join('Gemfile.gpg')))
+
+  data = crypto.decrypt cipthertext, options
+  puts data
+
 
 == Contributing
 

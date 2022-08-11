@@ -66,13 +66,13 @@ describe GPGME::Key do
     # Testing the lazy way with expectations. I think tests in
     # the Ctx class are enough.
     it "exports any key that matches the pattern" do
-      GPGME::Ctx.any_instance.expects(:export_keys).with("", anything)
+      GPGME::Ctx.any_instance.expects(:export_keys).with("", anything, 0)
       GPGME::Key.export("")
     end
 
     it "exports any key that matches the pattern, can specify output" do
       data = GPGME::Data.new
-      GPGME::Ctx.any_instance.expects(:export_keys).with("wadus", data)
+      GPGME::Ctx.any_instance.expects(:export_keys).with("wadus", data, 0)
       ret = GPGME::Key.export("wadus", :output => data)
       assert_equal data, ret
     end
@@ -80,6 +80,11 @@ describe GPGME::Key do
     it "can specify options for Ctx" do
       GPGME::Ctx.expects(:new).with(:armor => true).yields(mock(:export_keys => true))
       GPGME::Key.export("wadus", :armor => true)
+    end
+
+    it "can export a minimal key" do
+      GPGME::Ctx.any_instance.expects(:export_keys).with("wadus", anything, 4)
+      GPGME::Key.export("wadus", :minimal => true)
     end
   end
 
@@ -180,7 +185,7 @@ describe GPGME::Key do
 
     with_key EXPIRED_KEY do
       key = GPGME::Key.find(:secret, EXPIRED_KEY[:sha]).first
-      assert key.expired
+      assert key.expired if key
     end
   end
 
@@ -199,6 +204,18 @@ describe GPGME::Key do
     end
   end
 
+  describe :valid? do
+    it "returns true on a valid key" do
+      valid_key = File.read("test/files/testkey_pub.gpg")
+      assert GPGME::Key.valid?(valid_key)
+    end
+
+    it "returns false on an invalid key" do
+      invalid_key = File.read("test/files/testkey_pub_invalid.gpg")
+      assert !GPGME::Key.valid?(invalid_key)
+    end
+  end
+
   describe :to_s do
     it "can be coerced into a String" do
       key = GPGME::Key.find(:secret).first
@@ -206,4 +223,3 @@ describe GPGME::Key do
     end
   end
 end
-

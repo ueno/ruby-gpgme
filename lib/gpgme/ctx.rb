@@ -370,8 +370,8 @@ module GPGME
     #
     # If passed, the key will be exported to +keydata+, which must be
     # a {GPGME::Data} object.
-    def export_keys(recipients, keydata = Data.new)
-      err = GPGME::gpgme_op_export(self, recipients, 0, keydata)
+    def export_keys(recipients, keydata = Data.new, mode=0)
+      err = GPGME::gpgme_op_export(self, recipients, mode, keydata)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
       keydata
@@ -517,6 +517,7 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
 
     def self.pass_function(pass, uid_hint, passphrase_info, prev_was_bad, fd)
       io = IO.for_fd(fd, 'w')
+      io.autoclose = false
       io.puts pass
       io.flush
     end

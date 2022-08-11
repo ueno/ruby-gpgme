@@ -165,8 +165,16 @@ module GPGME
     end
 
     ##
-    # Sets the encoding for this buffer. Accepts only values in one of the
-    # DATA_ENCODING_* constants.
+    # Sets the encoding for this buffer. Accepts only integer values 0 to 7:
+    #
+    # 0 = GPGME_DATA_ENCODING_NONE   (Not specified)
+    # 1 = GPGME_DATA_ENCODING_BINARY
+    # 2 = GPGME_DATA_ENCODING_BASE64
+    # 3 = GPGME_DATA_ENCODING_ARMOR  (Either PEM or OpenPGP Armor)
+    # 4 = GPGME_DATA_ENCODING_URL    (LF delimited URL list)
+    # 5 = GPGME_DATA_ENCODING_URLESC (Ditto, but percent escaped)
+    # 6 = GPGME_DATA_ENCODING_URL0   (Nul delimited URL list)
+    # 7 = GPGME_DATA_ENCODING_MIME   (Data is a MIME part)
     #
     # @raise [GPGME::Error::InvalidValue] if the value isn't accepted.
     def encoding=(encoding)

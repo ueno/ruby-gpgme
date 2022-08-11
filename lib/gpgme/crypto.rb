@@ -129,7 +129,7 @@ module GPGME
     #   * +:output+ if specified, it will write the output into it. It will
     #     me converted to a {GPGME::Data} object, so it can also be a file,
     #     for example.
-    #   * If the file was encrypted with symmentric encryption, must provide
+    #   * If the file was encrypted with symmetric encryption, must provide
     #     a :password option.
     #   * Any other option accepted by {GPGME::Ctx.new}
     #
