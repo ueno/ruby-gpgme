@@ -5,3 +5,4 @@ Makefile
 coverage
 Gemfile.lock
 /tmp/*
+/ports/*

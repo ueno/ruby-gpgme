@@ -99,11 +99,17 @@ def ensure_keys(proto)
     # We use a different home directory for the keys to not disturb current
     # installation
     require 'tmpdir'
+    require 'pathname'
 
     if DIRS.empty?
       dir = Dir.mktmpdir
       GPGME::Engine.home_dir = dir
       DIRS.push(dir)
+      pinentry = Pathname.new(__FILE__).dirname + 'pinentry'
+      gpg_agent_conf = Pathname.new(dir) + 'gpg-agent.conf'
+      gpg_agent_conf.open('w+') {|io|
+        io.write("pinentry-program #{pinentry}\n")
+      }
       remove_all_keys
       import_keys
     end
