@@ -2298,10 +2298,13 @@ Init_gpgme_n (void)
     rb_define_class_under (mGPGME, "EngineInfo", rb_cObject);
   cCtx =
     rb_define_class_under (mGPGME, "Ctx", rb_cObject);
+  rb_undef_alloc_func(cCtx);
   cData =
     rb_define_class_under (mGPGME, "Data", rb_cObject);
+  rb_undef_alloc_func(cData);
   cKey =
     rb_define_class_under (mGPGME, "Key", rb_cObject);
+  rb_undef_alloc_func(cKey);
   cSubKey =
     rb_define_class_under (mGPGME, "SubKey", rb_cObject);
   cUserID =
