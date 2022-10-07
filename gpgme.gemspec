@@ -23,15 +23,5 @@ encryption, decryption, signing, signature verification and key management.}
   s.add_development_dependency "minitest",  "~> 2.1.0"
   s.add_development_dependency "yard",      "~> 0.9.11"
   s.add_development_dependency "coveralls"
-
-  case RUBY_VERSION
-  when /\A1\.9\.2/, /\A1\.9\.3/
-    s.add_development_dependency "debugger" , "~> 1.6.6"
-  when /\A1\.9\./
-    s.add_development_dependency "ruby-debug19" , "~> 0.11.6"
-  when /\A2\./
-    s.add_development_dependency "byebug" , "~> 3.5.1"
-  else
-    s.add_development_dependency "ruby-debug" , "~> 0.10.4"
-  end
+  s.add_development_dependency "byebug"
 end
