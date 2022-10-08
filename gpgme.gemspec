@@ -22,6 +22,6 @@ encryption, decryption, signing, signature verification and key management.}
   s.add_development_dependency "mocha",     "~> 0.9.12"
   s.add_development_dependency "minitest",  "~> 2.1.0"
   s.add_development_dependency "yard",      "~> 0.9.11"
-  s.add_development_dependency "coveralls"
+  s.add_development_dependency "coveralls_reborn"
   s.add_development_dependency "byebug"
 end
