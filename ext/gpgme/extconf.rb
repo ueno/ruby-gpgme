@@ -62,13 +62,14 @@ EOS
   require 'rubygems'
   require 'mini_portile2'
 
-  libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.37').tap do |recipe|
+  libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.46').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => 'b32d6ff72a73cf79797f7f2d039e95e9c6f92f0c1450215410840ab62aea9763'
+      :sha256 => 'b7e11a64246bbe5ef37748de43b245abd72cfcd53c9ae5e7fc5ca59f1c81268d'
     }]
     recipe.configure_options = [
+      '--enable-install-gpg-error-config',
       '--disable-shared',
       '--enable-static',
       '--disable-nls',
@@ -82,11 +83,11 @@ EOS
     recipe.activate
   end
 
-  libassuan_recipe = MiniPortile.new('libassuan', '2.5.3').tap do |recipe|
+  libassuan_recipe = MiniPortile.new('libassuan', '2.5.5').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => '91bcb0403866b4e7c4bc1cc52ed4c364a9b5414b3994f718c70303f7f765e702'
+      :sha256 => '8e8c2fcc982f9ca67dcbb1d95e2dc746b1739a4668bc20b3a3c5be632edb34e4'
     }]
     recipe.configure_options = [
       '--disable-shared',
@@ -102,11 +103,11 @@ EOS
     recipe.activate
   end
 
-  gpgme_recipe = MiniPortile.new('gpgme', '1.13.1').tap do |recipe|
+  gpgme_recipe = MiniPortile.new('gpgme', '1.18.0').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => 'c4e30b227682374c23cddc7fdb9324a99694d907e79242a25a4deeedb393be46'
+      :sha256 => '361d4eae47ce925dba0ea569af40e7b52c645c4ae2e65e5621bf1b6cdd8b0e9e'
     }]
     recipe.configure_options = [
       '--disable-shared',

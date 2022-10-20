@@ -1,3 +1,10 @@
+2.0.21 October 8, 2022
+
+- Update dependencies (#154)
+  * libgpg-error 1.46
+  * libassuan 2.5.5
+  * gpgme to 1.18.0
+
 2.0.20 February 18, 2020
 
 - Update dependencies (Issue#134)
