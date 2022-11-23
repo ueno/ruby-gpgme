@@ -37,13 +37,13 @@ if arg_config('--clean')
 end
 
 if arg_config('--use-system-libraries', ENV['RUBY_GPGME_USE_SYSTEM_LIBRARIES'])
-  unless find_executable('gpgme-config')
-    $stderr.puts("gpgme-config not found")
+  unless find_executable('pkg-config')
+    $stderr.puts("pkg-config not found")
     exit(1)
   end
 
-  $CFLAGS += ' ' << `gpgme-config --cflags`.chomp
-  $libs += ' ' << `gpgme-config --libs`.chomp
+  $CFLAGS += ' ' << `pkg-config --cflags gpgme`.chomp
+  $libs += ' ' << `pkg-config --libs gpgme`.chomp
 else
   message <<-'EOS'
 ************************************************************************
