@@ -1,3 +1,9 @@
+2.0.22 November 25, 2022
+
+- Make mini_portile2 less restrictive (#163)
+- Undefine the alloc Ctx, Data and Key functions for Ruby 3.2 (#158)
+- Prefer pkg-config over gpgme-config (#166)
+
 2.0.21 October 8, 2022
 
 - Update dependencies (#154)
