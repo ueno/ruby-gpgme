@@ -1,8 +1,8 @@
 = GPGME
 
 This README is better viewed through the YARD formatted documentation:
-http://rdoc.info/github/ueno/ruby-gpgme/frames for latest github
-version, or http://rdoc.info/gems/gpgme for latest gem release.
+https://www.rubydoc.info/github/ueno/ruby-gpgme for latest github version,
+or https://www.rubydoc.info/gems/gpgme for latest gem release.
 
 {<img src="https://github.com/ueno/ruby-gpgme/actions/workflows/test.yml/badge.svg" alt="Build Status" />}[https://github.com/ueno/ruby-gpgme/actions/workflows/test.yml]
 {<img src="https://coveralls.io/repos/ueno/ruby-gpgme/badge.png" alt="Coverage Status" />}[https://coveralls.io/r/ueno/ruby-gpgme]
