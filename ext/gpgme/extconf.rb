@@ -86,11 +86,11 @@ EOS
     recipe.activate
   end
 
-  libassuan_recipe = MiniPortile.new('libassuan', '2.5.5').tap do |recipe|
+  libassuan_recipe = MiniPortile.new('libassuan', '2.5.6').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => '8e8c2fcc982f9ca67dcbb1d95e2dc746b1739a4668bc20b3a3c5be632edb34e4'
+      :sha256 => 'e9fd27218d5394904e4e39788f9b1742711c3e6b41689a31aa3380bd5aa4f426'
     }]
     recipe.configure_options = [
       '--disable-shared',
