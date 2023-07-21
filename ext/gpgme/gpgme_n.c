@@ -876,9 +876,10 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   return LONG2NUM(err);
 }
 
+// https://github.com/rwinlib/gpgme/blob/v1.16.0/include/gpgme.h#L2013-L2015
 static VALUE
 rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-                                 VALUE vsecret_only)
+                                 VALUE vsecret_only, VALUE vreserved)
 {
   gpgme_ctx_t ctx;
   const char **pattern = NULL;
