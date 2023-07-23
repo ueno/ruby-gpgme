@@ -879,7 +879,7 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 // https://github.com/rwinlib/gpgme/blob/v1.16.0/include/gpgme.h#L2013-L2015
 static VALUE
 rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
-                                 VALUE vsecret_only, VALUE vreserved)
+                                 VALUE vsecret_only)
 {
   gpgme_ctx_t ctx;
   const char **pattern = NULL;
@@ -2424,7 +2424,7 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_op_keylist_start",
                              rb_s_gpgme_op_keylist_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_keylist_ext_start",
-                             rb_s_gpgme_op_keylist_ext_start, 4);
+                             rb_s_gpgme_op_keylist_ext_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_keylist_next",
                              rb_s_gpgme_op_keylist_next, 2);
   rb_define_module_function (mGPGME, "gpgme_op_keylist_end",
