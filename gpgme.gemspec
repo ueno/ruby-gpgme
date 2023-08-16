@@ -2,7 +2,7 @@ Gem::Specification.new do |s|
   s.name              = 'gpgme'
   s.version           = '2.0.23'
   s.authors           = ['Daiki Ueno', 'Albert Llop']
-  s.date              = '2022-11-25'
+  s.date              = '2023-08-16'
   s.email             = 'ueno@gnu.org'
   s.extensions        = ['ext/gpgme/extconf.rb']
   s.files             = Dir['{lib,ext,test,examples}/**/*'] +
