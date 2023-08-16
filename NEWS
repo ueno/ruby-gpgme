@@ -1,6 +1,11 @@
-2.0.23 July 21, 2023
+2.0.23 August 16, 2023
 
-- Fix: incompatible function pointer types with “gpgme_op_keylist_ext_start” (Clang 16)
+- Fix incompatible function pointer types with “gpgme_op_keylist_ext_start” (Clang 16) (#176)
+- Update dependencies (#174, ...)
+  * libgpg-error 1.47
+  * libassuan 2.5.6
+- Fix rubydoc URL (#169)
+- Improve checks for pkg-config and fall back to gpgme-config (#168)
 
 2.0.22 November 25, 2022
 
