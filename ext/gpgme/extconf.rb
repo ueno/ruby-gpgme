@@ -2,8 +2,8 @@ require 'mkmf'
 
 # Available options:
 #
-# --enable-clean (default)
-# --disable-clean
+# --enable-clean
+# --disable-clean (default)
 #
 # This file is largely based on Nokogiri's extconf.rb.
 
@@ -25,12 +25,12 @@ if arg_config('--clean')
 
     # clean the ports build directory
     Pathname.glob(pwd.join('tmp', '*', 'ports')) { |dir|
-      FileUtils.rm_rf(dir, { :verbose => true })
-      FileUtils.rmdir(dir.parent, { :parents => true, :verbose => true })
+      FileUtils.rm_rf(dir, verbose: true)
+      FileUtils.rmdir(dir.parent, parents: true, verbose: true)
     }
 
     # ports installation can be safely removed if statically linked.
-    FileUtils.rm_rf(root + 'ports', { :verbose => true })
+    FileUtils.rm_rf(root + 'ports', verbose: true)
   end
 
   exit
