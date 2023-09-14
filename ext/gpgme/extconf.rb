@@ -2,8 +2,8 @@ require 'mkmf'
 
 # Available options:
 #
-# --enable-clean
-# --disable-clean (default)
+# --enable-clean (default)
+# --disable-clean
 #
 # This file is largely based on Nokogiri's extconf.rb.
 
