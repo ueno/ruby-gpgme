@@ -173,36 +173,6 @@ describe GPGME::Ctx do
 
     it "can set" do
       ctx = GPGME::Ctx.new
-      ctx.ignore_mdc_error = true
-      assert ctx.ignore_mdc_error
-    end
-
-    it "can set and unset" do
-      ctx = GPGME::Ctx.new
-
-      ctx.ignore_mdc_error = true
-      assert ctx.ignore_mdc_error
-
-      ctx.ignore_mdc_error = false
-      refute ctx.ignore_mdc_error
-    end
-
-    it "can set and get in constructor" do
-      ctx = GPGME::Ctx.new(:ignore_mdc_error => false)
-      refute ctx.ignore_mdc_error
-      ctx = GPGME::Ctx.new(:ignore_mdc_error => true)
-      assert ctx.ignore_mdc_error
-    end
-  end
-
-  describe :ignore_mdc_error do
-    it "sets false by default" do
-      ctx = GPGME::Ctx.new
-      refute ctx.ignore_mdc_error
-    end
-
-    it "can set" do
-      ctx = GPGME::Ctx.new
 
       ctx.ignore_mdc_error = true
       assert ctx.ignore_mdc_error
