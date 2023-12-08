@@ -6,3 +6,4 @@ coverage
 Gemfile.lock
 /tmp/*
 /ports/*
+.byebug_history

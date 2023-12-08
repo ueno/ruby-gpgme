@@ -515,6 +515,46 @@ rb_s_gpgme_release (VALUE dummy, VALUE vctx)
 }
 
 static VALUE
+rb_s_gpgme_set_ctx_flag (VALUE dummy, VALUE vctx, VALUE vname, VALUE vstr)
+{
+  gpgme_ctx_t ctx;
+  gpgme_error_t err;
+  char* name;
+  char* str;
+
+  name = StringValueCStr(vname);
+  str = StringValueCStr(vstr);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  err = gpgme_set_ctx_flag(ctx, name, str);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_get_ctx_flag (VALUE dummy, VALUE vctx, VALUE vname)
+{
+  gpgme_ctx_t ctx;
+  const char* name;
+  int yes;
+
+  name = StringValueCStr(vname);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  const char* result;
+  result = gpgme_get_ctx_flag(ctx, name);
+  if (result == NULL)
+    rb_raise (rb_eArgError, "incorrect ctx flag name");
+
+  return rb_str_new_cstr(result);
+}
+
+static VALUE
 rb_s_gpgme_set_protocol (VALUE dummy, VALUE vctx, VALUE vproto)
 {
   gpgme_ctx_t ctx;
@@ -563,6 +603,42 @@ rb_s_gpgme_get_armor (VALUE dummy, VALUE vctx)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   yes = gpgme_get_armor (ctx);
+  return INT2FIX(yes);
+}
+
+static VALUE
+rb_s_gpgme_set_ignore_mdc_error (VALUE dummy, VALUE vctx, VALUE vyes)
+{
+  gpgme_ctx_t ctx;
+  gpgme_error_t err;
+  int yes;
+
+  yes = NUM2INT(vyes);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  err = gpgme_set_ctx_flag(ctx, "ignore-mdc-error", yes ? "1" : "");
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_get_ignore_mdc_error (VALUE dummy, VALUE vctx)
+{
+  gpgme_ctx_t ctx;
+  int yes;
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  const char* result;
+  result = gpgme_get_ctx_flag(ctx, "ignore-mdc-error");
+  if (result == NULL)
+    rb_raise (rb_eArgError, "incorrect ctx flag name");
+
+  yes = (result && *result)? !!atoi (result) : 0;
   return INT2FIX(yes);
 }
 
@@ -2373,6 +2449,10 @@ Init_gpgme_n (void)
                              rb_s_gpgme_release, 1);
 
   /* Context Attributes */
+  rb_define_module_function (mGPGME, "gpgme_set_ctx_flag",
+                             rb_s_gpgme_set_ctx_flag, 3);
+  rb_define_module_function (mGPGME, "gpgme_get_ctx_flag",
+                             rb_s_gpgme_get_ctx_flag, 2);
   rb_define_module_function (mGPGME, "gpgme_set_protocol",
                              rb_s_gpgme_set_protocol, 2);
   rb_define_module_function (mGPGME, "gpgme_get_protocol",
@@ -2381,6 +2461,10 @@ Init_gpgme_n (void)
                              rb_s_gpgme_set_armor, 2);
   rb_define_module_function (mGPGME, "gpgme_get_armor",
                              rb_s_gpgme_get_armor, 1);
+  rb_define_module_function (mGPGME, "gpgme_set_ignore_mdc_error",
+                             rb_s_gpgme_set_ignore_mdc_error, 2);
+  rb_define_module_function (mGPGME, "gpgme_get_ignore_mdc_error",
+                             rb_s_gpgme_get_ignore_mdc_error, 1);
   rb_define_module_function (mGPGME, "gpgme_set_textmode",
                              rb_s_gpgme_set_textmode, 2);
   rb_define_module_function (mGPGME, "gpgme_get_textmode",
