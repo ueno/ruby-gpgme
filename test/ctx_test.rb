@@ -81,6 +81,70 @@ describe GPGME::Ctx do
     end
   end
 
+  describe :get_ctx_flag do
+    it "reads flags with getters and setters" do
+      ctx = GPGME::Ctx.new
+
+      refute ctx.ignore_mdc_error
+      assert_equal "", ctx.get_ctx_flag("ignore-mdc-error")
+
+      ctx.ignore_mdc_error = true
+
+      assert ctx.ignore_mdc_error
+      assert_equal "1", ctx.get_ctx_flag("ignore-mdc-error")
+    end
+
+    it "can get flags without getters and setters" do
+      ctx = GPGME::Ctx.new
+
+      assert_equal "", ctx.get_ctx_flag("auto-key-locate")
+      ctx.set_ctx_flag("auto-key-locate", "cert")
+      assert_equal "cert", ctx.get_ctx_flag("auto-key-locate")
+    end
+
+    it "raises an error when a flag doesn't exist" do
+      ctx = GPGME::Ctx.new
+
+      assert_raises ArgumentError do
+        ctx.get_ctx_flag("foo")
+      end
+    end
+  end
+
+  describe :set_ctx_flag do
+    it "sets the value for a flag with a getter" do
+      ctx = GPGME::Ctx.new
+      refute ctx.ignore_mdc_error
+
+      ctx.set_ctx_flag("ignore-mdc-error", "1")
+      assert ctx.ignore_mdc_error
+    end
+
+    it "unsets the value for a flag with a getter" do
+      ctx = GPGME::Ctx.new(ignore_mdc_error: true)
+      assert ctx.ignore_mdc_error
+
+      ctx.set_ctx_flag("ignore-mdc-error", "0")
+      refute ctx.ignore_mdc_error
+    end
+
+    it "can set flags without getters and setters" do
+      ctx = GPGME::Ctx.new
+
+      assert_equal "", ctx.get_ctx_flag("auto-key-locate")
+      ctx.set_ctx_flag("auto-key-locate", "cert")
+      assert_equal "cert", ctx.get_ctx_flag("auto-key-locate")
+    end
+
+    it "raises an error when a flag doesn't exist" do
+      ctx = GPGME::Ctx.new
+
+      assert_raises GPGME::Error do
+        ctx.set_ctx_flag("foo", "bar")
+      end
+    end
+  end
+
   describe :armor do
     it "sets false by default" do
       ctx = GPGME::Ctx.new
@@ -98,6 +162,66 @@ describe GPGME::Ctx do
       refute ctx.armor
       ctx = GPGME::Ctx.new(:armor => true)
       assert ctx.armor
+    end
+  end
+
+  describe :ignore_mdc_error do
+    it "sets false by default" do
+      ctx = GPGME::Ctx.new
+      refute ctx.ignore_mdc_error
+    end
+
+    it "can set" do
+      ctx = GPGME::Ctx.new
+      ctx.ignore_mdc_error = true
+      assert ctx.ignore_mdc_error
+    end
+
+    it "can set and unset" do
+      ctx = GPGME::Ctx.new
+
+      ctx.ignore_mdc_error = true
+      assert ctx.ignore_mdc_error
+
+      ctx.ignore_mdc_error = false
+      refute ctx.ignore_mdc_error
+    end
+
+    it "can set and get in constructor" do
+      ctx = GPGME::Ctx.new(:ignore_mdc_error => false)
+      refute ctx.ignore_mdc_error
+      ctx = GPGME::Ctx.new(:ignore_mdc_error => true)
+      assert ctx.ignore_mdc_error
+    end
+  end
+
+  describe :ignore_mdc_error do
+    it "sets false by default" do
+      ctx = GPGME::Ctx.new
+      refute ctx.ignore_mdc_error
+    end
+
+    it "can set" do
+      ctx = GPGME::Ctx.new
+
+      ctx.ignore_mdc_error = true
+      assert ctx.ignore_mdc_error
+    end
+
+    it "can unset" do
+      ctx = GPGME::Ctx.new(ignore_mdc_error: true)
+      assert ctx.ignore_mdc_error
+
+      ctx.ignore_mdc_error = false
+      refute ctx.ignore_mdc_error
+    end
+
+    it "can set and get in constructor" do
+      ctx = GPGME::Ctx.new(:ignore_mdc_error => false)
+      refute ctx.ignore_mdc_error
+
+      ctx = GPGME::Ctx.new(:ignore_mdc_error => true)
+      assert ctx.ignore_mdc_error
     end
   end
 

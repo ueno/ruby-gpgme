@@ -49,12 +49,13 @@ module GPGME
       raise exc if exc
       ctx = rctx[0]
 
-      ctx.protocol      = options[:protocol]      if options[:protocol]
-      ctx.armor         = options[:armor]         if options[:armor]
-      ctx.textmode      = options[:textmode]      if options[:textmode]
-      ctx.keylist_mode  = options[:keylist_mode]  if options[:keylist_mode]
-      ctx.pinentry_mode = options[:pinentry_mode] if options[:pinentry_mode]
-      ctx.offline       = options[:offline]       if options[:offline]
+      ctx.protocol          = options[:protocol]          if options[:protocol]
+      ctx.armor             = options[:armor]             if options[:armor]
+      ctx.textmode          = options[:textmode]          if options[:textmode]
+      ctx.keylist_mode      = options[:keylist_mode]      if options[:keylist_mode]
+      ctx.pinentry_mode     = options[:pinentry_mode]     if options[:pinentry_mode]
+      ctx.offline           = options[:offline]           if options[:offline]
+      ctx.ignore_mdc_error  = options[:ignore_mdc_error]  if options[:ignore_mdc_error]
 
       if options[:password]
         ctx.set_passphrase_callback GPGME::Ctx.method(:pass_function),
@@ -103,6 +104,43 @@ module GPGME
     # Getters and setters
     ##
 
+    # Get the value of the Ctx flag with the given name.
+    #
+    # Allowed flag names may include:
+    # - 'redraw'
+    # - 'full-status'
+    # - 'raw-description'
+    # - 'export-session-key'
+    # - 'override-session-key'
+    # - 'include-key-block'
+    # - 'auto-key-import'
+    # - 'auto-key-retrieve'
+    # - 'request-origin'
+    # - 'no-symkey-cache'
+    # - 'ignore-mdc-error'
+    # - 'auto-key-locate'
+    # - 'trust-model'
+    # - 'extended-edit'
+    # - 'cert-expire'
+    # - 'key-origin'
+    # - 'import-filter'
+    # - 'no-auto-check-trustdb'
+    #
+    # Please consult the GPGPME documentation for more details
+    #
+    def get_ctx_flag(flag_name)
+      GPGME::gpgme_get_ctx_flag(self, flag_name.to_s)
+    end
+
+    # Set the Ctx flag with the given name
+    # to the given value.
+    def set_ctx_flag(flag_name, val)
+      err = GPGME::gpgme_set_ctx_flag(self, flag_name.to_s, val.to_s)
+      exc = GPGME::error_to_exception(err)
+      raise exc if exc
+      val
+    end
+
     # Set the +protocol+ used within this context. See {GPGME::Ctx.new} for
     # possible values.
     def protocol=(proto)
@@ -126,6 +164,22 @@ module GPGME
     # Return true if the output is ASCII armored.
     def armor
       GPGME::gpgme_get_armor(self) == 1 ? true : false
+    end
+
+    # This option ignores a MDC integrity protection failure.
+    # It is required to decrypt old messages which did not use an MDC.
+    # It may also be useful if a message is partially garbled,
+    # but it is necessary to get as much data as possible out of that garbled message.
+    # Be aware that a missing or failed MDC can be an indication of an attack.
+    # Use with great caution.
+    def ignore_mdc_error=(yes)
+      GPGME::gpgme_set_ignore_mdc_error(self, yes ? 1 : 0)
+      yes
+    end
+
+    # Return true if the MDC integrity protection is disabled.
+    def ignore_mdc_error
+      GPGME::gpgme_get_ignore_mdc_error(self) == 1 ? true : false
     end
 
     # Tell whether canonical text mode should be used.
