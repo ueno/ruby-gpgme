@@ -126,7 +126,7 @@ EOS
       '--disable-g13-test',
       # We only need the C API.
       '--disable-languages',
-      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
+      "CFLAGS=-D_LARGEFILE64_SOURCE -fPIC #{ENV["CFLAGS"]}",
     ]
     checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
     unless File.exist?(checkpoint)
