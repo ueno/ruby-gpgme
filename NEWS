@@ -1,3 +1,10 @@
+2.0.24 January 31, 2024
+
+- Fix --clean option (#178, #179)
+- Add the ignore_mdc_error flag setter and getter (#180)
+- Add workaround for building gpgme with musl >= 1.2.4 (#181)
+- Don't add gem root to LOAD_PATH (#120)
+
 2.0.23 August 16, 2023
 
 - Fix incompatible function pointer types with “gpgme_op_keylist_ext_start” (Clang 16) (#176)
