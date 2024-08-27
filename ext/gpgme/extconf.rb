@@ -106,6 +106,16 @@ EOS
     recipe.activate
   end
 
+  pkg_config_paths = [
+    File.join(libgpg_error_recipe.lib_path, 'pkgconfig'),
+    File.join(libassuan_recipe.lib_path, 'pkgconfig'),
+  ]
+
+  # Ensure that the locally-built libraries take precedence. gpgme runs
+  # `gpgrt-config libassuan` and could pull in the system libassuan
+  # if PKG_CONFIG_PATH is not set properly.
+  ENV["PKG_CONFIG_PATH"] = [*pkg_config_paths, ENV["PKG_CONFIG_PATH"]].compact.join(File::PATH_SEPARATOR)
+
   gpgme_recipe = MiniPortile.new('gpgme', '1.21.0').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
