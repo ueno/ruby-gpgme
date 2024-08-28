@@ -1,4 +1,5 @@
 require 'mkmf'
+require 'yaml'
 
 # Available options:
 #
@@ -8,6 +9,56 @@ require 'mkmf'
 # This file is largely based on Nokogiri's extconf.rb.
 
 ROOT = File.expand_path(File.join(File.dirname(__FILE__), '..', '..'))
+
+def load_recipes
+  require 'rubygems'
+  require 'mini_portile2'
+
+  dependencies = YAML.load_file(File.join(ROOT, 'dependencies.yml'))
+
+  libgpg_error_recipe = MiniPortile.new('libgpg-error', dependencies['libgpg-error']['version']).tap do |recipe|
+    recipe.target = File.join(ROOT, "ports")
+    recipe.files = [{
+      :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
+      :sha256 => dependencies['libgpg-error']['sha256']
+    }]
+    recipe.configure_options = [
+      '--enable-install-gpg-error-config',
+      '--disable-shared',
+      '--enable-static',
+      '--disable-nls',
+      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
+    ]
+    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
+    unless File.exist?(checkpoint)
+      recipe.cook
+      FileUtils.touch checkpoint
+    end
+    recipe.activate
+  end
+
+  libassuan_recipe = MiniPortile.new('libassuan', dependencies['libassuan']['version']).tap do |recipe|
+    recipe.target = File.join(ROOT, "ports")
+    recipe.files = [{
+      :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
+      :sha256 => dependencies['libassuan']['sha256']
+    }]
+    recipe.configure_options = [
+      '--disable-shared',
+      '--enable-static',
+      "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
+      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
+    ]
+    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
+    unless File.exist?(checkpoint)
+      recipe.cook
+      FileUtils.touch checkpoint
+    end
+    recipe.activate
+  end
+
+  [libgpg_error_recipe, libassuan_recipe]
+end
 
 if arg_config('--clean')
   require 'pathname'
@@ -62,49 +113,7 @@ follows:
 ************************************************************************
 EOS
 
-  require 'rubygems'
-  require 'mini_portile2'
-
-  libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.47').tap do |recipe|
-    recipe.target = File.join(ROOT, "ports")
-    recipe.files = [{
-      :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => '9e3c670966b96ecc746c28c2c419541e3bcb787d1a73930f5e5f5e1bcbbb9bdb'
-    }]
-    recipe.configure_options = [
-      '--enable-install-gpg-error-config',
-      '--disable-shared',
-      '--enable-static',
-      '--disable-nls',
-      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
-    ]
-    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
-    unless File.exist?(checkpoint)
-      recipe.cook
-      FileUtils.touch checkpoint
-    end
-    recipe.activate
-  end
-
-  libassuan_recipe = MiniPortile.new('libassuan', '2.5.6').tap do |recipe|
-    recipe.target = File.join(ROOT, "ports")
-    recipe.files = [{
-      :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => 'e9fd27218d5394904e4e39788f9b1742711c3e6b41689a31aa3380bd5aa4f426'
-    }]
-    recipe.configure_options = [
-      '--disable-shared',
-      '--enable-static',
-      "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
-      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
-    ]
-    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
-    unless File.exist?(checkpoint)
-      recipe.cook
-      FileUtils.touch checkpoint
-    end
-    recipe.activate
-  end
+  libgpg_error_recipe, libassuan_recipe = load_recipes
 
   pkg_config_paths = [
     File.join(libgpg_error_recipe.lib_path, 'pkgconfig'),
