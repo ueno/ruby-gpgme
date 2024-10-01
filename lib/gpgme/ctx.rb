@@ -447,8 +447,17 @@ module GPGME
     # Delete the key from the key ring.
     # If allow_secret is false, only public keys are deleted,
     # otherwise secret keys are deleted as well.
-    def delete_key(key, allow_secret = false)
-      err = GPGME::gpgme_op_delete(self, key, allow_secret ? 1 : 0)
+    # If force is true, the confirmation dialog will not be displayed.
+    def delete_key(key, allow_secret = false, force = false)
+      err = nil
+      if defined?(GPGME::gpgme_op_delete_ext)
+        flag = 0
+        flag ^= GPGME::DELETE_ALLOW_SECRET if allow_secret
+        flag ^= GPGME::DELETE_FORCE if force
+        err = GPGME::gpgme_op_delete_ext(self, key, flag)
+      else
+        err = GPGME::gpgme_op_delete(self, key, allow_secret ? 1 : 0)
+      end
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end

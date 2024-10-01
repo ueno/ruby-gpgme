@@ -1484,6 +1484,27 @@ rb_s_gpgme_op_delete (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_secret)
   return LONG2NUM(err);
 }
 
+/* This method was added in 1.9.1. */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010901
+static VALUE
+rb_s_gpgme_op_delete_ext (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vflags)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t key;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  UNWRAP_GPGME_KEY(vkey, key);
+
+  err = gpgme_op_delete_ext (ctx, key, NUM2INT(vflags));
+  return LONG2NUM(err);
+}
+#endif
+
 static VALUE
 rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
                             VALUE vallow_secret)
@@ -2547,6 +2568,8 @@ Init_gpgme_n (void)
                              rb_s_gpgme_op_import_result, 1);
   rb_define_module_function (mGPGME, "gpgme_op_delete",
                              rb_s_gpgme_op_delete, 3);
+  rb_define_module_function (mGPGME, "gpgme_op_delete_ext",
+                             rb_s_gpgme_op_delete_ext, 3);
   rb_define_module_function (mGPGME, "gpgme_op_delete_start",
                              rb_s_gpgme_op_delete_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_edit",
@@ -3156,4 +3179,13 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_EXPORT_MODE_PKCS12",
                    INT2FIX(GPGME_EXPORT_MODE_PKCS12));
 #endif
+
+/* These flags were added in 1.9.1. */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010901
+  rb_define_const (mGPGME, "GPGME_DELETE_ALLOW_SECRET",
+                   INT2FIX(GPGME_DELETE_ALLOW_SECRET));
+  rb_define_const (mGPGME, "GPGME_DELETE_FORCE",
+                   INT2FIX(GPGME_DELETE_FORCE));
+#endif
 }
+
