@@ -156,10 +156,11 @@ module GPGME
 
     ##
     # Delete this key. If it's public, and has a secret one it will fail unless
-    # +allow_secret+ is specified as true.
-    def delete!(allow_secret = false)
+    # +allow_secret+ is specified as true. Suppress the confirmation dialog, if
+    # +force+ is specified as true.
+    def delete!(allow_secret = false, force = false)
       GPGME::Ctx.new do |ctx|
-        ctx.delete_key self, allow_secret
+        ctx.delete_key self, allow_secret, force
       end
     end
 

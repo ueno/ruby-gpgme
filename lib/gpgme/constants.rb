@@ -265,4 +265,12 @@ module GPGME
     VALIDITY_FULL       => :full,
     VALIDITY_ULTIMATE   => :ultimate
   }
+
+  if defined?(GPGME_DELETE_ALLOW_SECRET)
+    DELETE_ALLOW_SECRET = GPGME_DELETE_ALLOW_SECRET
+  end
+
+  if defined?(GPGME_DELETE_FORCE)
+    DELETE_FORCE = GPGME_DELETE_FORCE
+  end
 end
