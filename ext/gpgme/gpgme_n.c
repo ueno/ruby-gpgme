@@ -264,19 +264,19 @@ rb_s_gpgme_hash_algo_name (VALUE dummy, VALUE valgo)
 static VALUE
 rb_s_gpgme_err_code (VALUE dummy, VALUE verr)
 {
-  return INT2FIX(gpgme_err_code (NUM2LONG(verr)));
+  return INT2FIX(gpgme_err_code (NUM2UINT(verr)));
 }
 
 static VALUE
 rb_s_gpgme_err_source (VALUE dummy, VALUE verr)
 {
-  return INT2FIX(gpgme_err_source (NUM2LONG(verr)));
+  return INT2FIX(gpgme_err_source (NUM2UINT(verr)));
 }
 
 static VALUE
 rb_s_gpgme_strerror (VALUE dummy, VALUE verr)
 {
-  return rb_str_new2 (gpgme_strerror (NUM2LONG(verr)));
+  return rb_str_new2 (gpgme_strerror (NUM2UINT(verr)));
 }
 
 static VALUE
@@ -299,7 +299,7 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
   size_t size = NUM2UINT(vsize);
   gpgme_error_t err;
 
-  if (RSTRING_LEN(vbuffer) < size)
+  if ((size_t)RSTRING_LEN(vbuffer) < size)
     rb_raise (rb_eArgError, "argument out of range");
 
   err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size, 1);
@@ -538,7 +538,6 @@ rb_s_gpgme_get_ctx_flag (VALUE dummy, VALUE vctx, VALUE vname)
 {
   gpgme_ctx_t ctx;
   const char* name;
-  int yes;
 
   name = StringValueCStr(vname);
 
