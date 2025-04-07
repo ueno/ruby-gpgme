@@ -25,14 +25,14 @@ describe GPGME::Data do
     it "creates a data from a file" do
       # magic fromfile
       data = GPGME::Data.new(File.open(__FILE__))
-      assert_match /magic fromfile/, data.read
+      assert_match(/magic fromfile/, data.read)
     end
 
     it "creates a data from file descriptor" do
       # magic filedescriptor
       File.open(__FILE__) do |f|
         data = GPGME::Data.new(f.fileno)
-        assert_match /magic filedescriptor/, data.read
+        assert_match(/magic filedescriptor/, data.read)
       end
     end
   end
