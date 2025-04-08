@@ -1,0 +1,7 @@
+---
+libgpg-error:
+  version: '1.47'
+  sha256: 9e3c670966b96ecc746c28c2c419541e3bcb787d1a73930f5e5f5e1bcbbb9bdb
+libassuan:
+  version: '2.5.6'
+  sha256: e9fd27218d5394904e4e39788f9b1742711c3e6b41689a31aa3380bd5aa4f426
