@@ -76,7 +76,7 @@ EOS
       '--disable-shared',
       '--enable-static',
       '--disable-nls',
-      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
+      "CFLAGS=-fPIC -std=c99 #{ENV["CFLAGS"]}",
     ]
     checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
     unless File.exist?(checkpoint)
