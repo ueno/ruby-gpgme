@@ -106,11 +106,13 @@
 #define UNWRAP_GPGME_KEY(vkey, key)                                \
   Data_Get_Struct(vkey, struct _gpgme_key, key)
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
 #define WRAP_GPGME_TRUST_ITEM(item)                                          \
   Data_Wrap_Struct(cTrustItem, 0, gpgme_trust_item_unref, item)
 /* `gpgme_trust_item_t' is typedef'ed as `struct _gpgme_trust_item *'. */
 #define UNWRAP_GPGME_TRUST_ITEM(vitem, item)                        \
   Data_Get_Struct(vitem, struct _gpgme_trust_item, item)
+#endif
 
 static VALUE cEngineInfo,
   cCtx,
@@ -123,7 +125,9 @@ static VALUE cEngineInfo,
   cNewSignature,
   cSignature,
   cSigNotation,
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
   cTrustItem,
+#endif
   cRecipient,
   cDecryptResult,
   cVerifyResult,
@@ -1044,11 +1048,19 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
       rb_iv_set (vsubkey, "@keyid", rb_str_new2 (subkey->keyid));
       if (subkey->fpr)
         rb_iv_set (vsubkey, "@fpr", rb_str_new2 (subkey->fpr));
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+      rb_iv_set (vsubkey, "@timestamp", ULONG2NUM(subkey->timestamp));
+      rb_iv_set (vsubkey, "@expires", ULONG2NUM(subkey->expires));
+#else
       rb_iv_set (vsubkey, "@timestamp", LONG2NUM(subkey->timestamp));
       rb_iv_set (vsubkey, "@expires", LONG2NUM(subkey->expires));
+#endif
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
       if (subkey->curve)
         rb_iv_set (vsubkey, "@curve", rb_str_new2 (subkey->curve));
+#endif
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+      rb_iv_set (vsubkey, "@subkey_match", INT2FIX(subkey->subkey_match));
 #endif
       rb_ary_push (vsubkeys, vsubkey);
     }
@@ -1079,8 +1091,13 @@ save_gpgme_key_attrs (VALUE vkey, gpgme_key_t key)
           rb_iv_set (vkey_sig, "@exportable", INT2FIX(key_sig->exportable));
           rb_iv_set (vkey_sig, "@pubkey_algo", INT2FIX(key_sig->pubkey_algo));
           rb_iv_set (vkey_sig, "@keyid", rb_str_new2 (key_sig->keyid));
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+          rb_iv_set (vkey_sig, "@timestamp", ULONG2NUM(key_sig->timestamp));
+          rb_iv_set (vkey_sig, "@expires", ULONG2NUM(key_sig->expires));
+#else
           rb_iv_set (vkey_sig, "@timestamp", LONG2NUM(key_sig->timestamp));
           rb_iv_set (vkey_sig, "@expires", LONG2NUM(key_sig->expires));
+#endif
           rb_ary_push (vsignatures, vkey_sig);
         }
       rb_ary_push (vuids, vuser_id);
@@ -1653,6 +1670,7 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   return LONG2NUM(err);
 }
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
 static VALUE
 rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
                                VALUE vmax_level)
@@ -1716,6 +1734,7 @@ rb_s_gpgme_op_trustlist_end (VALUE dummy, VALUE vctx)
   err = gpgme_op_trustlist_end (ctx);
   return LONG2NUM(err);
 }
+#endif
 
 static VALUE
 rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
@@ -2066,8 +2085,13 @@ rb_s_gpgme_op_sign_result (VALUE dummy, VALUE vctx)
                  INT2FIX(new_signature->hash_algo));
       rb_iv_set (vnew_signature, "@sig_class",
                  UINT2NUM(new_signature->sig_class));
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+      rb_iv_set (vnew_signature, "@timestamp",
+                 ULONG2NUM(new_signature->timestamp));
+#else
       rb_iv_set (vnew_signature, "@timestamp",
                  LONG2NUM(new_signature->timestamp));
+#endif
       rb_iv_set (vnew_signature, "@fpr", rb_str_new2 (new_signature->fpr));
       rb_ary_push (vsignatures, vnew_signature);
     }
@@ -2356,6 +2380,57 @@ rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
 }
 #endif
 
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+static VALUE
+rb_s_gpgme_op_random_bytes (VALUE dummy, VALUE vctx, VALUE vsize, VALUE vmode)
+{
+  gpgme_ctx_t ctx;
+  gpgme_error_t err;
+  size_t size;
+  char *buffer;
+  VALUE result;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  
+  size = NUM2SIZET(vsize);
+  buffer = ALLOC_N(char, size);
+
+  err = gpgme_op_random_bytes (ctx, NUM2INT(vmode), buffer, size);
+  if (err) {
+    xfree(buffer);
+    return LONG2NUM(err);
+  }
+
+  result = rb_str_new(buffer, size);
+  xfree(buffer);
+  return result;
+}
+
+static VALUE
+rb_s_gpgme_op_random_value (VALUE dummy, VALUE vctx, VALUE vlimit)
+{
+  gpgme_ctx_t ctx;
+  size_t limit, result;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+
+  limit = NUM2SIZET(vlimit);
+  err = gpgme_op_random_value (ctx, limit, &result);
+  if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
+    return SIZET2NUM(result);
+  return LONG2NUM(err);
+}
+#endif
+
 void
 Init_gpgme_n (void)
 {
@@ -2422,8 +2497,10 @@ Init_gpgme_n (void)
     rb_define_class_under (mGPGME, "Signature", rb_cObject);
   cSigNotation =
     rb_define_class_under (mGPGME, "SigNotation", rb_cObject);
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
   cTrustItem =
     rb_define_class_under (mGPGME, "TrustItem", rb_cObject);
+#endif
   cInvalidKey =
     rb_define_class_under (mGPGME, "InvalidKey", rb_cObject);
   cNewSignature =
@@ -2581,12 +2658,14 @@ Init_gpgme_n (void)
                              rb_s_gpgme_op_card_edit_start, 5);
 
   /* Trust Item Management */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_start",
                              rb_s_gpgme_op_trustlist_start, 3);
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_next",
                              rb_s_gpgme_op_trustlist_next, 2);
   rb_define_module_function (mGPGME, "gpgme_op_trustlist_end",
                              rb_s_gpgme_op_trustlist_end, 1);
+#endif
 
   /* Decrypt */
   rb_define_module_function (mGPGME, "gpgme_op_decrypt",
@@ -2646,6 +2725,14 @@ Init_gpgme_n (void)
                              rb_s_gpgme_op_spawn, 7);
   rb_define_module_function (mGPGME, "gpgme_op_spawn_start",
                              rb_s_gpgme_op_spawn_start, 7);
+#endif
+
+  /* Random Number Generation */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+  rb_define_module_function (mGPGME, "gpgme_op_random_bytes",
+                             rb_s_gpgme_op_random_bytes, 3);
+  rb_define_module_function (mGPGME, "gpgme_op_random_value",
+                             rb_s_gpgme_op_random_value, 2);
 #endif
 
   /* gpgme_pubkey_algo_t */
@@ -2828,6 +2915,7 @@ Init_gpgme_n (void)
                    INT2FIX(GPGME_SIG_MODE_CLEAR));
 
   /* gpgme_attr_t */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
   rb_define_const (mGPGME, "GPGME_ATTR_KEYID",
                    INT2FIX(GPGME_ATTR_KEYID));
   rb_define_const (mGPGME, "GPGME_ATTR_FPR",
@@ -2890,6 +2978,7 @@ Init_gpgme_n (void)
                    INT2FIX(GPGME_ATTR_ERRTOK));
   rb_define_const (mGPGME, "GPGME_ATTR_SIG_SUMMARY",
                    INT2FIX(GPGME_ATTR_SIG_SUMMARY));
+#endif
 
   /* gpgme_validity_t */
   rb_define_const (mGPGME, "GPGME_VALIDITY_UNKNOWN",
@@ -3133,6 +3222,26 @@ Init_gpgme_n (void)
 #ifdef GPGME_ENCRYPT_NO_ENCRYPT_TO
   rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_ENCRYPT_TO",
                    INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
+#endif
+
+  /* Random number generation mode flags added in 2.0.0 */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+  rb_define_const (mGPGME, "GPGME_RANDOM_MODE_NORMAL",
+                   INT2FIX(GPGME_RANDOM_MODE_NORMAL));
+  rb_define_const (mGPGME, "GPGME_RANDOM_MODE_ZBASE32",
+                   INT2FIX(GPGME_RANDOM_MODE_ZBASE32));
+#endif
+
+  /* Decrypt flags added in 2.0.0 */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+  rb_define_const (mGPGME, "GPGME_DECRYPT_LISTONLY",
+                   INT2FIX(GPGME_DECRYPT_LISTONLY));
+#endif
+
+  /* Key generation flags added in 2.0.0 */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+  rb_define_const (mGPGME, "GPGME_CREATE_GROUP",
+                   INT2FIX(GPGME_CREATE_GROUP));
 #endif
 
   /* These flags were added in 1.4.0. */
