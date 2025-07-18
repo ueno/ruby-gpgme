@@ -90,7 +90,7 @@ describe GPGME::Crypto do
       encrypted   = crypto.encrypt TEXT[:plain], :sign => true
       signatures  = 0
 
-      crypto.verify(encrypted) do |signature|
+      crypto.decrypt(encrypted) do |signature|
         assert_instance_of GPGME::Signature, signature
         signatures += 1
       end
@@ -103,7 +103,7 @@ describe GPGME::Crypto do
       encrypted   = crypto.encrypt TEXT[:plain], :sign => true, :signers => KEYS.map{|k| k[:sha]}
       signatures  = 0
 
-      crypto.verify(encrypted) do |signature|
+      crypto.decrypt(encrypted) do |signature|
         assert_instance_of GPGME::Signature, signature
         signatures += 1
       end
