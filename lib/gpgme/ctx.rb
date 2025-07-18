@@ -570,6 +570,39 @@ module GPGME
       raise exc if exc
     end
 
+    # Generate cryptographically strong random bytes.
+    # Available since GPGME 2.0.0.
+    #
+    # @param [Integer] size Number of bytes to generate
+    # @param [Integer] mode Random generation mode (RANDOM_MODE_NORMAL or RANDOM_MODE_ZBASE32)
+    # @return [String] Random bytes as a binary string
+    def random_bytes(size, mode = GPGME::RANDOM_MODE_NORMAL)
+      result = GPGME::gpgme_op_random_bytes(self, size, mode)
+      if result.is_a?(String)
+        result
+      else
+        exc = GPGME::error_to_exception(result)
+        raise exc if exc
+        result
+      end
+    end
+
+    # Generate a cryptographically strong random unsigned integer value.
+    # Available since GPGME 2.0.0.
+    #
+    # @param [Integer] limit Upper limit for the random value (exclusive)
+    # @return [Integer] Random unsigned integer value in range [0, limit)
+    def random_value(limit)
+      result = GPGME::gpgme_op_random_value(self, limit)
+      if result.is_a?(Integer) && result >= 0
+        result
+      else
+        exc = GPGME::error_to_exception(result)
+        raise exc if exc
+        result
+      end
+    end
+
     def inspect
       "#<#{self.class} protocol=#{PROTOCOL_NAMES[protocol] || protocol}, \
 armor=#{armor}, textmode=#{textmode}, \

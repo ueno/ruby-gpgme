@@ -86,11 +86,11 @@ EOS
     recipe.activate
   end
 
-  libassuan_recipe = MiniPortile.new('libassuan', '2.5.6').tap do |recipe|
+  libassuan_recipe = MiniPortile.new('libassuan', '3.0.2').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => 'e9fd27218d5394904e4e39788f9b1742711c3e6b41689a31aa3380bd5aa4f426'
+      :sha256 => 'd2931cdad266e633510f9970e1a2f346055e351bb19f9b78912475b8074c36f6'
     }]
     recipe.configure_options = [
       '--disable-shared',
@@ -116,11 +116,11 @@ EOS
   # if PKG_CONFIG_PATH is not set properly.
   ENV["PKG_CONFIG_PATH"] = [*pkg_config_paths, ENV["PKG_CONFIG_PATH"]].compact.join(File::PATH_SEPARATOR)
 
-  gpgme_recipe = MiniPortile.new('gpgme', '1.21.0').tap do |recipe|
+  gpgme_recipe = MiniPortile.new('gpgme', '2.0.0').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => '416e174e165734d84806253f8c96bda2993fd07f258c3aad5f053a6efd463e88'
+      :sha256 => 'ddf161d3c41ff6a3fcbaf4be6c6e305ca4ef1cc3f1ecdfce0c8c2a167c0cc36d'
     }]
     recipe.configure_options = [
       '--disable-shared',
