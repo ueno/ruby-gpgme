@@ -88,30 +88,105 @@
 #define RSTRING_LEN(a) RSTRING(a)->len
 #endif
 
+/* TypedData type definitions for Ruby 3.x compatibility */
+static void
+gpgme_data_free(void *ptr)
+{
+  if (ptr)
+    gpgme_data_release((gpgme_data_t)ptr);
+}
+
+static const rb_data_type_t gpgme_data_type = {
+  .wrap_struct_name = "GPGME::Data",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_data_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+static void
+gpgme_ctx_free(void *ptr)
+{
+  if (ptr)
+    gpgme_release((gpgme_ctx_t)ptr);
+}
+
+static const rb_data_type_t gpgme_ctx_type = {
+  .wrap_struct_name = "GPGME::Ctx",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_ctx_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+static void
+gpgme_key_free(void *ptr)
+{
+  if (ptr)
+    gpgme_key_unref((gpgme_key_t)ptr);
+}
+
+static const rb_data_type_t gpgme_key_type = {
+  .wrap_struct_name = "GPGME::Key",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_key_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
+static void
+gpgme_trust_item_free(void *ptr)
+{
+  if (ptr)
+    gpgme_trust_item_unref((gpgme_trust_item_t)ptr);
+}
+
+static const rb_data_type_t gpgme_trust_item_type = {
+  .wrap_struct_name = "GPGME::TrustItem",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_trust_item_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+#endif
+
 #define WRAP_GPGME_DATA(dh)                                        \
-  Data_Wrap_Struct(cData, 0, gpgme_data_release, dh)
+  TypedData_Wrap_Struct(cData, &gpgme_data_type, dh)
 /* `gpgme_data_t' is typedef'ed as `struct gpgme_data *'. */
 #define UNWRAP_GPGME_DATA(vdh, dh)                                \
-  Data_Get_Struct(vdh, struct gpgme_data, dh);
+  TypedData_Get_Struct(vdh, struct gpgme_data, &gpgme_data_type, dh)
 
 #define WRAP_GPGME_CTX(ctx)                                        \
-  Data_Wrap_Struct(cCtx, 0, gpgme_release, ctx)
+  TypedData_Wrap_Struct(cCtx, &gpgme_ctx_type, ctx)
 /* `gpgme_ctx_t' is typedef'ed as `struct gpgme_context *'. */
 #define UNWRAP_GPGME_CTX(vctx, ctx)                                \
-  Data_Get_Struct(vctx, struct gpgme_context, ctx)
+  TypedData_Get_Struct(vctx, struct gpgme_context, &gpgme_ctx_type, ctx)
 
 #define WRAP_GPGME_KEY(key)                                        \
-  Data_Wrap_Struct(cKey, 0, gpgme_key_unref, key)
+  TypedData_Wrap_Struct(cKey, &gpgme_key_type, key)
 /* `gpgme_key_t' is typedef'ed as `struct _gpgme_key *'. */
 #define UNWRAP_GPGME_KEY(vkey, key)                                \
-  Data_Get_Struct(vkey, struct _gpgme_key, key)
+  TypedData_Get_Struct(vkey, struct _gpgme_key, &gpgme_key_type, key)
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
 #define WRAP_GPGME_TRUST_ITEM(item)                                          \
-  Data_Wrap_Struct(cTrustItem, 0, gpgme_trust_item_unref, item)
+  TypedData_Wrap_Struct(cTrustItem, &gpgme_trust_item_type, item)
 /* `gpgme_trust_item_t' is typedef'ed as `struct _gpgme_trust_item *'. */
 #define UNWRAP_GPGME_TRUST_ITEM(vitem, item)                        \
-  Data_Get_Struct(vitem, struct _gpgme_trust_item, item)
+  TypedData_Get_Struct(vitem, struct _gpgme_trust_item, &gpgme_trust_item_type, item)
 #endif
 
 static VALUE cEngineInfo,
@@ -514,7 +589,7 @@ rb_s_gpgme_release (VALUE dummy, VALUE vctx)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   gpgme_release (ctx);
-  DATA_PTR(vctx) = NULL;
+  RTYPEDDATA_DATA(vctx) = NULL;
   return Qnil;
 }
 
@@ -2395,7 +2470,7 @@ rb_s_gpgme_op_random_bytes (VALUE dummy, VALUE vctx, VALUE vsize, VALUE vmode)
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  
+
   size = NUM2SIZET(vsize);
   buffer = ALLOC_N(char, size);
 
