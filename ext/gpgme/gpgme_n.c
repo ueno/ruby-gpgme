@@ -1625,37 +1625,172 @@ rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
  *   Old: gpgme_error_t (*)(void *opaque, gpgme_status_code_t status, const char *args, int fd)
  *   New: gpgme_error_t (*)(void *opaque, const char *keyword, const char *args, int fd)
  *
- * For card operations, use gpgme_op_interact with GPGME_INTERACT_CARD flag.
+ * For backward compatibility, we keep the same Ruby interface (gpgme_op_edit, etc.)
+ * but internally use gpgme_op_interact for GPGME 2.0.0+, converting keyword strings
+ * to status codes in the callback shim.
  */
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
-/* GPGME 2.0.0+: Use gpgme_op_interact */
+/*
+ * GPGME 2.0.0+: Use gpgme_op_interact internally, but expose the same
+ * gpgme_op_edit interface to Ruby for backward compatibility.
+ *
+ * The shim callback converts keyword strings to status codes.
+ */
 
-static gpgme_error_t
-interact_cb (void *hook, const char *keyword, const char *args, int fd)
+/* Mapping table from keyword strings to status codes */
+static struct {
+  const char *keyword;
+  gpgme_status_code_t status;
+} keyword_to_status[] = {
+  { "EOF", GPGME_STATUS_EOF },
+  { "ENTER", GPGME_STATUS_ENTER },
+  { "LEAVE", GPGME_STATUS_LEAVE },
+  { "ABORT", GPGME_STATUS_ABORT },
+  { "GOODSIG", GPGME_STATUS_GOODSIG },
+  { "BADSIG", GPGME_STATUS_BADSIG },
+  { "ERRSIG", GPGME_STATUS_ERRSIG },
+  { "BADARMOR", GPGME_STATUS_BADARMOR },
+  { "RSA_OR_IDEA", GPGME_STATUS_RSA_OR_IDEA },
+  { "KEYEXPIRED", GPGME_STATUS_KEYEXPIRED },
+  { "KEYREVOKED", GPGME_STATUS_KEYREVOKED },
+  { "TRUST_UNDEFINED", GPGME_STATUS_TRUST_UNDEFINED },
+  { "TRUST_NEVER", GPGME_STATUS_TRUST_NEVER },
+  { "TRUST_MARGINAL", GPGME_STATUS_TRUST_MARGINAL },
+  { "TRUST_FULLY", GPGME_STATUS_TRUST_FULLY },
+  { "TRUST_ULTIMATE", GPGME_STATUS_TRUST_ULTIMATE },
+  { "SHM_INFO", GPGME_STATUS_SHM_INFO },
+  { "SHM_GET", GPGME_STATUS_SHM_GET },
+  { "SHM_GET_BOOL", GPGME_STATUS_SHM_GET_BOOL },
+  { "SHM_GET_HIDDEN", GPGME_STATUS_SHM_GET_HIDDEN },
+  { "NEED_PASSPHRASE", GPGME_STATUS_NEED_PASSPHRASE },
+  { "VALIDSIG", GPGME_STATUS_VALIDSIG },
+  { "SIG_ID", GPGME_STATUS_SIG_ID },
+  { "ENC_TO", GPGME_STATUS_ENC_TO },
+  { "NODATA", GPGME_STATUS_NODATA },
+  { "BAD_PASSPHRASE", GPGME_STATUS_BAD_PASSPHRASE },
+  { "NO_PUBKEY", GPGME_STATUS_NO_PUBKEY },
+  { "NO_SECKEY", GPGME_STATUS_NO_SECKEY },
+  { "NEED_PASSPHRASE_SYM", GPGME_STATUS_NEED_PASSPHRASE_SYM },
+  { "DECRYPTION_FAILED", GPGME_STATUS_DECRYPTION_FAILED },
+  { "DECRYPTION_OKAY", GPGME_STATUS_DECRYPTION_OKAY },
+  { "MISSING_PASSPHRASE", GPGME_STATUS_MISSING_PASSPHRASE },
+  { "GOOD_PASSPHRASE", GPGME_STATUS_GOOD_PASSPHRASE },
+  { "GOODMDC", GPGME_STATUS_GOODMDC },
+  { "BADMDC", GPGME_STATUS_BADMDC },
+  { "ERRMDC", GPGME_STATUS_ERRMDC },
+  { "IMPORTED", GPGME_STATUS_IMPORTED },
+  { "IMPORT_OK", GPGME_STATUS_IMPORT_OK },
+  { "IMPORT_PROBLEM", GPGME_STATUS_IMPORT_PROBLEM },
+  { "IMPORT_RES", GPGME_STATUS_IMPORT_RES },
+  { "FILE_START", GPGME_STATUS_FILE_START },
+  { "FILE_DONE", GPGME_STATUS_FILE_DONE },
+  { "FILE_ERROR", GPGME_STATUS_FILE_ERROR },
+  { "BEGIN_DECRYPTION", GPGME_STATUS_BEGIN_DECRYPTION },
+  { "END_DECRYPTION", GPGME_STATUS_END_DECRYPTION },
+  { "BEGIN_ENCRYPTION", GPGME_STATUS_BEGIN_ENCRYPTION },
+  { "END_ENCRYPTION", GPGME_STATUS_END_ENCRYPTION },
+  { "DELETE_PROBLEM", GPGME_STATUS_DELETE_PROBLEM },
+  { "GET_BOOL", GPGME_STATUS_GET_BOOL },
+  { "GET_LINE", GPGME_STATUS_GET_LINE },
+  { "GET_HIDDEN", GPGME_STATUS_GET_HIDDEN },
+  { "GOT_IT", GPGME_STATUS_GOT_IT },
+  { "PROGRESS", GPGME_STATUS_PROGRESS },
+  { "SIG_CREATED", GPGME_STATUS_SIG_CREATED },
+  { "SESSION_KEY", GPGME_STATUS_SESSION_KEY },
+  { "NOTATION_NAME", GPGME_STATUS_NOTATION_NAME },
+  { "NOTATION_DATA", GPGME_STATUS_NOTATION_DATA },
+  { "POLICY_URL", GPGME_STATUS_POLICY_URL },
+  { "BEGIN_STREAM", GPGME_STATUS_BEGIN_STREAM },
+  { "END_STREAM", GPGME_STATUS_END_STREAM },
+  { "KEY_CREATED", GPGME_STATUS_KEY_CREATED },
+  { "USERID_HINT", GPGME_STATUS_USERID_HINT },
+  { "UNEXPECTED", GPGME_STATUS_UNEXPECTED },
+  { "INV_RECP", GPGME_STATUS_INV_RECP },
+  { "NO_RECP", GPGME_STATUS_NO_RECP },
+  { "ALREADY_SIGNED", GPGME_STATUS_ALREADY_SIGNED },
+  { "SIGEXPIRED", GPGME_STATUS_SIGEXPIRED },
+  { "EXPSIG", GPGME_STATUS_EXPSIG },
+  { "EXPKEYSIG", GPGME_STATUS_EXPKEYSIG },
+  { "TRUNCATED", GPGME_STATUS_TRUNCATED },
+  { "ERROR", GPGME_STATUS_ERROR },
+  { "NEWSIG", GPGME_STATUS_NEWSIG },
+  { "REVKEYSIG", GPGME_STATUS_REVKEYSIG },
+  { "SIG_SUBPACKET", GPGME_STATUS_SIG_SUBPACKET },
+  { "NEED_PASSPHRASE_PIN", GPGME_STATUS_NEED_PASSPHRASE_PIN },
+  { "SC_OP_FAILURE", GPGME_STATUS_SC_OP_FAILURE },
+  { "SC_OP_SUCCESS", GPGME_STATUS_SC_OP_SUCCESS },
+  { "CARDCTRL", GPGME_STATUS_CARDCTRL },
+  { "BACKUP_KEY_CREATED", GPGME_STATUS_BACKUP_KEY_CREATED },
+  { "PKA_TRUST_BAD", GPGME_STATUS_PKA_TRUST_BAD },
+  { "PKA_TRUST_GOOD", GPGME_STATUS_PKA_TRUST_GOOD },
+  { "PLAINTEXT", GPGME_STATUS_PLAINTEXT },
+  { "INV_SGNR", GPGME_STATUS_INV_SGNR },
+  { "NO_SGNR", GPGME_STATUS_NO_SGNR },
+  { "SUCCESS", GPGME_STATUS_SUCCESS },
+  { "DECRYPTION_INFO", GPGME_STATUS_DECRYPTION_INFO },
+  { "PLAINTEXT_LENGTH", GPGME_STATUS_PLAINTEXT_LENGTH },
+  { "MOUNTPOINT", GPGME_STATUS_MOUNTPOINT },
+  { "PINENTRY_LAUNCHED", GPGME_STATUS_PINENTRY_LAUNCHED },
+  { "ATTRIBUTE", GPGME_STATUS_ATTRIBUTE },
+  { "BEGIN_SIGNING", GPGME_STATUS_BEGIN_SIGNING },
+  { "KEY_NOT_CREATED", GPGME_STATUS_KEY_NOT_CREATED },
+  { "INQUIRE_MAXLEN", GPGME_STATUS_INQUIRE_MAXLEN },
+  { "FAILURE", GPGME_STATUS_FAILURE },
+  { "KEY_CONSIDERED", GPGME_STATUS_KEY_CONSIDERED },
+  { "TOFU_USER", GPGME_STATUS_TOFU_USER },
+  { "TOFU_STATS", GPGME_STATUS_TOFU_STATS },
+  { "TOFU_STATS_LONG", GPGME_STATUS_TOFU_STATS_LONG },
+  { "NOTATION_FLAGS", GPGME_STATUS_NOTATION_FLAGS },
+  { "DECRYPTION_COMPLIANCE_MODE", GPGME_STATUS_DECRYPTION_COMPLIANCE_MODE },
+  { "VERIFICATION_COMPLIANCE_MODE", GPGME_STATUS_VERIFICATION_COMPLIANCE_MODE },
+  { "CANCELED_BY_USER", GPGME_STATUS_CANCELED_BY_USER },
+  { NULL, GPGME_STATUS_EOF }
+};
+
+static gpgme_status_code_t
+keyword_to_status_code (const char *keyword)
 {
-  VALUE vcb = (VALUE)hook, vinteractfunc, vhook_value;
+  int i;
+  if (!keyword)
+    return GPGME_STATUS_EOF;
+  for (i = 0; keyword_to_status[i].keyword != NULL; i++) {
+    if (strcmp(keyword, keyword_to_status[i].keyword) == 0)
+      return keyword_to_status[i].status;
+  }
+  /* Unknown keyword - return EOF as fallback */
+  return GPGME_STATUS_EOF;
+}
 
-  vinteractfunc = RARRAY_PTR(vcb)[0];
+/*
+ * Shim callback that converts keyword strings to status codes
+ * for backward compatibility with existing Ruby callbacks.
+ */
+static gpgme_error_t
+edit_cb_shim (void *hook, const char *keyword, const char *args, int fd)
+{
+  VALUE vcb = (VALUE)hook, veditfunc, vhook_value;
+  gpgme_status_code_t status;
+
+  veditfunc = RARRAY_PTR(vcb)[0];
   vhook_value = RARRAY_PTR(vcb)[1];
 
-  rb_funcall (vinteractfunc, rb_intern ("call"), 4, vhook_value,
-              keyword ? rb_str_new2 (keyword) : Qnil,
-              args ? rb_str_new2 (args) : Qnil, INT2NUM(fd));
+  status = keyword_to_status_code(keyword);
+
+  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(status),
+              args ? rb_str_new2 (args) : rb_str_new2(""), INT2NUM(fd));
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
 static VALUE
-rb_s_gpgme_op_interact (VALUE dummy, VALUE vctx, VALUE vkey,
-                        VALUE vflags, VALUE vinteractfunc,
-                        VALUE vhook_value, VALUE vout)
+rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
+                    VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
-  unsigned int flags;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1663,31 +1798,29 @@ rb_s_gpgme_op_interact (VALUE dummy, VALUE vctx, VALUE vkey,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
-  flags = NUM2UINT(vflags);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
   vcb = rb_ary_new ();
-  rb_ary_push (vcb, vinteractfunc);
+  rb_ary_push (vcb, veditfunc);
   rb_ary_push (vcb, vhook_value);
   /* Keep a reference to avoid GC. */
-  rb_iv_set (vctx, "@interact_cb", vcb);
+  rb_iv_set (vctx, "@edit_cb", vcb);
 
-  err = gpgme_op_interact (ctx, key, flags, interact_cb, (void *)vcb, out);
+  /* Use gpgme_op_interact with flags=0, shim converts keywords to status codes */
+  err = gpgme_op_interact (ctx, key, 0, edit_cb_shim, (void *)vcb, out);
   return LONG2NUM(err);
 }
 
 static VALUE
-rb_s_gpgme_op_interact_start (VALUE dummy, VALUE vctx, VALUE vkey,
-                              VALUE vflags, VALUE vinteractfunc,
-                              VALUE vhook_value, VALUE vout)
+rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
+                          VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
   gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
-  unsigned int flags;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1695,22 +1828,82 @@ rb_s_gpgme_op_interact_start (VALUE dummy, VALUE vctx, VALUE vkey,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_KEY(vkey, key);
-  flags = NUM2UINT(vflags);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
   vcb = rb_ary_new ();
-  rb_ary_push (vcb, vinteractfunc);
+  rb_ary_push (vcb, veditfunc);
   rb_ary_push (vcb, vhook_value);
   /* Keep a reference to avoid GC. */
-  rb_iv_set (vctx, "@interact_cb", vcb);
+  rb_iv_set (vctx, "@edit_cb", vcb);
 
-  err = gpgme_op_interact_start (ctx, key, flags, interact_cb, (void *)vcb, out);
+  /* Use gpgme_op_interact_start with flags=0, shim converts keywords to status codes */
+  err = gpgme_op_interact_start (ctx, key, 0, edit_cb_shim, (void *)vcb, out);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
+                    VALUE veditfunc, VALUE vhook_value, VALUE vout)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t key;
+  gpgme_data_t out = NULL;
+  VALUE vcb;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  UNWRAP_GPGME_KEY(vkey, key);
+  if (!NIL_P(vout))
+    UNWRAP_GPGME_DATA(vout, out);
+
+  vcb = rb_ary_new ();
+  rb_ary_push (vcb, veditfunc);
+  rb_ary_push (vcb, vhook_value);
+  /* Keep a reference to avoid GC. */
+  rb_iv_set (vctx, "@card_edit_cb", vcb);
+
+  /* Use gpgme_op_interact with GPGME_INTERACT_CARD flag */
+  err = gpgme_op_interact (ctx, key, GPGME_INTERACT_CARD, edit_cb_shim, (void *)vcb, out);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
+                               VALUE veditfunc, VALUE vhook_value, VALUE vout)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t key;
+  gpgme_data_t out = NULL;
+  VALUE vcb;
+  gpgme_error_t err;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  UNWRAP_GPGME_KEY(vkey, key);
+  if (!NIL_P(vout))
+    UNWRAP_GPGME_DATA(vout, out);
+
+  vcb = rb_ary_new ();
+  rb_ary_push (vcb, veditfunc);
+  rb_ary_push (vcb, vhook_value);
+  /* Keep a reference to avoid GC. */
+  rb_iv_set (vctx, "@card_edit_cb", vcb);
+
+  /* Use gpgme_op_interact_start with GPGME_INTERACT_CARD flag */
+  err = gpgme_op_interact_start (ctx, key, GPGME_INTERACT_CARD, edit_cb_shim, (void *)vcb, out);
   return LONG2NUM(err);
 }
 
 #else
-/* GPGME < 2.0.0: Use deprecated gpgme_op_edit (still functional) */
+/* GPGME < 2.0.0: Use the original gpgme_op_edit functions directly */
 
 static gpgme_error_t
 edit_cb (void *hook, gpgme_status_code_t status, const char *args, int fd)
@@ -2822,17 +3015,10 @@ Init_gpgme_n (void)
   rb_define_module_function (mGPGME, "gpgme_op_delete_start",
                              rb_s_gpgme_op_delete_start, 3);
 
-  /* Key Edit Interface */
-#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
-  /* GPGME 2.0.0+: Use gpgme_op_interact (replaces deprecated gpgme_op_edit) */
-  rb_define_module_function (mGPGME, "gpgme_op_interact",
-                             rb_s_gpgme_op_interact, 6);
-  rb_define_module_function (mGPGME, "gpgme_op_interact_start",
-                             rb_s_gpgme_op_interact_start, 6);
-  rb_define_const (mGPGME, "GPGME_INTERACT_CARD",
-                   INT2FIX(GPGME_INTERACT_CARD));
-#else
-  /* GPGME < 2.0.0: Use deprecated gpgme_op_edit (still functional) */
+  /* Key Edit Interface
+   * For GPGME 2.0.0+, these functions use gpgme_op_interact internally
+   * with a shim to maintain backward compatibility with existing callbacks.
+   */
   rb_define_module_function (mGPGME, "gpgme_op_edit",
                              rb_s_gpgme_op_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_edit_start",
@@ -2841,7 +3027,6 @@ Init_gpgme_n (void)
                              rb_s_gpgme_op_card_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_card_edit_start",
                              rb_s_gpgme_op_card_edit_start, 5);
-#endif
 
   /* Trust Item Management */
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000

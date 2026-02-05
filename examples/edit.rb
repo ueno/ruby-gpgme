@@ -40,64 +40,26 @@ def progfunc(hook, what, type, current, total)
   $stderr.flush
 end
 
-# Callback function for key editing.
-#
-# For GPGME 2.0.0+:
-#   The callback receives (hook, keyword, args, fd) where keyword is a string
-#   like "GET_BOOL", "GET_LINE", "GET_HIDDEN", "GOT_IT", etc.
-#
-# For GPGME < 2.0.0:
-#   The callback receives (hook, status, args, fd) where status is a numeric
-#   constant like GPGME::GPGME_STATUS_GET_BOOL, GPGME::GPGME_STATUS_GET_LINE, etc.
-#
-def editfunc(hook, status_or_keyword, args, fd)
-  # Determine if we're using GPGME 2.0.0+ (string keyword) or older (numeric status)
-  if status_or_keyword.is_a?(String)
-    # GPGME 2.0.0+: keyword is a string
-    keyword = status_or_keyword
-    case keyword
-    when "GET_BOOL"
-      begin
-        $stderr.write("#{args} (y/n) ")
-        $stderr.flush
-        line = gets
-      end until line =~ /\A\s*[ny]\s*\z/
-      io = IO.for_fd(fd)
-      io.puts(line.strip)
-      io.flush
-    when "GET_LINE", "GET_HIDDEN"
-      $stderr.write("#{args}: ")
+def editfunc(hook, status, args, fd)
+  case status
+  when GPGME::GPGME_STATUS_GET_BOOL
+    begin
+      $stderr.write("#{args} (y/n) ")
       $stderr.flush
       line = gets
-      io = IO.for_fd(fd)
-      io.puts(line)
-      io.flush
-    else
-      $stderr.puts([keyword, args].inspect)
-    end
+    end until line =~ /\A\s*[ny]\s*\z/
+    io = IO.for_fd(fd)
+    io.puts(line.strip)
+    io.flush
+  when GPGME::GPGME_STATUS_GET_LINE, GPGME::GPGME_STATUS_GET_HIDDEN
+    $stderr.write("#{args}: ")
+    $stderr.flush
+    line = gets
+    io = IO.for_fd(fd)
+    io.puts(line)
+    io.flush
   else
-    # GPGME < 2.0.0: status is a numeric constant
-    status = status_or_keyword
-    case status
-    when GPGME::GPGME_STATUS_GET_BOOL
-      begin
-        $stderr.write("#{args} (y/n) ")
-        $stderr.flush
-        line = gets
-      end until line =~ /\A\s*[ny]\s*\z/
-      io = IO.for_fd(fd)
-      io.puts(line.strip)
-      io.flush
-    when GPGME::GPGME_STATUS_GET_LINE, GPGME::GPGME_STATUS_GET_HIDDEN
-      $stderr.write("#{args}: ")
-      $stderr.flush
-      line = gets
-      io = IO.for_fd(fd)
-      io.puts(line)
-      io.flush
-    else
-      $stderr.puts([status, args].inspect)
-    end
+    $stderr.puts([status, args].inspect)
   end
 end
 
