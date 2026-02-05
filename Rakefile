@@ -2,8 +2,11 @@ require 'bundler'
 Bundler::GemHelper.install_tasks
 
 require 'rake/testtask'
+require 'rake/clean'
 require 'yard'
 
+CLEAN.include('tmp')
+CLOBBER.include('tmp', 'pkg', 'doc', '.yardoc')
 
 desc "Re-compile the extensions"
 task :compile do
