@@ -1615,6 +1615,103 @@ rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
   return LONG2NUM(err);
 }
 
+/*
+ * Key Edit Interface
+ *
+ * GPGME 2.0.0 deprecated gpgme_op_edit, gpgme_op_edit_start, gpgme_op_card_edit,
+ * and gpgme_op_card_edit_start in favor of gpgme_op_interact and gpgme_op_interact_start.
+ *
+ * The new interact callback has a different signature:
+ *   Old: gpgme_error_t (*)(void *opaque, gpgme_status_code_t status, const char *args, int fd)
+ *   New: gpgme_error_t (*)(void *opaque, const char *keyword, const char *args, int fd)
+ *
+ * For card operations, use gpgme_op_interact with GPGME_INTERACT_CARD flag.
+ */
+
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+/* GPGME 2.0.0+: Use gpgme_op_interact */
+
+static gpgme_error_t
+interact_cb (void *hook, const char *keyword, const char *args, int fd)
+{
+  VALUE vcb = (VALUE)hook, vinteractfunc, vhook_value;
+
+  vinteractfunc = RARRAY_PTR(vcb)[0];
+  vhook_value = RARRAY_PTR(vcb)[1];
+
+  rb_funcall (vinteractfunc, rb_intern ("call"), 4, vhook_value,
+              keyword ? rb_str_new2 (keyword) : Qnil,
+              args ? rb_str_new2 (args) : Qnil, INT2NUM(fd));
+  return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
+}
+
+static VALUE
+rb_s_gpgme_op_interact (VALUE dummy, VALUE vctx, VALUE vkey,
+                        VALUE vflags, VALUE vinteractfunc,
+                        VALUE vhook_value, VALUE vout)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t key;
+  gpgme_data_t out = NULL;
+  VALUE vcb;
+  gpgme_error_t err;
+  unsigned int flags;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  UNWRAP_GPGME_KEY(vkey, key);
+  flags = NUM2UINT(vflags);
+  if (!NIL_P(vout))
+    UNWRAP_GPGME_DATA(vout, out);
+
+  vcb = rb_ary_new ();
+  rb_ary_push (vcb, vinteractfunc);
+  rb_ary_push (vcb, vhook_value);
+  /* Keep a reference to avoid GC. */
+  rb_iv_set (vctx, "@interact_cb", vcb);
+
+  err = gpgme_op_interact (ctx, key, flags, interact_cb, (void *)vcb, out);
+  return LONG2NUM(err);
+}
+
+static VALUE
+rb_s_gpgme_op_interact_start (VALUE dummy, VALUE vctx, VALUE vkey,
+                              VALUE vflags, VALUE vinteractfunc,
+                              VALUE vhook_value, VALUE vout)
+{
+  gpgme_ctx_t ctx;
+  gpgme_key_t key;
+  gpgme_data_t out = NULL;
+  VALUE vcb;
+  gpgme_error_t err;
+  unsigned int flags;
+
+  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+
+  UNWRAP_GPGME_CTX(vctx, ctx);
+  if (!ctx)
+    rb_raise (rb_eArgError, "released ctx");
+  UNWRAP_GPGME_KEY(vkey, key);
+  flags = NUM2UINT(vflags);
+  if (!NIL_P(vout))
+    UNWRAP_GPGME_DATA(vout, out);
+
+  vcb = rb_ary_new ();
+  rb_ary_push (vcb, vinteractfunc);
+  rb_ary_push (vcb, vhook_value);
+  /* Keep a reference to avoid GC. */
+  rb_iv_set (vctx, "@interact_cb", vcb);
+
+  err = gpgme_op_interact_start (ctx, key, flags, interact_cb, (void *)vcb, out);
+  return LONG2NUM(err);
+}
+
+#else
+/* GPGME < 2.0.0: Use deprecated gpgme_op_edit (still functional) */
+
 static gpgme_error_t
 edit_cb (void *hook, gpgme_status_code_t status, const char *args, int fd)
 {
@@ -1744,6 +1841,7 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   err = gpgme_op_card_edit_start (ctx, key, edit_cb, (void *)vcb, out);
   return LONG2NUM(err);
 }
+#endif /* GPGME_VERSION_NUMBER >= 0x020000 */
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
 static VALUE
@@ -2723,6 +2821,18 @@ Init_gpgme_n (void)
                              rb_s_gpgme_op_delete_ext, 3);
   rb_define_module_function (mGPGME, "gpgme_op_delete_start",
                              rb_s_gpgme_op_delete_start, 3);
+
+  /* Key Edit Interface */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+  /* GPGME 2.0.0+: Use gpgme_op_interact (replaces deprecated gpgme_op_edit) */
+  rb_define_module_function (mGPGME, "gpgme_op_interact",
+                             rb_s_gpgme_op_interact, 6);
+  rb_define_module_function (mGPGME, "gpgme_op_interact_start",
+                             rb_s_gpgme_op_interact_start, 6);
+  rb_define_const (mGPGME, "GPGME_INTERACT_CARD",
+                   INT2FIX(GPGME_INTERACT_CARD));
+#else
+  /* GPGME < 2.0.0: Use deprecated gpgme_op_edit (still functional) */
   rb_define_module_function (mGPGME, "gpgme_op_edit",
                              rb_s_gpgme_op_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_edit_start",
@@ -2731,6 +2841,7 @@ Init_gpgme_n (void)
                              rb_s_gpgme_op_card_edit, 5);
   rb_define_module_function (mGPGME, "gpgme_op_card_edit_start",
                              rb_s_gpgme_op_card_edit_start, 5);
+#endif
 
   /* Trust Item Management */
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
