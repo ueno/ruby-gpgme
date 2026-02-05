@@ -1756,7 +1756,7 @@ static struct {
 static gpgme_status_code_t
 keyword_to_status_code (const char *keyword)
 {
-  int i;
+  size_t i;
 
   if (!keyword)
     return GPGME_STATUS_EOF;
