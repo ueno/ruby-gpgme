@@ -9,7 +9,12 @@ module GPGME
     end
 
     def write(hook, buffer, length)
-      @io.write(buffer[0 .. length])
+      data = buffer[0 .. length]
+      # Handle encoding conversion if the IO has a different encoding
+      if @io.respond_to?(:external_encoding) && @io.external_encoding
+        data = data.encode(@io.external_encoding, invalid: :replace, undef: :replace)
+      end
+      @io.write(data)
     end
 
     def seek(hook, offset, whence)

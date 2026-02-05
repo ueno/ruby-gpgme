@@ -420,10 +420,20 @@ static ssize_t
 write_cb (void *handle, const void *buffer, size_t size)
 {
   VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnwrite;
+  rb_encoding *enc;
 
   vcbs = RARRAY_PTR(vcb)[0];
   vhook_value = RARRAY_PTR(vcb)[1];
   vbuffer = rb_str_new (buffer, size);
+
+  /* Associate encoding with the buffer string.
+   * Use default internal encoding if set, otherwise use binary encoding.
+   * This allows the app author to control the encoding via
+   * Encoding.default_internal while maintaining backward compatibility. */
+  enc = rb_default_internal_encoding ();
+  if (!enc)
+    enc = rb_ascii8bit_encoding ();
+  rb_enc_associate (vbuffer, enc);
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
                         vhook_value, vbuffer, LONG2NUM(size));
