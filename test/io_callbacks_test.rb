@@ -103,7 +103,7 @@ describe GPGME::IOCallbacks do
       output.set_encoding(Encoding::UTF_8)
 
       # This should not raise Encoding::UndefinedConversionError
-      signed = crypto.sign(utf8_text, mode: GPGME::SIG_MODE_CLEAR, output: output)
+      crypto.sign(utf8_text, mode: GPGME::SIG_MODE_CLEAR, output: output)
 
       output.rewind
       result = output.read
@@ -139,9 +139,13 @@ describe GPGME::IOCallbacks do
     it "respects Encoding.default_internal when set" do
       # Save original setting
       original_internal = Encoding.default_internal
+      original_verbose = $VERBOSE
 
       begin
+        # Suppress warning about setting Encoding.default_internal
+        $VERBOSE = nil
         Encoding.default_internal = Encoding::UTF_8
+        $VERBOSE = original_verbose
 
         io = StringIO.new
         io.set_encoding(Encoding::UTF_8)
@@ -155,8 +159,10 @@ describe GPGME::IOCallbacks do
         result = io.read
         assert_equal utf8_data, result
       ensure
-        # Restore original setting
+        # Restore original settings
+        $VERBOSE = nil
         Encoding.default_internal = original_internal
+        $VERBOSE = original_verbose
       end
     end
   end
