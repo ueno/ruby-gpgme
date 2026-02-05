@@ -88,29 +88,102 @@
 #define RSTRING_LEN(a) RSTRING(a)->len
 #endif
 
+/* TypedData type definitions for Ruby 3.x compatibility */
+static void
+gpgme_data_free (void *ptr)
+{
+  if (ptr)
+    gpgme_data_release ((gpgme_data_t)ptr);
+}
+
+static const rb_data_type_t gpgme_data_type = {
+  .wrap_struct_name = "GPGME::Data",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_data_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+static void
+gpgme_ctx_free (void *ptr)
+{
+  if (ptr)
+    gpgme_release ((gpgme_ctx_t)ptr);
+}
+
+static const rb_data_type_t gpgme_ctx_type = {
+  .wrap_struct_name = "GPGME::Ctx",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_ctx_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+static void
+gpgme_key_free (void *ptr)
+{
+  if (ptr)
+    gpgme_key_unref ((gpgme_key_t)ptr);
+}
+
+static const rb_data_type_t gpgme_key_type = {
+  .wrap_struct_name = "GPGME::Key",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_key_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+static void
+gpgme_trust_item_free (void *ptr)
+{
+  if (ptr)
+    gpgme_trust_item_unref ((gpgme_trust_item_t)ptr);
+}
+
+static const rb_data_type_t gpgme_trust_item_type = {
+  .wrap_struct_name = "GPGME::TrustItem",
+  .function = {
+    .dmark = NULL,
+    .dfree = gpgme_trust_item_free,
+    .dsize = NULL,
+  },
+  .data = NULL,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
 #define WRAP_GPGME_DATA(dh)                                        \
-  Data_Wrap_Struct(cData, 0, gpgme_data_release, dh)
+  TypedData_Wrap_Struct(cData, &gpgme_data_type, dh)
 /* `gpgme_data_t' is typedef'ed as `struct gpgme_data *'. */
 #define UNWRAP_GPGME_DATA(vdh, dh)                                \
-  Data_Get_Struct(vdh, struct gpgme_data, dh);
+  TypedData_Get_Struct(vdh, struct gpgme_data, &gpgme_data_type, dh);
 
 #define WRAP_GPGME_CTX(ctx)                                        \
-  Data_Wrap_Struct(cCtx, 0, gpgme_release, ctx)
+  TypedData_Wrap_Struct(cCtx, &gpgme_ctx_type, ctx)
 /* `gpgme_ctx_t' is typedef'ed as `struct gpgme_context *'. */
 #define UNWRAP_GPGME_CTX(vctx, ctx)                                \
-  Data_Get_Struct(vctx, struct gpgme_context, ctx)
+  TypedData_Get_Struct(vctx, struct gpgme_context, &gpgme_ctx_type, ctx)
 
 #define WRAP_GPGME_KEY(key)                                        \
-  Data_Wrap_Struct(cKey, 0, gpgme_key_unref, key)
+  TypedData_Wrap_Struct(cKey, &gpgme_key_type, key)
 /* `gpgme_key_t' is typedef'ed as `struct _gpgme_key *'. */
 #define UNWRAP_GPGME_KEY(vkey, key)                                \
-  Data_Get_Struct(vkey, struct _gpgme_key, key)
+  TypedData_Get_Struct(vkey, struct _gpgme_key, &gpgme_key_type, key)
 
 #define WRAP_GPGME_TRUST_ITEM(item)                                          \
-  Data_Wrap_Struct(cTrustItem, 0, gpgme_trust_item_unref, item)
+  TypedData_Wrap_Struct(cTrustItem, &gpgme_trust_item_type, item)
 /* `gpgme_trust_item_t' is typedef'ed as `struct _gpgme_trust_item *'. */
 #define UNWRAP_GPGME_TRUST_ITEM(vitem, item)                        \
-  Data_Get_Struct(vitem, struct _gpgme_trust_item, item)
+  TypedData_Get_Struct(vitem, struct _gpgme_trust_item, &gpgme_trust_item_type, item)
 
 static VALUE cEngineInfo,
   cCtx,
@@ -264,19 +337,19 @@ rb_s_gpgme_hash_algo_name (VALUE dummy, VALUE valgo)
 static VALUE
 rb_s_gpgme_err_code (VALUE dummy, VALUE verr)
 {
-  return INT2FIX(gpgme_err_code (NUM2LONG(verr)));
+  return INT2FIX(gpgme_err_code (NUM2UINT(verr)));
 }
 
 static VALUE
 rb_s_gpgme_err_source (VALUE dummy, VALUE verr)
 {
-  return INT2FIX(gpgme_err_source (NUM2LONG(verr)));
+  return INT2FIX(gpgme_err_source (NUM2UINT(verr)));
 }
 
 static VALUE
 rb_s_gpgme_strerror (VALUE dummy, VALUE verr)
 {
-  return rb_str_new2 (gpgme_strerror (NUM2LONG(verr)));
+  return rb_str_new2 (gpgme_strerror (NUM2UINT(verr)));
 }
 
 static VALUE
@@ -299,7 +372,7 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
   size_t size = NUM2UINT(vsize);
   gpgme_error_t err;
 
-  if (RSTRING_LEN(vbuffer) < size)
+  if ((size_t)RSTRING_LEN(vbuffer) < size)
     rb_raise (rb_eArgError, "argument out of range");
 
   err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size, 1);
@@ -510,7 +583,7 @@ rb_s_gpgme_release (VALUE dummy, VALUE vctx)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   gpgme_release (ctx);
-  DATA_PTR(vctx) = NULL;
+  RTYPEDDATA_DATA(vctx) = NULL;
   return Qnil;
 }
 
@@ -538,7 +611,7 @@ rb_s_gpgme_get_ctx_flag (VALUE dummy, VALUE vctx, VALUE vname)
 {
   gpgme_ctx_t ctx;
   const char* name;
-  int yes;
+  const char* result;
 
   name = StringValueCStr(vname);
 
@@ -546,7 +619,6 @@ rb_s_gpgme_get_ctx_flag (VALUE dummy, VALUE vctx, VALUE vname)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  const char* result;
   result = gpgme_get_ctx_flag(ctx, name);
   if (result == NULL)
     rb_raise (rb_eArgError, "incorrect ctx flag name");
@@ -1517,6 +1589,18 @@ edit_cb (void *hook, gpgme_status_code_t status, const char *args, int fd)
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
+/* The gpgme_op_edit, gpgme_op_edit_start, gpgme_op_card_edit, and
+   gpgme_op_card_edit_start functions are deprecated in GPGME 1.7.0+
+   in favor of gpgme_op_interact, but we keep them for backwards
+   compatibility. Suppress the deprecation warnings. */
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 static VALUE
 rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
                     VALUE veditfunc, VALUE vhook_value, VALUE vout)
@@ -1632,6 +1716,12 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   err = gpgme_op_card_edit_start (ctx, key, edit_cb, (void *)vcb, out);
   return LONG2NUM(err);
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 static VALUE
 rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
