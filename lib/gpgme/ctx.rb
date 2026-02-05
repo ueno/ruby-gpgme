@@ -464,16 +464,40 @@ module GPGME
     alias delete delete_key
 
     # Edit attributes of the key in the local key ring.
+    #
+    # For GPGME 2.0.0+, the callback receives (hook_value, keyword, args, fd)
+    # where keyword is a string (e.g., "GET_BOOL", "GET_LINE").
+    #
+    # For GPGME < 2.0.0, the callback receives (hook_value, status, args, fd)
+    # where status is a numeric status code (e.g., GPGME::GPGME_STATUS_GET_BOOL).
     def edit_key(key, editfunc, hook_value = nil, out = Data.new)
-      err = GPGME::gpgme_op_edit(self, key, editfunc, hook_value, out)
+      if defined?(GPGME::gpgme_op_interact)
+        # GPGME 2.0.0+: use gpgme_op_interact with flags=0
+        err = GPGME::gpgme_op_interact(self, key, 0, editfunc, hook_value, out)
+      else
+        # GPGME < 2.0.0: use deprecated gpgme_op_edit
+        err = GPGME::gpgme_op_edit(self, key, editfunc, hook_value, out)
+      end
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
     alias edit edit_key
 
     # Edit attributes of the key on the card.
+    #
+    # For GPGME 2.0.0+, the callback receives (hook_value, keyword, args, fd)
+    # where keyword is a string (e.g., "GET_BOOL", "GET_LINE").
+    #
+    # For GPGME < 2.0.0, the callback receives (hook_value, status, args, fd)
+    # where status is a numeric status code (e.g., GPGME::GPGME_STATUS_GET_BOOL).
     def edit_card_key(key, editfunc, hook_value = nil, out = Data.new)
-      err = GPGME::gpgme_op_card_edit(self, key, editfunc, hook_value, out)
+      if defined?(GPGME::gpgme_op_interact)
+        # GPGME 2.0.0+: use gpgme_op_interact with GPGME_INTERACT_CARD flag
+        err = GPGME::gpgme_op_interact(self, key, GPGME::GPGME_INTERACT_CARD, editfunc, hook_value, out)
+      else
+        # GPGME < 2.0.0: use deprecated gpgme_op_card_edit
+        err = GPGME::gpgme_op_card_edit(self, key, editfunc, hook_value, out)
+      end
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end
