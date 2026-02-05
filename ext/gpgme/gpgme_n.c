@@ -1757,12 +1757,16 @@ static gpgme_status_code_t
 keyword_to_status_code (const char *keyword)
 {
   int i;
+
   if (!keyword)
     return GPGME_STATUS_EOF;
-  for (i = 0; keyword_to_status[i].keyword != NULL; i++) {
-    if (strcmp(keyword, keyword_to_status[i].keyword) == 0)
-      return keyword_to_status[i].status;
-  }
+
+  for (i = 0; keyword_to_status[i].keyword != NULL; i++)
+    {
+      if (strcmp (keyword, keyword_to_status[i].keyword) == 0)
+        return keyword_to_status[i].status;
+    }
+
   /* Unknown keyword - return EOF as fallback */
   return GPGME_STATUS_EOF;
 }
@@ -1774,16 +1778,16 @@ keyword_to_status_code (const char *keyword)
 static gpgme_error_t
 edit_cb_shim (void *hook, const char *keyword, const char *args, int fd)
 {
-  VALUE vcb = (VALUE)hook, veditfunc, vhook_value;
+  VALUE vcb = (VALUE) hook, veditfunc, vhook_value;
   gpgme_status_code_t status;
 
-  veditfunc = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
+  veditfunc = RARRAY_PTR (vcb)[0];
+  vhook_value = RARRAY_PTR (vcb)[1];
 
-  status = keyword_to_status_code(keyword);
+  status = keyword_to_status_code (keyword);
 
-  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(status),
-              args ? rb_str_new2 (args) : rb_str_new2(""), INT2NUM(fd));
+  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX (status),
+              args ? rb_str_new2 (args) : rb_str_new2 (""), INT2NUM (fd));
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
@@ -1797,7 +1801,7 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   VALUE vcb;
   gpgme_error_t err;
 
-  CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
+  CHECK_KEYLIST_NOT_IN_PROGRESS (vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
