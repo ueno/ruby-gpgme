@@ -91,7 +91,9 @@ module GPGME
         begin
           if options[:sign]
             if options[:signers]
-              signers = Key.find(:public, options[:signers], :sign)
+              # Optimization: reuse recipient Key objects if signers match
+              # to avoid redundant key lookups
+              signers = resolve_keys_for_signing(options[:signers], keys)
               ctx.add_signer(*signers)
             end
             ctx.encrypt_sign(keys, plain_data, cipher_data, flags)
@@ -351,6 +353,59 @@ module GPGME
       else
         super
       end
+    end
+
+    private
+
+    # Resolves keys for signing, reusing already-fetched recipient keys when possible
+    # to avoid redundant key lookups which can be slow.
+    #
+    # @param signers_input [Array, String, Key] The signer identifiers
+    # @param recipient_keys [Array<Key>, nil] Already-fetched recipient keys to check for reuse
+    # @return [Array<Key>] Keys suitable for signing
+    def resolve_keys_for_signing(signers_input, recipient_keys)
+      signers_input = [signers_input].flatten
+      recipient_keys ||= []
+
+      # Build a lookup hash of recipient keys by various identifiers
+      recipient_lookup = {}
+      recipient_keys.each do |key|
+        next unless key.is_a?(Key)
+        # Index by fingerprint, short key ID, and email
+        recipient_lookup[key.fingerprint] = key if key.fingerprint
+        recipient_lookup[key.fingerprint[-16..]] = key if key.fingerprint && key.fingerprint.length >= 16
+        recipient_lookup[key.fingerprint[-8..]] = key if key.fingerprint && key.fingerprint.length >= 8
+        if key.uids && !key.uids.empty?
+          key.uids.each do |uid|
+            recipient_lookup[uid.email] = key if uid.email && !uid.email.empty?
+          end
+        end
+      end
+
+      result = []
+      needs_lookup = []
+
+      signers_input.each do |signer|
+        case signer
+        when Key
+          # Already a key object, use directly if it can sign
+          result << signer if signer.usable_for?([:sign])
+        when String
+          # Check if we already have this key from recipients
+          if (existing = recipient_lookup[signer]) && existing.usable_for?([:sign])
+            result << existing
+          else
+            needs_lookup << signer
+          end
+        end
+      end
+
+      # Only do a Key.find for signers we couldn't resolve from recipients
+      unless needs_lookup.empty?
+        result += Key.find(:public, needs_lookup, :sign)
+      end
+
+      result
     end
 
   end # module Crypto
