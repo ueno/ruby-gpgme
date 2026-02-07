@@ -104,7 +104,7 @@ static const rb_data_type_t gpgme_data_type = {
     .dsize = NULL,
   },
   .data = NULL,
-  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+  .flags = 0,
 };
 
 static void
@@ -122,7 +122,7 @@ static const rb_data_type_t gpgme_ctx_type = {
     .dsize = NULL,
   },
   .data = NULL,
-  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+  .flags = 0,
 };
 
 static void
@@ -140,7 +140,7 @@ static const rb_data_type_t gpgme_key_type = {
     .dsize = NULL,
   },
   .data = NULL,
-  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+  .flags = 0,
 };
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
@@ -159,7 +159,7 @@ static const rb_data_type_t gpgme_trust_item_type = {
     .dsize = NULL,
   },
   .data = NULL,
-  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+  .flags = 0,
 };
 #endif
 
@@ -1210,6 +1210,9 @@ rb_s_gpgme_op_keylist_next (VALUE dummy, VALUE vctx, VALUE rkey)
       save_gpgme_key_attrs (vkey, key);
       rb_ary_store (rkey, 0, vkey);
     }
+
+  RB_GC_GUARD(vctx);
+
   return LONG2NUM(err);
 }
 
@@ -2137,6 +2140,11 @@ rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
   UNWRAP_GPGME_DATA(vplain, plain);
 
   err = gpgme_op_decrypt (ctx, cipher, plain);
+
+  RB_GC_GUARD(vctx);
+  RB_GC_GUARD(vcipher);
+  RB_GC_GUARD(vplain);
+
   return LONG2NUM(err);
 }
 
@@ -2216,6 +2224,12 @@ rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
     UNWRAP_GPGME_DATA(vplain, plain);
 
   err = gpgme_op_verify (ctx, sig, signed_text, plain);
+
+  RB_GC_GUARD(vctx);
+  RB_GC_GUARD(vsig);
+  RB_GC_GUARD(vsigned_text);
+  RB_GC_GUARD(vplain);
+
   return LONG2NUM(err);
 }
 
@@ -2320,6 +2334,11 @@ rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
   UNWRAP_GPGME_DATA(vplain, plain);
 
   err = gpgme_op_decrypt_verify (ctx, cipher, plain);
+
+  RB_GC_GUARD(vctx);
+  RB_GC_GUARD(vcipher);
+  RB_GC_GUARD(vplain);
+
   return LONG2NUM(err);
 }
 
@@ -2404,6 +2423,11 @@ rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   UNWRAP_GPGME_DATA(vsig, sig);
 
   err = gpgme_op_sign (ctx, plain, sig, NUM2INT(vmode));
+
+  RB_GC_GUARD(vctx);
+  RB_GC_GUARD(vplain);
+  RB_GC_GUARD(vsig);
+
   return LONG2NUM(err);
 }
 
@@ -2513,6 +2537,12 @@ rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
   err = gpgme_op_encrypt (ctx, recp, NUM2INT(vflags), plain, cipher);
   if (recp)
     xfree (recp);
+
+  RB_GC_GUARD(vctx);
+  RB_GC_GUARD(vrecp);
+  RB_GC_GUARD(vplain);
+  RB_GC_GUARD(vcipher);
+
   return LONG2NUM(err);
 }
 
@@ -2612,6 +2642,12 @@ rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
   err = gpgme_op_encrypt_sign (ctx, recp, NUM2INT(vflags), plain, cipher);
   if (recp)
     xfree (recp);
+
+  RB_GC_GUARD(vctx);
+  RB_GC_GUARD(vrecp);
+  RB_GC_GUARD(vplain);
+  RB_GC_GUARD(vcipher);
+
   return LONG2NUM(err);
 }
 

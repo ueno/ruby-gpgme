@@ -1,6 +1,8 @@
 require 'gpgme_n'
+require 'monitor'
 
-# TODO without this call one can't GPGME::Ctx.new, find out why
+# This call initializes the GPGME library and must happen before
+# any GPGME operations (e.g. Ctx.new) can succeed.
 GPGME::gpgme_check_version(nil)
 
 require 'gpgme/constants'
@@ -19,7 +21,60 @@ require 'gpgme/engine'
 require 'gpgme/crypto'
 
 module GPGME
+
+  # Mutex for serializing GPGME operations when thread safety is enabled.
+  # While the underlying GPGME C library supports separate contexts in
+  # separate threads, the communication with gpg-agent over Unix domain
+  # sockets can produce "Bad file descriptor" errors under heavy concurrent
+  # load. Thread-safe mode is enabled by default and can be disabled
+  # if not needed (e.g. single-threaded applications).
+  #
+  # A Monitor is used instead of a Mutex because GPGME operations are
+  # reentrant — e.g. Crypto#sign calls Ctx.new, and within that block,
+  # Key.find calls Ctx.new again.
+  #
+  # @example Disable thread-safe mode for single-threaded apps
+  #   GPGME.thread_safe = false
+  #
+  @thread_safe_mutex = Monitor.new
+  @thread_safe = true
+
   class << self
+
+    # Enable or disable thread-safe mode. Enabled by default. When
+    # enabled, all high-level GPGME operations (encrypt, decrypt, sign,
+    # verify, key listing, etc.) are serialized through a global monitor
+    # to prevent concurrent access to gpg-agent from causing "Bad file
+    # descriptor" errors. Disable for single-threaded apps if the
+    # synchronization overhead is undesirable.
+    #
+    # @param [Boolean] value false to disable thread-safe mode
+    attr_writer :thread_safe
+
+    # Returns true if thread-safe mode is enabled.
+    def thread_safe?
+      @thread_safe
+    end
+
+    # The mutex used for thread-safe serialization. Can be used directly
+    # if you need finer-grained control over locking.
+    #
+    # @example manual locking
+    #   GPGME.synchronize do
+    #     # multiple GPGME operations atomically
+    #   end
+    attr_reader :thread_safe_mutex
+
+    # Execute a block with the GPGME mutex held if thread-safe mode is
+    # enabled. If thread-safe mode is disabled, the block is executed
+    # directly without locking.
+    def synchronize(&block)
+      if @thread_safe
+        @thread_safe_mutex.synchronize(&block)
+      else
+        yield
+      end
+    end
 
     # From the c extension
     alias pubkey_algo_name gpgme_pubkey_algo_name
