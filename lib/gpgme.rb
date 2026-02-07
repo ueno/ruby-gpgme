@@ -26,26 +26,29 @@ module GPGME
   # While the underlying GPGME C library supports separate contexts in
   # separate threads, the communication with gpg-agent over Unix domain
   # sockets can produce "Bad file descriptor" errors under heavy concurrent
-  # load. Enable thread-safe mode to serialize operations.
+  # load. Thread-safe mode is enabled by default and can be disabled
+  # if not needed (e.g. single-threaded applications).
   #
   # A Monitor is used instead of a Mutex because GPGME operations are
   # reentrant — e.g. Crypto#sign calls Ctx.new, and within that block,
   # Key.find calls Ctx.new again.
   #
-  # @example
-  #   GPGME.thread_safe = true
+  # @example Disable thread-safe mode for single-threaded apps
+  #   GPGME.thread_safe = false
   #
   @thread_safe_mutex = Monitor.new
-  @thread_safe = false
+  @thread_safe = true
 
   class << self
 
-    # Enable or disable thread-safe mode. When enabled, all high-level
-    # GPGME operations (encrypt, decrypt, sign, verify, key listing, etc.)
-    # will be serialized through a global mutex to prevent concurrent
-    # access to gpg-agent from causing "Bad file descriptor" errors.
+    # Enable or disable thread-safe mode. Enabled by default. When
+    # enabled, all high-level GPGME operations (encrypt, decrypt, sign,
+    # verify, key listing, etc.) are serialized through a global monitor
+    # to prevent concurrent access to gpg-agent from causing "Bad file
+    # descriptor" errors. Disable for single-threaded apps if the
+    # synchronization overhead is undesirable.
     #
-    # @param [Boolean] value true to enable thread-safe mode
+    # @param [Boolean] value false to disable thread-safe mode
     attr_writer :thread_safe
 
     # Returns true if thread-safe mode is enabled.
