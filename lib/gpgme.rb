@@ -1,3 +1,4 @@
+require 'gpgme_n'
 require 'monitor'
 require 'gpgme/constants'
 require 'gpgme/ctx'
