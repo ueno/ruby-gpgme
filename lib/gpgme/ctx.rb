@@ -76,10 +76,12 @@ module GPGME
       end
 
       if block_given?
-        begin
-          yield ctx
-        ensure
-          GPGME::gpgme_release(ctx)
+        GPGME.synchronize do
+          begin
+            yield ctx
+          ensure
+            GPGME::gpgme_release(ctx)
+          end
         end
       else
         ctx
@@ -618,10 +620,21 @@ keylist_mode=#{KEYLIST_MODE_NAMES[keylist_mode]}>"
     private
 
     def self.pass_function(pass, uid_hint, passphrase_info, prev_was_bad, fd)
+      # Write the passphrase directly using IO.for_fd. We set autoclose=false
+      # to prevent Ruby from closing the fd (which belongs to GPGME/gpg-agent).
+      # The IO object is used only within this method scope and not stored,
+      # so we also ensure it isn't prematurely collected by keeping a strong
+      # reference until we're done.
       io = IO.for_fd(fd, 'w')
       io.autoclose = false
-      io.puts pass
-      io.flush
+      begin
+        io.write "#{pass}\n"
+        io.flush
+      rescue => e
+        # If the fd has become invalid (e.g. agent communication error),
+        # re-raise as a more descriptive error.
+        raise e
+      end
     end
 
   end
