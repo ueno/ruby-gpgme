@@ -1,5 +1,10 @@
 require 'gpgme_n'
 require 'monitor'
+
+# This call initializes the GPGME library and must happen before
+# any GPGME operations (e.g. Ctx.new) can succeed.
+GPGME::gpgme_check_version(nil)
+
 require 'gpgme/constants'
 require 'gpgme/ctx'
 require 'gpgme/data'
