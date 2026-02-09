@@ -3649,6 +3649,36 @@ Init_gpgme_n (void)
   rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_ENCRYPT_TO",
                    INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
 #endif
+  /* This flag was added in 1.3.0. */
+#ifdef GPGME_ENCRYPT_PREPARE
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_PREPARE",
+                   INT2FIX(GPGME_ENCRYPT_PREPARE));
+#endif
+  /* This flag was added in 1.4.0. */
+#ifdef GPGME_ENCRYPT_EXPECT_SIGN
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_EXPECT_SIGN",
+                   INT2FIX(GPGME_ENCRYPT_EXPECT_SIGN));
+#endif
+  /* This flag was added in 1.11.0. */
+#ifdef GPGME_ENCRYPT_NO_COMPRESS
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_COMPRESS",
+                   INT2FIX(GPGME_ENCRYPT_NO_COMPRESS));
+#endif
+  /* This flag was added in 1.13.0. */
+#ifdef GPGME_ENCRYPT_UNSIGNED_INTEGRITY_CHECK
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_UNSIGNED_INTEGRITY_CHECK",
+                   INT2FIX(GPGME_ENCRYPT_UNSIGNED_INTEGRITY_CHECK));
+#endif
+  /* This flag was added in 1.13.0. */
+#ifdef GPGME_ENCRYPT_SYMMETRIC
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_SYMMETRIC",
+                   INT2FIX(GPGME_ENCRYPT_SYMMETRIC));
+#endif
+  /* This flag was added in 1.14.0. */
+#ifdef GPGME_ENCRYPT_THROW_KEYIDS
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_THROW_KEYIDS",
+                   INT2FIX(GPGME_ENCRYPT_THROW_KEYIDS));
+#endif
 
   /* Random number generation mode flags added in 2.0.0 */
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
