@@ -225,6 +225,19 @@ End
 end
 
 have_func('gpgme_op_export_keys')
+have_const('GPGME_ENCRYPT_ALWAYS_TRUST', 'gpgme.h')
+have_const('GPGME_ENCRYPT_NO_ENCRYPT_TO', 'gpgme.h')
+have_const('GPGME_ENCRYPT_PREPARE', 'gpgme.h')
+have_const('GPGME_ENCRYPT_EXPECT_SIGN', 'gpgme.h')
+have_const('GPGME_ENCRYPT_NO_COMPRESS', 'gpgme.h')
+have_const('GPGME_ENCRYPT_SYMMETRIC', 'gpgme.h')
+have_const('GPGME_ENCRYPT_THROW_KEYIDS', 'gpgme.h')
+have_const('GPGME_ENCRYPT_WRAP', 'gpgme.h')
+have_const('GPGME_ENCRYPT_WANT_ADDRESS', 'gpgme.h')
+have_const('GPGME_ENCRYPT_ARCHIVE', 'gpgme.h')
+have_const('GPGME_ENCRYPT_FILE', 'gpgme.h')
+have_const('GPGME_ENCRYPT_ADD_RECP', 'gpgme.h')
+have_const('GPGME_ENCRYPT_CHG_RECP', 'gpgme.h')
 
 create_makefile ('gpgme_n')
 
