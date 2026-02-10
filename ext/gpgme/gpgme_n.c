@@ -3644,40 +3644,57 @@ Init_gpgme_n (void)
   /* The available flags for gpgme_op_encrypt.  */
   rb_define_const (mGPGME, "GPGME_ENCRYPT_ALWAYS_TRUST",
                    INT2FIX(GPGME_ENCRYPT_ALWAYS_TRUST));
-  /* This flag was added in 1.2.0. */
-#ifdef GPGME_ENCRYPT_NO_ENCRYPT_TO
+#ifdef HAVE_CONST_GPGME_ENCRYPT_NO_ENCRYPT_TO
   rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_ENCRYPT_TO",
                    INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
 #endif
-  /* This flag was added in 1.3.0. */
-#ifdef GPGME_ENCRYPT_PREPARE
+#ifdef HAVE_CONST_GPGME_ENCRYPT_PREPARE
   rb_define_const (mGPGME, "GPGME_ENCRYPT_PREPARE",
                    INT2FIX(GPGME_ENCRYPT_PREPARE));
 #endif
-  /* This flag was added in 1.4.0. */
-#ifdef GPGME_ENCRYPT_EXPECT_SIGN
+#ifdef HAVE_CONST_GPGME_ENCRYPT_EXPECT_SIGN
   rb_define_const (mGPGME, "GPGME_ENCRYPT_EXPECT_SIGN",
                    INT2FIX(GPGME_ENCRYPT_EXPECT_SIGN));
 #endif
-  /* This flag was added in 1.11.0. */
-#ifdef GPGME_ENCRYPT_NO_COMPRESS
+#ifdef HAVE_CONST_GPGME_ENCRYPT_NO_COMPRESS
   rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_COMPRESS",
                    INT2FIX(GPGME_ENCRYPT_NO_COMPRESS));
 #endif
-  /* This flag was added in 1.13.0. */
-#ifdef GPGME_ENCRYPT_UNSIGNED_INTEGRITY_CHECK
+#ifdef HAVE_CONST_GPGME_ENCRYPT_UNSIGNED_INTEGRITY_CHECK
   rb_define_const (mGPGME, "GPGME_ENCRYPT_UNSIGNED_INTEGRITY_CHECK",
                    INT2FIX(GPGME_ENCRYPT_UNSIGNED_INTEGRITY_CHECK));
 #endif
-  /* This flag was added in 1.13.0. */
-#ifdef GPGME_ENCRYPT_SYMMETRIC
+#ifdef HAVE_CONST_GPGME_ENCRYPT_SYMMETRIC
   rb_define_const (mGPGME, "GPGME_ENCRYPT_SYMMETRIC",
                    INT2FIX(GPGME_ENCRYPT_SYMMETRIC));
 #endif
-  /* This flag was added in 1.14.0. */
-#ifdef GPGME_ENCRYPT_THROW_KEYIDS
+#ifdef HAVE_CONST_GPGME_ENCRYPT_THROW_KEYIDS
   rb_define_const (mGPGME, "GPGME_ENCRYPT_THROW_KEYIDS",
                    INT2FIX(GPGME_ENCRYPT_THROW_KEYIDS));
+#endif
+#ifdef HAVE_CONST_GPGME_ENCRYPT_WRAP
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_WRAP",
+                   INT2FIX(GPGME_ENCRYPT_WRAP));
+#endif
+#ifdef HAVE_CONST_GPGME_ENCRYPT_WANT_ADDRESS
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_WANT_ADDRESS",
+                   INT2FIX(GPGME_ENCRYPT_WANT_ADDRESS));
+#endif
+#ifdef HAVE_CONST_GPGME_ENCRYPT_ARCHIVE
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_ARCHIVE",
+                   INT2FIX(GPGME_ENCRYPT_ARCHIVE));
+#endif
+#ifdef HAVE_CONST_GPGME_ENCRYPT_FILE
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_FILE",
+                   INT2FIX(GPGME_ENCRYPT_FILE));
+#endif
+#ifdef HAVE_CONST_GPGME_ENCRYPT_ADD_RECP
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_ADD_RECP",
+                   INT2FIX(GPGME_ENCRYPT_ADD_RECP));
+#endif
+#ifdef HAVE_CONST_GPGME_ENCRYPT_CHG_RECP
+  rb_define_const (mGPGME, "GPGME_ENCRYPT_CHG_RECP",
+                   INT2FIX(GPGME_ENCRYPT_CHG_RECP));
 #endif
 
   /* Random number generation mode flags added in 2.0.0 */
