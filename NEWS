@@ -1,3 +1,12 @@
+2.0.26 February 14, 2025
+
+- Fix Data_Get_Struct warnings (#206)
+- Update deprecated key editing functions (#207)
+- Fix callback encoding (#208)
+- More efficient key sign lookups (#209)
+- Improve thread safety (#210)
+- Fix encryption flags (#211)
+
 2.0.25 July 26, 2025
 
 - Support GPGME 2.0.0 (#202, #203)
