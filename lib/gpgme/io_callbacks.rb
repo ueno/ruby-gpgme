@@ -9,12 +9,10 @@ module GPGME
     end
 
     def write(hook, buffer, length)
-      data = buffer[0 .. length]
-      # Handle encoding conversion if the IO has a different encoding
-      if @io.respond_to?(:external_encoding) && @io.external_encoding
-        data = data.encode(@io.external_encoding, invalid: :replace, undef: :replace)
-      end
-      @io.write(data)
+      # GPGME output can be arbitrary binary data (for example, an OpenPGP
+      # message).  Do not transcode it to the IO's encoding: conversion can
+      # replace invalid byte sequences and corrupt the output.
+      @io.write(buffer.byteslice(0, length))
     end
 
     def seek(hook, offset, whence)

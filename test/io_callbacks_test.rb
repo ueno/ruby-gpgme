@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 require 'test_helper'
 require 'stringio'
+require 'tempfile'
 
 describe GPGME::IOCallbacks do
   describe "encoding handling" do
@@ -43,21 +44,16 @@ describe GPGME::IOCallbacks do
       assert_equal "Hello World", io.read
     end
 
-    it "replaces invalid characters when converting encodings" do
+    it "preserves invalid UTF-8 bytes when writing to a binary IO" do
       io = StringIO.new
-      io.set_encoding(Encoding::UTF_8)
+      io.set_encoding(Encoding::ASCII_8BIT)
       callbacks = GPGME::IOCallbacks.new(io)
 
-      # Invalid UTF-8 sequence in ASCII-8BIT string
-      invalid_data = "Hello\xC3\x28World".b
+      invalid_data = "Hello\xC3\x28World".dup.force_encoding(Encoding::UTF_8)
 
-      # Should not raise, should replace invalid chars
       callbacks.write(nil, invalid_data, invalid_data.bytesize)
       io.rewind
-      result = io.read
-      # The invalid sequence should be replaced
-      refute_nil result
-      assert result.valid_encoding?
+      assert_equal invalid_data.bytes, io.read.bytes
     end
 
     it "reads data from IO" do
@@ -132,6 +128,29 @@ describe GPGME::IOCallbacks do
       # Force UTF-8 encoding since GPGME returns binary data
       result.force_encoding(Encoding::UTF_8)
       assert_equal utf8_text, result
+    end
+
+    it "preserves encrypted output when default internal encoding is UTF-8" do
+      original_internal = Encoding.default_internal
+      output = Tempfile.new('gpgme-ciphertext')
+      output.binmode
+      plaintext = 'encryption output must remain binary-safe'
+
+      begin
+        Encoding.default_internal = Encoding::UTF_8
+
+        crypto = GPGME::Crypto.new(always_trust: true)
+        crypto.encrypt(plaintext, recipients: KEYS.first[:sha], output: output)
+        output.close
+
+        ciphertext = File.binread(output.path)
+        refute_empty ciphertext
+        assert_equal 0x80, ciphertext.getbyte(0) & 0x80
+      ensure
+        output.close unless output.closed?
+        output.unlink
+        Encoding.default_internal = original_internal
+      end
     end
   end
 
