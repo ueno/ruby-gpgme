@@ -1,5 +1,6 @@
 doc
 gpgme_n.*
+!gpgme_n.c
 mkmf.log
 Makefile
 coverage
