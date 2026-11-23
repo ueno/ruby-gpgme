@@ -1,3 +1,9 @@
+2.0.27 November 23, 2026
+
+- Bump bundled gpgme to 2.3.1 to fix CVE-2026-129975 (#218)
+- Preserve binary callback output (#215)
+- Update README and remove old rdoc file (#213)
+
 2.0.26 February 14, 2025
 
 - Fix Data_Get_Struct warnings (#206)
