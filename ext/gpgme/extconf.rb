@@ -116,11 +116,11 @@ EOS
   # if PKG_CONFIG_PATH is not set properly.
   ENV["PKG_CONFIG_PATH"] = [*pkg_config_paths, ENV["PKG_CONFIG_PATH"]].compact.join(File::PATH_SEPARATOR)
 
-  gpgme_recipe = MiniPortile.new('gpgme', '2.0.0').tap do |recipe|
+  gpgme_recipe = MiniPortile.new('gpgme', '2.3.1').tap do |recipe|
     recipe.target = File.join(ROOT, "ports")
     recipe.files = [{
       :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => 'ddf161d3c41ff6a3fcbaf4be6c6e305ca4ef1cc3f1ecdfce0c8c2a167c0cc36d'
+      :sha256 => '2bf94e0e677e5a8fc31f79dd323f91c5416b36fb851058bc1e8bce39f2642434'
     }]
     recipe.configure_options = [
       '--disable-shared',
