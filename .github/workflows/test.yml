@@ -39,3 +39,42 @@ jobs:
           gpg2 --version
           gpgconf --list-options gpg-agent
           bundle exec rake TESTOPTS="-v"
+
+  # Build the extension and the bundled libraries with AddressSanitizer
+  # to catch memory errors in the C code.
+  asan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      NO_COVERAGE: 1
+      CC: clang
+      CFLAGS: -fsanitize=address -fno-omit-frame-pointer -g -O1
+      ASAN_OPTIONS: use_sigaltstack=0:detect_leaks=0:abort_on_error=1:halt_on_error=1
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby with ASAN
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: asan-release
+      - name: Install dependencies
+        run: bundle install
+      - name: Run tests
+        run: bundle exec rake TESTOPTS="-v"
+      - name: Run native extension tests under GC.stress
+        run: |
+          bundle exec ruby -Itest -Ilib -e '
+            require "./test/test_helper"
+            ensure_keys(GPGME::PROTOCOL_OpenPGP)
+            GC.stress = true
+            require "./test/native_ext_test"
+            require "./test/low_level_test"'
+      - name: Check for leaks
+        env:
+          RUBY_FREE_AT_EXIT: 1
+          ASAN_OPTIONS: use_sigaltstack=0:detect_leaks=1:abort_on_error=1
+        run: |
+          for f in test/*_test.rb; do
+            echo "== $f"
+            bundle exec ruby -Itest -Ilib "$f"
+          done
