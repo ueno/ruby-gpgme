@@ -16,12 +16,12 @@
 
 ## Requirements
 
-- Ruby 2.5 or later (Ruby 2.0–2.4 are no longer supported)
+- Ruby 3.1 or later (older versions are no longer supported)
 - GPGME 2.0.0 or later (older versions are deprecated)
 - `gpg-agent` (optional, but recommended)
 
 > **Tested with:**
-> - Ruby 2.5, 2.6, 2.7, 3.0, 3.1, 3.2
+> - Ruby 3.1, 3.2, 3.3, 3.4
 > - GPGME 2.3.1, 2.0.0, 1.21.0
 
 ## Installation
