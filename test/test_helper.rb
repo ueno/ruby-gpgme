@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 
-require 'coveralls'
-Coveralls.wear!
+# Coverage makes the ASAN job's GC.stress run several times slower.
+unless ENV['NO_COVERAGE']
+  require 'coveralls'
+  Coveralls.wear!
+end
 
 # include compiled gpgme_n.bundle
 tmp_dir = File.join(File.dirname(__FILE__), '..', 'tmp')
