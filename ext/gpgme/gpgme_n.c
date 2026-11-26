@@ -862,8 +862,9 @@ rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
   VALUE vcb = rb_iv_get (vctx, "@passphrase_cb");
 
   /* No need to call gpgme_get_passphrase_cb. */
-  rb_ary_store (rpassfunc, 0, RARRAY_PTR(vcb)[0]);
-  rb_ary_store (rhook_value, 0, RARRAY_PTR(vcb)[1]);
+  /* VCB is nil if no callback was set. */
+  rb_ary_store (rpassfunc, 0, NIL_P(vcb) ? Qnil : RARRAY_AREF(vcb, 0));
+  rb_ary_store (rhook_value, 0, NIL_P(vcb) ? Qnil : RARRAY_AREF(vcb, 1));
   return Qnil;
 }
 
@@ -909,8 +910,9 @@ rb_s_gpgme_get_status_cb (VALUE dummy, VALUE vctx, VALUE rstatusfunc,
   VALUE vcb = rb_iv_get (vctx, "@status_cb");
 
   /* No need to call gpgme_get_status_cb. */
-  rb_ary_store (rstatusfunc, 0, RARRAY_PTR(vcb)[0]);
-  rb_ary_store (rhook_value, 0, RARRAY_PTR(vcb)[1]);
+  /* VCB is nil if no callback was set. */
+  rb_ary_store (rstatusfunc, 0, NIL_P(vcb) ? Qnil : RARRAY_AREF(vcb, 0));
+  rb_ary_store (rhook_value, 0, NIL_P(vcb) ? Qnil : RARRAY_AREF(vcb, 1));
   return Qnil;
 }
 #endif
@@ -953,8 +955,9 @@ rb_s_gpgme_get_progress_cb (VALUE dummy, VALUE vctx, VALUE rprogfunc,
                             VALUE rhook_value)
 {
   VALUE vcb = rb_iv_get (vctx, "@progress_cb");
-  rb_ary_store (rprogfunc, 0, RARRAY_PTR(vcb)[0]);
-  rb_ary_store (rhook_value, 0, RARRAY_PTR(vcb)[1]);
+  /* VCB is nil if no callback was set. */
+  rb_ary_store (rprogfunc, 0, NIL_P(vcb) ? Qnil : RARRAY_AREF(vcb, 0));
+  rb_ary_store (rhook_value, 0, NIL_P(vcb) ? Qnil : RARRAY_AREF(vcb, 1));
   return Qnil;
 }
 
