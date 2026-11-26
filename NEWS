@@ -1,3 +1,18 @@
+2.1.0 November 26, 2026
+
+- Require Ruby 3.1 or later (#221)
+- Fix memory safety bugs in the native extension (#220)
+  * Buffer overflows in the read callback and gpgme_data_write
+  * Missing NULL terminators and leaks in the export and import arrays
+  * Double free of the context returned by gpgme_wait(nil)
+  * Data and callback objects freed or moved by GC during an operation
+  * Crash in the callback getters when no callback was set
+- Data#write writes every byte of multibyte strings, and raises
+  ArgumentError when the length is larger than the buffer (#220)
+- A read callback that returns more data than requested now raises
+  Errno::EINVAL (#220)
+- Add an AddressSanitizer CI job (#220)
+
 2.0.27 November 23, 2026
 
 - Bump bundled gpgme to 2.3.1 to fix CVE-2026-129975 (#218)
