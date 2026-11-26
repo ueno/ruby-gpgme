@@ -412,7 +412,14 @@ read_cb (void *handle, void *buffer, size_t size)
                         LONG2NUM(size));
   if (NIL_P(vbuffer))
     return 0;
-  memcpy (buffer, StringValuePtr(vbuffer), RSTRING_LEN(vbuffer));
+  StringValue(vbuffer);
+  /* Never copy more than libgpgme asked for. */
+  if ((size_t)RSTRING_LEN(vbuffer) > size)
+    {
+      errno = EINVAL;
+      return -1;
+    }
+  memcpy (buffer, RSTRING_PTR(vbuffer), RSTRING_LEN(vbuffer));
   return RSTRING_LEN(vbuffer);
 }
 
