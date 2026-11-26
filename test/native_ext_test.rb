@@ -121,4 +121,33 @@ describe "GPGME native extension" do
       assert_match(/Hello, compaction/, output.read)
     end
   end
+
+  describe "asynchronous operations" do
+    it "keep their data objects alive until the operation finishes" do
+      ctx = GPGME::Ctx.new
+      err = GPGME::gpgme_op_export_start(ctx, KEYS.first[:sha], 0,
+                                         GPGME::Data.new)
+      assert_nil GPGME::error_to_exception(err)
+      GC.start
+
+      ret = GPGME::gpgme_wait(ctx, [], 1)
+      assert_same ctx, ret
+      ctx.release
+    end
+
+    it "keep the running operation's data when another start fails" do
+      ctx = GPGME::Ctx.new
+      err = GPGME::gpgme_op_export_start(ctx, KEYS.first[:sha], 0,
+                                         GPGME::Data.new)
+      assert_nil GPGME::error_to_exception(err)
+      assert_raises(TypeError) do
+        GPGME::gpgme_op_export_start(ctx, nil, 0, GPGME::Data.new)
+      end
+      GC.start
+
+      ret = GPGME::gpgme_wait(ctx, [], 1)
+      assert_same ctx, ret
+      ctx.release
+    end
+  end
 end
