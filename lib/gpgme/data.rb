@@ -154,7 +154,7 @@ module GPGME
     #   data.seek 0
     #   data.read # => "ho"
     #
-    def write(buffer, length = buffer.length)
+    def write(buffer, length = buffer.bytesize)
       GPGME::gpgme_data_write(self, buffer, length)
     end
 
