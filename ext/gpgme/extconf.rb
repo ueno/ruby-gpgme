@@ -1,4 +1,5 @@
 require 'mkmf'
+require 'yaml'
 
 # Available options:
 #
@@ -8,6 +9,78 @@ require 'mkmf'
 # This file is largely based on Nokogiri's extconf.rb.
 
 ROOT = File.expand_path(File.join(File.dirname(__FILE__), '..', '..'))
+
+def load_recipes
+  require 'rubygems'
+  require 'mini_portile2'
+
+  dependencies = YAML.load_file(File.join(ROOT, 'dependencies.yml'))
+
+  cook = lambda do |name, configure_options|
+    MiniPortile.new(name, dependencies[name]['version']).tap do |recipe|
+      recipe.target = File.join(ROOT, "ports")
+      recipe.files = [{
+        :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
+        :sha256 => dependencies[name]['sha256']
+      }]
+      recipe.configure_options = configure_options
+      checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
+      unless File.exist?(checkpoint)
+        recipe.cook
+        FileUtils.touch checkpoint
+      end
+      recipe.activate
+    end
+  end
+
+  libgpg_error_recipe = cook.call('libgpg-error', [
+    '--enable-install-gpg-error-config',
+    '--disable-shared',
+    '--enable-static',
+    '--disable-nls',
+    "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
+  ])
+
+  libassuan_recipe = cook.call('libassuan', [
+    '--disable-shared',
+    '--enable-static',
+    "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
+    "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
+  ])
+
+  pkg_config_paths = [
+    File.join(libgpg_error_recipe.lib_path, 'pkgconfig'),
+    File.join(libassuan_recipe.lib_path, 'pkgconfig'),
+  ]
+
+  # Ensure that the locally-built libraries take precedence. gpgme runs
+  # `gpgrt-config libassuan` and could pull in the system libassuan
+  # if PKG_CONFIG_PATH is not set properly.
+  ENV["PKG_CONFIG_PATH"] = [*pkg_config_paths, ENV["PKG_CONFIG_PATH"]].compact.join(File::PATH_SEPARATOR)
+
+  gpgme_recipe = cook.call('gpgme', [
+    '--disable-shared',
+    '--enable-static',
+    "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
+    "--with-libassuan-prefix=#{libassuan_recipe.path}",
+    # GPGME 1.5.0 assumes gpgsm is present if gpgconf is found.
+    # However, on some systems (e.g. Debian), they are splitted into
+    # separate packages.
+    '--disable-gpgconf-test',
+    '--disable-gpg-test',
+    '--disable-gpgsm-test',
+    '--disable-g13-test',
+    # We only need the C API.
+    '--disable-languages',
+    "CFLAGS=-D_LARGEFILE64_SOURCE -fPIC #{ENV["CFLAGS"]}",
+  ])
+
+  {
+    'libgpg-error' => libgpg_error_recipe,
+    'libassuan' => libassuan_recipe,
+    'gpgme' => gpgme_recipe,
+  }
+end
 
 if arg_config('--clean')
   require 'pathname'
@@ -62,89 +135,10 @@ follows:
 ************************************************************************
 EOS
 
-  require 'rubygems'
-  require 'mini_portile2'
-
-  libgpg_error_recipe = MiniPortile.new('libgpg-error', '1.55').tap do |recipe|
-    recipe.target = File.join(ROOT, "ports")
-    recipe.files = [{
-      :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => '95b178148863f07d45df0cea67e880a79b9ef71f5d230baddc0071128516ef78'
-    }]
-    recipe.configure_options = [
-      '--enable-install-gpg-error-config',
-      '--disable-shared',
-      '--enable-static',
-      '--disable-nls',
-      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
-    ]
-    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
-    unless File.exist?(checkpoint)
-      recipe.cook
-      FileUtils.touch checkpoint
-    end
-    recipe.activate
-  end
-
-  libassuan_recipe = MiniPortile.new('libassuan', '3.0.2').tap do |recipe|
-    recipe.target = File.join(ROOT, "ports")
-    recipe.files = [{
-      :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => 'd2931cdad266e633510f9970e1a2f346055e351bb19f9b78912475b8074c36f6'
-    }]
-    recipe.configure_options = [
-      '--disable-shared',
-      '--enable-static',
-      "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
-      "CFLAGS=-fPIC #{ENV["CFLAGS"]}",
-    ]
-    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
-    unless File.exist?(checkpoint)
-      recipe.cook
-      FileUtils.touch checkpoint
-    end
-    recipe.activate
-  end
-
-  pkg_config_paths = [
-    File.join(libgpg_error_recipe.lib_path, 'pkgconfig'),
-    File.join(libassuan_recipe.lib_path, 'pkgconfig'),
-  ]
-
-  # Ensure that the locally-built libraries take precedence. gpgme runs
-  # `gpgrt-config libassuan` and could pull in the system libassuan
-  # if PKG_CONFIG_PATH is not set properly.
-  ENV["PKG_CONFIG_PATH"] = [*pkg_config_paths, ENV["PKG_CONFIG_PATH"]].compact.join(File::PATH_SEPARATOR)
-
-  gpgme_recipe = MiniPortile.new('gpgme', '2.3.1').tap do |recipe|
-    recipe.target = File.join(ROOT, "ports")
-    recipe.files = [{
-      :url => "https://www.gnupg.org/ftp/gcrypt/#{recipe.name}/#{recipe.name}-#{recipe.version}.tar.bz2",
-      :sha256 => '2bf94e0e677e5a8fc31f79dd323f91c5416b36fb851058bc1e8bce39f2642434'
-    }]
-    recipe.configure_options = [
-      '--disable-shared',
-      '--enable-static',
-      "--with-gpg-error-prefix=#{libgpg_error_recipe.path}",
-      "--with-libassuan-prefix=#{libassuan_recipe.path}",
-      # GPGME 1.5.0 assumes gpgsm is present if gpgconf is found.
-      # However, on some systems (e.g. Debian), they are splitted into
-      # separate packages.
-      '--disable-gpgconf-test',
-      '--disable-gpg-test',
-      '--disable-gpgsm-test',
-      '--disable-g13-test',
-      # We only need the C API.
-      '--disable-languages',
-      "CFLAGS=-D_LARGEFILE64_SOURCE -fPIC #{ENV["CFLAGS"]}",
-    ]
-    checkpoint = "#{recipe.target}/#{recipe.name}-#{recipe.version}-#{recipe.host}.installed"
-    unless File.exist?(checkpoint)
-      recipe.cook
-      FileUtils.touch checkpoint
-    end
-    recipe.activate
-  end
+  recipes = load_recipes
+  libgpg_error_recipe = recipes['libgpg-error']
+  libassuan_recipe = recipes['libassuan']
+  gpgme_recipe = recipes['gpgme']
 
   # special treatment to link with static libraries
   $libs = $libs.shellsplit.tap {|libs|
