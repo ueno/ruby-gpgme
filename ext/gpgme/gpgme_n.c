@@ -88,18 +88,75 @@
 #define RSTRING_LEN(a) RSTRING(a)->len
 #endif
 
+/* Ruby objects whose VALUE is handed to libgpgme as a raw pointer,
+   such as callback hook values.  They are kept in an array per owning
+   gpgme_ctx_t or gpgme_data_t, and the owner's mark function marks
+   them with rb_gc_mark.  That keeps them alive as long as the owner
+   and pins them, so GC.compact never moves an object libgpgme still
+   points to.  */
+static st_table *owner_refs;
+
+enum {
+  CTX_REF_PASSPHRASE_CB,
+  CTX_REF_STATUS_CB,
+  CTX_REF_PROGRESS_CB,
+  CTX_REF_EDIT_CB
+};
+
+enum {
+  DATA_REF_CBS
+};
+
+static void
+owner_ref_set (void *owner, long slot, VALUE obj)
+{
+  st_data_t refs;
+
+  if (!st_lookup (owner_refs, (st_data_t)owner, &refs))
+    {
+      refs = (st_data_t)rb_ary_new ();
+      st_insert (owner_refs, (st_data_t)owner, refs);
+    }
+  rb_ary_store ((VALUE)refs, slot, obj);
+}
+
+static void
+owner_refs_mark (void *owner)
+{
+  st_data_t refs;
+  long i;
+
+  if (owner && st_lookup (owner_refs, (st_data_t)owner, &refs))
+    {
+      rb_gc_mark ((VALUE)refs);
+      for (i = 0; i < RARRAY_LEN((VALUE)refs); i++)
+        rb_gc_mark (RARRAY_AREF((VALUE)refs, i));
+    }
+}
+
+static void
+owner_refs_delete (void *owner)
+{
+  st_data_t key = (st_data_t)owner;
+
+  st_delete (owner_refs, &key, NULL);
+}
+
 /* TypedData type definitions for Ruby 3.x compatibility */
 static void
 gpgme_data_free(void *ptr)
 {
   if (ptr)
-    gpgme_data_release((gpgme_data_t)ptr);
+    {
+      owner_refs_delete (ptr);
+      gpgme_data_release((gpgme_data_t)ptr);
+    }
 }
 
 static const rb_data_type_t gpgme_data_type = {
   .wrap_struct_name = "GPGME::Data",
   .function = {
-    .dmark = NULL,
+    .dmark = owner_refs_mark,
     .dfree = gpgme_data_free,
     .dsize = NULL,
   },
@@ -111,13 +168,16 @@ static void
 gpgme_ctx_free(void *ptr)
 {
   if (ptr)
-    gpgme_release((gpgme_ctx_t)ptr);
+    {
+      owner_refs_delete (ptr);
+      gpgme_release((gpgme_ctx_t)ptr);
+    }
 }
 
 static const rb_data_type_t gpgme_ctx_type = {
   .wrap_struct_name = "GPGME::Ctx",
   .function = {
-    .dmark = NULL,
+    .dmark = owner_refs_mark,
     .dfree = gpgme_ctx_free,
     .dsize = NULL,
   },
@@ -492,6 +552,7 @@ rb_s_gpgme_data_new_from_cbs (VALUE dummy, VALUE rdh, VALUE vcbs,
       VALUE vdh = WRAP_GPGME_DATA(dh);
       /* Keep a reference to avoid GC. */
       rb_iv_set (vdh, "@cbs_handle", vcbs_handle);
+      owner_ref_set (dh, DATA_REF_CBS, vcbs_handle);
       rb_ary_store (rdh, 0, vdh);
     }
   return LONG2NUM(err);
@@ -610,7 +671,7 @@ rb_s_gpgme_release (VALUE dummy, VALUE vctx)
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  gpgme_release (ctx);
+  gpgme_ctx_free (ctx);
   RTYPEDDATA_DATA(vctx) = NULL;
   return Qnil;
 }
@@ -851,6 +912,7 @@ rb_s_gpgme_set_passphrase_cb (VALUE dummy, VALUE vctx, VALUE vpassfunc,
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
+  owner_ref_set (ctx, CTX_REF_PASSPHRASE_CB, vcb);
   gpgme_set_passphrase_cb (ctx, passphrase_cb, (void*)vcb);
   return Qnil;
 }
@@ -899,6 +961,7 @@ rb_s_gpgme_set_status_cb (VALUE dummy, VALUE vctx, VALUE vstatusfunc,
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
+  owner_ref_set (ctx, CTX_REF_STATUS_CB, vcb);
   gpgme_set_status_cb (ctx, status_cb, (void*)vcb);
   return Qnil;
 }
@@ -945,6 +1008,7 @@ rb_s_gpgme_set_progress_cb (VALUE dummy, VALUE vctx, VALUE vprogfunc,
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
+  owner_ref_set (ctx, CTX_REF_PROGRESS_CB, vcb);
   gpgme_set_progress_cb (ctx, progress_cb, (void*)vcb);
 
   return Qnil;
@@ -1856,6 +1920,7 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
 
   /* Use gpgme_op_interact with flags=0, shim converts keywords to status codes */
   err = gpgme_op_interact (ctx, key, 0, edit_cb_shim, (void *)vcb, out);
+  RB_GC_GUARD(vcb);
   return LONG2NUM(err);
 }
 
@@ -1886,6 +1951,8 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
 
   /* Use gpgme_op_interact_start with flags=0, shim converts keywords to status codes */
   err = gpgme_op_interact_start (ctx, key, 0, edit_cb_shim, (void *)vcb, out);
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
   return LONG2NUM(err);
 }
 
@@ -1916,6 +1983,7 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
 
   /* Use gpgme_op_interact with GPGME_INTERACT_CARD flag */
   err = gpgme_op_interact (ctx, key, GPGME_INTERACT_CARD, edit_cb_shim, (void *)vcb, out);
+  RB_GC_GUARD(vcb);
   return LONG2NUM(err);
 }
 
@@ -1946,6 +2014,8 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
 
   /* Use gpgme_op_interact_start with GPGME_INTERACT_CARD flag */
   err = gpgme_op_interact_start (ctx, key, GPGME_INTERACT_CARD, edit_cb_shim, (void *)vcb, out);
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
   return LONG2NUM(err);
 }
 
@@ -1992,6 +2062,7 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   rb_iv_set (vctx, "@edit_cb", vcb);
 
   err = gpgme_op_edit (ctx, key, edit_cb, (void *)vcb, out);
+  RB_GC_GUARD(vcb);
   return LONG2NUM(err);
 }
 
@@ -2021,6 +2092,8 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   rb_iv_set (vctx, "@edit_cb", vcb);
 
   err = gpgme_op_edit_start (ctx, key, edit_cb, (void *)vcb, out);
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
   return LONG2NUM(err);
 }
 
@@ -2050,6 +2123,7 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   rb_iv_set (vctx, "@card_edit_cb", vcb);
 
   err = gpgme_op_card_edit (ctx, key, edit_cb, (void *)vcb, out);
+  RB_GC_GUARD(vcb);
   return LONG2NUM(err);
 }
 
@@ -2079,6 +2153,8 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   rb_iv_set (vctx, "@card_edit_cb", vcb);
 
   err = gpgme_op_card_edit_start (ctx, key, edit_cb, (void *)vcb, out);
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
   return LONG2NUM(err);
 }
 #endif /* GPGME_VERSION_NUMBER >= 0x020000 */
@@ -2883,6 +2959,8 @@ Init_gpgme_n (void)
   VALUE mGPGME;
 
   mGPGME = rb_define_module ("GPGME");
+
+  owner_refs = st_init_numtable ();
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
   rb_define_module_function (mGPGME, "gpgme_get_dirinfo",
