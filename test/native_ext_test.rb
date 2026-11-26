@@ -80,4 +80,19 @@ describe "GPGME native extension" do
       assert_raises(TypeError) { GPGME::gpgme_data_new_from_mem([], 123, 3) }
     end
   end
+
+  describe "callback getters" do
+    it "return nil when no callback was set" do
+      ctx = GPGME::Ctx.new
+      %w[passphrase progress status].each do |name|
+        getter = "gpgme_get_#{name}_cb"
+        next unless GPGME.respond_to?(getter)
+        func, hook = [], []
+        GPGME.send(getter, ctx, func, hook)
+        assert_nil func.first
+        assert_nil hook.first
+      end
+      ctx.release
+    end
+  end
 end
