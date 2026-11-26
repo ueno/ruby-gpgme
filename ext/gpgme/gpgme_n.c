@@ -1138,6 +1138,64 @@ rb_s_gpgme_get_offline (VALUE dummy, VALUE vctx)
 }
 #endif
 
+/* Return a new array with each element of VARY converted to a String
+   with no NUL bytes.  This runs any to_str conversions, and raises on
+   bad input, before the caller allocates C memory.  */
+static VALUE
+string_array_new (VALUE vary)
+{
+  VALUE vstrs;
+  long i;
+
+  Check_Type (vary, T_ARRAY);
+  vstrs = rb_ary_new_capa (RARRAY_LEN(vary));
+  for (i = 0; i < RARRAY_LEN(vary); i++)
+    {
+      VALUE vstr = RARRAY_AREF(vary, i);
+
+      StringValueCStr(vstr);
+      rb_ary_push (vstrs, vstr);
+    }
+  return vstrs;
+}
+
+/* Return a NULL-terminated array of pointers into the strings of
+   VSTRS, which string_array_new returned.  Free it with xfree.  The
+   pointers are only valid until the next Ruby allocation, which can
+   compact the heap and move the strings, so pass the array straight to
+   libgpgme.  libgpgme copies the strings when the operation starts.  */
+static const char **
+cstr_array_new (VALUE vstrs)
+{
+  long i, len = RARRAY_LEN(vstrs);
+  const char **cstrs = ALLOC_N(const char *, len + 1);
+
+  for (i = 0; i < len; i++)
+    cstrs[i] = RSTRING_PTR(RARRAY_AREF(vstrs, i));
+  cstrs[len] = NULL;
+  return cstrs;
+}
+
+/* Return a NULL-terminated array of the keys in VKEYS.  Free it with
+   xfree.  Every element is checked first, so a bad element raises
+   before anything is allocated.  */
+static gpgme_key_t *
+key_array_new (VALUE vkeys)
+{
+  gpgme_key_t *keys;
+  long i, len;
+
+  Check_Type (vkeys, T_ARRAY);
+  len = RARRAY_LEN(vkeys);
+  for (i = 0; i < len; i++)
+    rb_check_typeddata (RARRAY_AREF(vkeys, i), &gpgme_key_type);
+  keys = ALLOC_N(gpgme_key_t, len + 1);
+  for (i = 0; i < len; i++)
+    UNWRAP_GPGME_KEY(RARRAY_AREF(vkeys, i), keys[i]);
+  keys[len] = NULL;
+  return keys;
+}
+
 static VALUE
 rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
                              VALUE vsecret_only)
@@ -1166,7 +1224,8 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 {
   gpgme_ctx_t ctx;
   const char **pattern = NULL;
-  int i, err;
+  VALUE vstrs = Qnil;
+  int secret_only, err;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1174,20 +1233,19 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
+  secret_only = NUM2INT(vsecret_only);
   if (!NIL_P(vpattern))
     {
-      /* Convert RARRAY into `const char *' array. */
-      pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern) + 1);
-      for (i = 0; i<RARRAY_LEN(vpattern); i++)
-        pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
-      pattern[RARRAY_LEN(vpattern)] = NULL;
+      vstrs = string_array_new (vpattern);
+      pattern = cstr_array_new (vstrs);
     }
 
-  err = gpgme_op_keylist_ext_start (ctx, pattern, NUM2INT(vsecret_only), 0);
+  err = gpgme_op_keylist_ext_start (ctx, pattern, secret_only, 0);
   if (gpgme_err_code (err) == GPG_ERR_NO_ERROR)
     SET_KEYLIST_IN_PROGRESS(vctx);
   if (pattern)
     xfree (pattern);
+  RB_GC_GUARD(vstrs);
   return LONG2NUM(err);
 }
 
@@ -1474,7 +1532,8 @@ rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   gpgme_data_t keydata;
   gpgme_error_t err;
   const char **pattern;
-  int i;
+  unsigned int mode;
+  VALUE vstrs;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1482,13 +1541,13 @@ rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
-  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern) + 1);
-  for (i = 0; i < RARRAY_LEN(vpattern); i++)
-    pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
-  pattern[i] = NULL;
+  mode = NUM2UINT(vmode);
+  vstrs = string_array_new (vpattern);
+  pattern = cstr_array_new (vstrs);
 
-  err = gpgme_op_export_ext (ctx, pattern, NUM2UINT(vmode), keydata);
+  err = gpgme_op_export_ext (ctx, pattern, mode, keydata);
   xfree (pattern);
+  RB_GC_GUARD(vstrs);
   return LONG2NUM(err);
 }
 
@@ -1500,7 +1559,8 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   gpgme_data_t keydata;
   gpgme_error_t err;
   const char **pattern;
-  int i;
+  unsigned int mode;
+  VALUE vstrs;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1508,17 +1568,17 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
-  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern) + 1);
-  for (i = 0; i < RARRAY_LEN(vpattern); i++)
-    pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
-  pattern[i] = NULL;
+  mode = NUM2UINT(vmode);
+  vstrs = string_array_new (vpattern);
+  pattern = cstr_array_new (vstrs);
 
-  err = gpgme_op_export_ext_start (ctx, pattern, NUM2UINT(vmode), keydata);
+  err = gpgme_op_export_ext_start (ctx, pattern, mode, keydata);
   /* libgpgme uses the data objects until the operation completes. */
   if (!err)
     owner_ref_set (ctx, CTX_REF_OP_ARGS,
                    rb_ary_new_from_args (1, vkeydata));
   xfree (pattern);
+  RB_GC_GUARD(vstrs);
   return LONG2NUM(err);
 }
 
@@ -1531,7 +1591,7 @@ rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
   gpgme_key_t *keys;
   gpgme_data_t keydata;
   gpgme_error_t err;
-  int i;
+  unsigned int mode;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1541,12 +1601,10 @@ rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
 
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
-  for (i = 0; i < RARRAY_LEN(vkeys); i++)
-    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
-  keys[i] = NULL;
+  mode = NUM2UINT(vmode);
+  keys = key_array_new (vkeys);
 
-  err = gpgme_op_export_keys (ctx, keys, NUM2UINT(vmode), keydata);
+  err = gpgme_op_export_keys (ctx, keys, mode, keydata);
   xfree (keys);
   return LONG2NUM(err);
 }
@@ -1559,7 +1617,7 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
   gpgme_key_t *keys;
   gpgme_data_t keydata;
   gpgme_error_t err;
-  int i;
+  unsigned int mode;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1569,12 +1627,10 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
 
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
-  for (i = 0; i < RARRAY_LEN(vkeys); i++)
-    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
-  keys[i] = NULL;
+  mode = NUM2UINT(vmode);
+  keys = key_array_new (vkeys);
 
-  err = gpgme_op_export_keys_start (ctx, keys, NUM2UINT(vmode), keydata);
+  err = gpgme_op_export_keys_start (ctx, keys, mode, keydata);
   /* libgpgme uses the data objects until the operation completes. */
   if (!err)
     owner_ref_set (ctx, CTX_REF_OP_ARGS,
@@ -1631,7 +1687,6 @@ rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
   gpgme_ctx_t ctx;
   gpgme_key_t *keys;
   gpgme_error_t err;
-  int i;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1639,10 +1694,7 @@ rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
-  for (i = 0; i < RARRAY_LEN(vkeys); i++)
-    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
-  keys[i] = NULL;
+  keys = key_array_new (vkeys);
 
   err = gpgme_op_import_keys (ctx, keys);
   xfree (keys);
@@ -1655,7 +1707,6 @@ rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
   gpgme_ctx_t ctx;
   gpgme_key_t *keys;
   gpgme_error_t err;
-  int i;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1663,10 +1714,7 @@ rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
-  for (i = 0; i < RARRAY_LEN(vkeys); i++)
-    UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
-  keys[i] = NULL;
+  keys = key_array_new (vkeys);
 
   err = gpgme_op_import_keys_start (ctx, keys);
   xfree (keys);
@@ -2930,7 +2978,9 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
 {
   gpgme_ctx_t ctx;
   const char *file;
-  const char **argv;
+  const char **argv = NULL;
+  VALUE vstrs = Qnil;
+  int flags;
   gpgme_data_t datain = NULL;
   gpgme_data_t dataout = NULL;
   gpgme_data_t dataerr = NULL;
@@ -2942,32 +2992,26 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  file = StringValueCStr(vfile);
-
-  if (NIL_P(vargv))
-    argv = NULL;
-  else
-    {
-      int i;
-
-      argv = ALLOC_N(const char *, RARRAY_LEN(vargv) + 1);
-      for (i = 0; i < RARRAY_LEN(vargv); i++)
-        argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
-      argv[i] = NULL;
-    }
-
+  flags = NUM2INT(vflags);
   UNWRAP_GPGME_DATA(vdatain, datain);
   UNWRAP_GPGME_DATA(vdataout, dataout);
   UNWRAP_GPGME_DATA(vdataerr, dataerr);
+  if (!NIL_P(vargv))
+    vstrs = string_array_new (vargv);
+  file = StringValueCStr(vfile);
+  if (!NIL_P(vargv))
+    argv = cstr_array_new (vstrs);
 
   err = gpgme_op_spawn_start (ctx, file, argv, datain, dataout, dataerr,
-                              NUM2INT(vflags));
+                              flags);
   /* libgpgme uses the data objects until the operation completes. */
   if (!err)
     owner_ref_set (ctx, CTX_REF_OP_ARGS,
                    rb_ary_new_from_args (3, vdatain, vdataout, vdataerr));
   if (argv)
     xfree (argv);
+  RB_GC_GUARD(vstrs);
+  RB_GC_GUARD(vfile);
   return LONG2NUM(err);
 }
 
@@ -2978,7 +3022,9 @@ rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
 {
   gpgme_ctx_t ctx;
   const char *file;
-  const char **argv;
+  const char **argv = NULL;
+  VALUE vstrs = Qnil;
+  int flags;
   gpgme_data_t datain = NULL;
   gpgme_data_t dataout = NULL;
   gpgme_data_t dataerr = NULL;
@@ -2990,28 +3036,22 @@ rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  file = StringValueCStr(vfile);
-
-  if (NIL_P(vargv))
-    argv = NULL;
-  else
-    {
-      int i;
-
-      argv = ALLOC_N(const char *, RARRAY_LEN(vargv) + 1);
-      for (i = 0; i < RARRAY_LEN(vargv); i++)
-        argv[i] = StringValueCStr(RARRAY_PTR(vargv)[i]);
-      argv[i] = NULL;
-    }
-
+  flags = NUM2INT(vflags);
   UNWRAP_GPGME_DATA(vdatain, datain);
   UNWRAP_GPGME_DATA(vdataout, dataout);
   UNWRAP_GPGME_DATA(vdataerr, dataerr);
+  if (!NIL_P(vargv))
+    vstrs = string_array_new (vargv);
+  file = StringValueCStr(vfile);
+  if (!NIL_P(vargv))
+    argv = cstr_array_new (vstrs);
 
   err = gpgme_op_spawn (ctx, file, argv, datain, dataout, dataerr,
-                        NUM2INT(vflags));
+                        flags);
   if (argv)
     xfree (argv);
+  RB_GC_GUARD(vstrs);
+  RB_GC_GUARD(vfile);
   return LONG2NUM(err);
 }
 #endif
