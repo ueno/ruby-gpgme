@@ -537,11 +537,41 @@ module GPGME
       end
     end
 
+    ##
+    # Return the engine configuration of this context as an array of
+    # {GPGME::EngineInfo}.
     #
-    # this method is supposed to not harming the global GPG status
+    # @example
+    #   ctx.engine_info.first.home_dir
     #
-    def set_info_safely(proto, file_name, home_dir)
-      err = GPGME::gpgme_ctx_set_engine_info(proto, self, file_name, home_dir)
+    def engine_info
+      rinfo = []
+      GPGME::gpgme_ctx_get_engine_info(self, rinfo)
+      rinfo
+    end
+
+    ##
+    # Change the configuration of the crypto engine implementing protocol
+    # +proto+ for this context only. Unlike {GPGME::Engine.set_info}, this
+    # does not change the global configuration, so other contexts are not
+    # affected.
+    #
+    # @param proto
+    #   Can be one of +PROTOCOL_OpenPGP+ or +PROTOCOL_CMS+.
+    #
+    # @param file_name
+    #   The file name of the executable program implementing the protocol,
+    #   or +nil+ to use the default.
+    #
+    # @param home_dir
+    #   The directory name of the configuration directory, or +nil+ to use
+    #   the default.
+    #
+    # @example
+    #   ctx.set_engine_info(GPGME::PROTOCOL_OpenPGP, nil, '/tmp/gnupg')
+    #
+    def set_engine_info(proto, file_name, home_dir)
+      err = GPGME::gpgme_ctx_set_engine_info(self, proto, file_name, home_dir)
       exc = GPGME::error_to_exception(err)
       raise exc if exc
     end

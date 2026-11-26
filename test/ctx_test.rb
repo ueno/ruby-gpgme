@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 require 'test_helper'
+require 'tmpdir'
 
 describe GPGME::Ctx do
   before do
@@ -189,6 +190,36 @@ describe GPGME::Ctx do
 
       ctx = GPGME::Ctx.new(:ignore_mdc_error => true)
       assert ctx.ignore_mdc_error
+    end
+  end
+
+  describe :set_engine_info do
+    it "changes the home dir for this context only" do
+      global_home_dir = GPGME::Engine.info.find { |i| i.protocol == GPGME::PROTOCOL_OpenPGP }.home_dir
+
+      Dir.mktmpdir do |dir|
+        GPGME::Ctx.new do |ctx|
+          ctx.set_engine_info(GPGME::PROTOCOL_OpenPGP, nil, dir)
+
+          info = ctx.engine_info.find { |i| i.protocol == GPGME::PROTOCOL_OpenPGP }
+          assert_equal dir, info.home_dir
+        end
+
+        GPGME::Ctx.new do |ctx|
+          info = ctx.engine_info.find { |i| i.protocol == GPGME::PROTOCOL_OpenPGP }
+          assert_equal global_home_dir, info.home_dir
+        end
+      end
+
+      assert_equal global_home_dir, GPGME::Engine.info.find { |i| i.protocol == GPGME::PROTOCOL_OpenPGP }.home_dir
+    end
+
+    it "raises an error for an invalid protocol" do
+      GPGME::Ctx.new do |ctx|
+        assert_raises(GPGME::Error::InvalidValue) do
+          ctx.set_engine_info(-1, nil, nil)
+        end
+      end
     end
   end
 
