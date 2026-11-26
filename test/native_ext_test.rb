@@ -74,4 +74,10 @@ describe "GPGME native extension" do
       assert_equal "日本語".b, data.read
     end
   end
+
+  describe :gpgme_data_new_from_mem do
+    it "raises TypeError when the buffer is not a String" do
+      assert_raises(TypeError) { GPGME::gpgme_data_new_from_mem([], 123, 3) }
+    end
+  end
 end

@@ -378,10 +378,11 @@ rb_s_gpgme_data_new_from_mem (VALUE dummy, VALUE rdh, VALUE vbuffer,
   size_t size = NUM2UINT(vsize);
   gpgme_error_t err;
 
+  StringValue(vbuffer);
   if ((size_t)RSTRING_LEN(vbuffer) < size)
     rb_raise (rb_eArgError, "argument out of range");
 
-  err = gpgme_data_new_from_mem (&dh, StringValuePtr(vbuffer), size, 1);
+  err = gpgme_data_new_from_mem (&dh, RSTRING_PTR(vbuffer), size, 1);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       vdh = WRAP_GPGME_DATA(dh);
