@@ -15,6 +15,17 @@ describe "GPGME native extension" do
     data.read.bytesize
   end
 
+  def compact_heap
+    skip "GC compaction not supported" unless GC.respond_to?(:verify_compaction_references)
+    begin
+      GC.verify_compaction_references(expand_heap: true, toward: :empty)
+    rescue ArgumentError
+      GC.verify_compaction_references(toward: :empty)
+    end
+  rescue NotImplementedError
+    skip "GC compaction not supported"
+  end
+
   describe "read callback" do
     it "fails instead of overflowing when the callback returns too much" do
       callbacks = Object.new
@@ -93,6 +104,21 @@ describe "GPGME native extension" do
         assert_nil hook.first
       end
       ctx.release
+    end
+  end
+
+  describe "GC.compact" do
+    it "does not move objects that libgpgme points to" do
+      input = GPGME::Data.from_io(StringIO.new("Hello, compaction"))
+      output = GPGME::Data.new
+      GPGME::Ctx.new(armor: true) do |ctx|
+        ctx.set_progress_callback(proc {})
+        compact_heap
+        ctx.sign(input, output, GPGME::SIG_MODE_CLEAR)
+      end
+
+      output.seek(0)
+      assert_match(/Hello, compaction/, output.read)
     end
   end
 end
