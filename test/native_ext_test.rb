@@ -192,4 +192,43 @@ describe "GPGME native extension" do
       GC.start
     end
   end
+
+  describe "array arguments" do
+    it "raise without leaking when an element is not a String" do
+      GPGME::Ctx.new do |ctx|
+        assert_raises(TypeError) do
+          GPGME::gpgme_op_export_ext(ctx, [KEYS.first[:sha], 1], 0,
+                                     GPGME::Data.new)
+        end
+        assert_raises(TypeError) do
+          GPGME::gpgme_op_keylist_ext_start(ctx, [KEYS.first[:sha], 1], 0)
+        end
+      end
+    end
+
+    it "raise without leaking when an element is not a Key" do
+      skip unless GPGME.respond_to?(:gpgme_op_export_keys)
+      key = GPGME::Key.find(:public, KEYS.first[:sha]).first
+      GPGME::Ctx.new do |ctx|
+        assert_raises(TypeError) do
+          GPGME::gpgme_op_export_keys(ctx, [key, "x"], 0, GPGME::Data.new)
+        end
+        assert_raises(TypeError) { GPGME::gpgme_op_import_keys(ctx, [key, "x"]) }
+      end
+    end
+
+    it "accept elements that convert with to_str" do
+      sha = Object.new
+      sha.define_singleton_method(:to_str) { KEYS.first[:sha].dup }
+      expected = export_size(KEYS.first[:sha])
+
+      GPGME::Ctx.new do |ctx|
+        data = GPGME::Data.new
+        err = GPGME::gpgme_op_export_ext(ctx, [sha], 0, data)
+        assert_nil GPGME::error_to_exception(err)
+        data.seek(0)
+        assert_equal expected, data.read.bytesize
+      end
+    end
+  end
 end
