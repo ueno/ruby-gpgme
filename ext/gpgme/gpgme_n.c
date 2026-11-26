@@ -1361,12 +1361,14 @@ rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern));
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern) + 1);
   for (i = 0; i < RARRAY_LEN(vpattern); i++)
     pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
-  UNWRAP_GPGME_DATA(vkeydata, keydata);
+  pattern[i] = NULL;
 
   err = gpgme_op_export_ext (ctx, pattern, NUM2UINT(vmode), keydata);
+  xfree (pattern);
   return LONG2NUM(err);
 }
 
@@ -1385,12 +1387,14 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern));
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+  pattern = ALLOC_N(const char *, RARRAY_LEN(vpattern) + 1);
   for (i = 0; i < RARRAY_LEN(vpattern); i++)
     pattern[i] = StringValueCStr(RARRAY_PTR(vpattern)[i]);
-  UNWRAP_GPGME_DATA(vkeydata, keydata);
+  pattern[i] = NULL;
 
   err = gpgme_op_export_ext_start (ctx, pattern, NUM2UINT(vmode), keydata);
+  xfree (pattern);
   return LONG2NUM(err);
 }
 
@@ -1411,13 +1415,15 @@ rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+
   keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
   for (i = 0; i < RARRAY_LEN(vkeys); i++)
     UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
-
-  UNWRAP_GPGME_DATA(vkeydata, keydata);
+  keys[i] = NULL;
 
   err = gpgme_op_export_keys (ctx, keys, NUM2UINT(vmode), keydata);
+  xfree (keys);
   return LONG2NUM(err);
 }
 
@@ -1437,13 +1443,15 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
+  UNWRAP_GPGME_DATA(vkeydata, keydata);
+
   keys = ALLOC_N(gpgme_key_t, RARRAY_LEN(vkeys) + 1);
   for (i = 0; i < RARRAY_LEN(vkeys); i++)
     UNWRAP_GPGME_KEY(RARRAY_PTR(vkeys)[i], keys[i]);
-
-  UNWRAP_GPGME_DATA(vkeydata, keydata);
+  keys[i] = NULL;
 
   err = gpgme_op_export_keys_start (ctx, keys, NUM2UINT(vmode), keydata);
+  xfree (keys);
   return LONG2NUM(err);
 }
 #endif        /*HAVE_GPGME_OP_EXPORT_KEYS*/
@@ -1505,6 +1513,7 @@ rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
   keys[i] = NULL;
 
   err = gpgme_op_import_keys (ctx, keys);
+  xfree (keys);
   return LONG2NUM(err);
 }
 
@@ -1528,6 +1537,7 @@ rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
   keys[i] = NULL;
 
   err = gpgme_op_import_keys_start (ctx, keys);
+  xfree (keys);
   return LONG2NUM(err);
 }
 #endif        /*HAVE_GPGME_OP_EXPORT_KEYS*/
