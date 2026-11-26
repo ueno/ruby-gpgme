@@ -149,6 +149,12 @@ owner_refs_delete (void *owner)
   st_delete (owner_refs, &key, NULL);
 }
 
+/* Maps each gpgme_ctx_t to the GPGME::Ctx object that owns it, so that
+   gpgme_wait can return the existing object instead of wrapping the
+   context a second time.  The entries are weak: they are removed when
+   the object is freed and updated when GC.compact moves it.  */
+static st_table *ctx_objects;
+
 static void
 owner_ref_clear (void *owner, long slot)
 {
@@ -185,9 +191,22 @@ gpgme_ctx_free(void *ptr)
 {
   if (ptr)
     {
+      st_data_t key = (st_data_t)ptr;
+
+      st_delete (ctx_objects, &key, NULL);
       owner_refs_delete (ptr);
       gpgme_release((gpgme_ctx_t)ptr);
     }
+}
+
+static void
+gpgme_ctx_compact(void *ptr)
+{
+  st_data_t vctx;
+
+  if (ptr && st_lookup (ctx_objects, (st_data_t)ptr, &vctx))
+    st_insert (ctx_objects, (st_data_t)ptr,
+               (st_data_t)rb_gc_location ((VALUE)vctx));
 }
 
 static const rb_data_type_t gpgme_ctx_type = {
@@ -196,6 +215,7 @@ static const rb_data_type_t gpgme_ctx_type = {
     .dmark = owner_refs_mark,
     .dfree = gpgme_ctx_free,
     .dsize = NULL,
+    .dcompact = gpgme_ctx_compact,
   },
   .data = NULL,
   .flags = 0,
@@ -675,7 +695,11 @@ rb_s_gpgme_new (VALUE dummy, VALUE rctx)
   gpgme_error_t err = gpgme_new (&ctx);
 
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    rb_ary_store (rctx, 0, WRAP_GPGME_CTX(ctx));
+    {
+      VALUE vctx = WRAP_GPGME_CTX(ctx);
+      st_insert (ctx_objects, (st_data_t)ctx, (st_data_t)vctx);
+      rb_ary_store (rctx, 0, vctx);
+    }
   return LONG2NUM(err);
 }
 
@@ -2884,7 +2908,15 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
       /* The operation is done, so libgpgme no longer uses its data. */
       owner_ref_clear (ret, CTX_REF_OP_ARGS);
       if (ret != ctx)
-        vctx = WRAP_GPGME_CTX(ret);
+        {
+          st_data_t vret;
+
+          /* Return the object that already owns RET.  Wrapping it again
+             would make two objects free the same context.  */
+          if (!st_lookup (ctx_objects, (st_data_t)ret, &vret))
+            rb_raise (rb_eRuntimeError, "gpgme_wait returned an unknown ctx");
+          vctx = (VALUE)vret;
+        }
       return vctx;
     }
   return Qnil;
@@ -3043,6 +3075,7 @@ Init_gpgme_n (void)
   mGPGME = rb_define_module ("GPGME");
 
   owner_refs = st_init_numtable ();
+  ctx_objects = st_init_numtable ();
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
   rb_define_module_function (mGPGME, "gpgme_get_dirinfo",
