@@ -150,4 +150,46 @@ describe "GPGME native extension" do
       ctx.release
     end
   end
+
+  describe :gpgme_wait do
+    it "returns the existing Ctx object when waiting on any context" do
+      # libgpgme's gpgme_wait(NULL, ...) dereferences NULL if any fd is
+      # ready, so the operation must have no fds left before this test
+      # calls it.  A write callback that returns 0 makes libgpgme fail
+      # the operation, close all its fds and mark it done, all within
+      # the wait call that ran the callback.
+      written = false
+      callbacks = Object.new
+      callbacks.define_singleton_method(:write) do |_hook, _buffer, _length|
+        written = true
+        0
+      end
+      ctx = GPGME::Ctx.new
+      err = GPGME::gpgme_op_export_start(ctx, KEYS.first[:sha], 0,
+                                         GPGME::Data.from_callbacks(callbacks))
+      assert_nil GPGME::error_to_exception(err)
+
+      # Run the I/O by waiting on an idle context.
+      idle = GPGME::Ctx.new
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
+      until written
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+          idle.release
+          ctx.release
+          flunk "the export never wrote its output"
+        end
+        GPGME::gpgme_wait(idle, [], 0)
+        sleep 0.01
+      end
+      idle.release
+
+      status = []
+      ret = GPGME::gpgme_wait(nil, status, 0)
+      assert_same ctx, ret
+      refute_nil GPGME::error_to_exception(status.first)
+
+      ctx.release
+      GC.start
+    end
+  end
 end
