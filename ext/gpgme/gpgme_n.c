@@ -88,19 +88,26 @@
 #define RSTRING_LEN(a) RSTRING(a)->len
 #endif
 
-/* Ruby objects whose VALUE is handed to libgpgme as a raw pointer,
-   such as callback hook values.  They are kept in an array per owning
-   gpgme_ctx_t or gpgme_data_t, and the owner's mark function marks
-   them with rb_gc_mark.  That keeps them alive as long as the owner
-   and pins them, so GC.compact never moves an object libgpgme still
-   points to.  */
+/* Ruby objects whose VALUE is handed to libgpgme as a raw pointer
+   (callback hook values) or that libgpgme uses after a call returns
+   (the arguments of an asynchronous operation).  They are kept in an
+   array per owning gpgme_ctx_t or gpgme_data_t, and the owner's mark
+   function marks them with rb_gc_mark.  That keeps them alive as long
+   as the owner and pins them, so GC.compact never moves an object
+   libgpgme still points to.
+
+   An asynchronous operation replaces its references only after
+   libgpgme has accepted it, because until then the previous operation
+   may still be running.  gpgme_wait clears them once the operation is
+   done.  */
 static st_table *owner_refs;
 
 enum {
   CTX_REF_PASSPHRASE_CB,
   CTX_REF_STATUS_CB,
   CTX_REF_PROGRESS_CB,
-  CTX_REF_EDIT_CB
+  CTX_REF_EDIT_CB,
+  CTX_REF_OP_ARGS
 };
 
 enum {
@@ -140,6 +147,15 @@ owner_refs_delete (void *owner)
   st_data_t key = (st_data_t)owner;
 
   st_delete (owner_refs, &key, NULL);
+}
+
+static void
+owner_ref_clear (void *owner, long slot)
+{
+  st_data_t refs;
+
+  if (st_lookup (owner_refs, (st_data_t)owner, &refs))
+    rb_ary_store ((VALUE)refs, slot, Qnil);
 }
 
 /* TypedData type definitions for Ruby 3.x compatibility */
@@ -1375,6 +1391,10 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
     UNWRAP_GPGME_DATA(vseckey, seckey);
 
   err = gpgme_op_genkey_start (ctx, StringValueCStr(vparms), pubkey, seckey);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (2, vpubkey, vseckey));
   return LONG2NUM(err);
 }
 
@@ -1415,6 +1435,10 @@ rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 
   err = gpgme_op_export_start (ctx, StringValueCStr(vpattern),
                                NUM2UINT(vmode), keydata);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (1, vkeydata));
   return LONG2NUM(err);
 }
 
@@ -1466,6 +1490,10 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   pattern[i] = NULL;
 
   err = gpgme_op_export_ext_start (ctx, pattern, NUM2UINT(vmode), keydata);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (1, vkeydata));
   xfree (pattern);
   return LONG2NUM(err);
 }
@@ -1523,6 +1551,10 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
   keys[i] = NULL;
 
   err = gpgme_op_export_keys_start (ctx, keys, NUM2UINT(vmode), keydata);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (1, vkeydata));
   xfree (keys);
   return LONG2NUM(err);
 }
@@ -1561,6 +1593,10 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
   err = gpgme_op_import_start (ctx, keydata);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (1, vkeydata));
   return LONG2NUM(err);
 }
 
@@ -1952,7 +1988,11 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Use gpgme_op_interact_start with flags=0, shim converts keywords to status codes */
   err = gpgme_op_interact_start (ctx, key, 0, edit_cb_shim, (void *)vcb, out);
   if (!err)
-    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    {
+      /* libgpgme uses the data objects until the operation completes. */
+      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
+      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    }
   return LONG2NUM(err);
 }
 
@@ -2015,7 +2055,11 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Use gpgme_op_interact_start with GPGME_INTERACT_CARD flag */
   err = gpgme_op_interact_start (ctx, key, GPGME_INTERACT_CARD, edit_cb_shim, (void *)vcb, out);
   if (!err)
-    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    {
+      /* libgpgme uses the data objects until the operation completes. */
+      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
+      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    }
   return LONG2NUM(err);
 }
 
@@ -2093,7 +2137,11 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
 
   err = gpgme_op_edit_start (ctx, key, edit_cb, (void *)vcb, out);
   if (!err)
-    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    {
+      /* libgpgme uses the data objects until the operation completes. */
+      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
+      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    }
   return LONG2NUM(err);
 }
 
@@ -2154,7 +2202,11 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
 
   err = gpgme_op_card_edit_start (ctx, key, edit_cb, (void *)vcb, out);
   if (!err)
-    owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    {
+      /* libgpgme uses the data objects until the operation completes. */
+      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
+      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+    }
   return LONG2NUM(err);
 }
 #endif /* GPGME_VERSION_NUMBER >= 0x020000 */
@@ -2266,6 +2318,10 @@ rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   UNWRAP_GPGME_DATA(vplain, plain);
 
   err = gpgme_op_decrypt_start (ctx, cipher, plain);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (2, vcipher, vplain));
   return LONG2NUM(err);
 }
 
@@ -2354,6 +2410,10 @@ rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig,
     UNWRAP_GPGME_DATA(vplain, plain);
 
   err = gpgme_op_verify_start (ctx, sig, signed_text, plain);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (3, vsig, vsigned_text, vplain));
   return LONG2NUM(err);
 }
 
@@ -2460,6 +2520,10 @@ rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   UNWRAP_GPGME_DATA(vplain, plain);
 
   err = gpgme_op_decrypt_verify_start (ctx, cipher, plain);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (2, vcipher, vplain));
   return LONG2NUM(err);
 }
 
@@ -2549,6 +2613,10 @@ rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   UNWRAP_GPGME_DATA(vsig, sig);
 
   err = gpgme_op_sign_start (ctx, plain, sig, NUM2INT(vmode));
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (2, vplain, vsig));
   return LONG2NUM(err);
 }
 
@@ -2675,6 +2743,10 @@ rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp,
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
   err = gpgme_op_encrypt_start (ctx, recp, NUM2INT(vflags), plain, cipher);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (2, vplain, vcipher));
   if (recp)
     xfree (recp);
   return LONG2NUM(err);
@@ -2781,6 +2853,10 @@ rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
 
   err = gpgme_op_encrypt_sign_start (ctx, recp, NUM2INT(vflags), plain,
                                      cipher);
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (2, vplain, vcipher));
   if (recp)
     xfree (recp);
   return LONG2NUM(err);
@@ -2805,6 +2881,8 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
   if (ret)
     {
       rb_ary_store (rstatus, 0, INT2NUM(status));
+      /* The operation is done, so libgpgme no longer uses its data. */
+      owner_ref_clear (ret, CTX_REF_OP_ARGS);
       if (ret != ctx)
         vctx = WRAP_GPGME_CTX(ret);
       return vctx;
@@ -2852,6 +2930,10 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
 
   err = gpgme_op_spawn_start (ctx, file, argv, datain, dataout, dataerr,
                               NUM2INT(vflags));
+  /* libgpgme uses the data objects until the operation completes. */
+  if (!err)
+    owner_ref_set (ctx, CTX_REF_OP_ARGS,
+                   rb_ary_new_from_args (3, vdatain, vdataout, vdataerr));
   if (argv)
     xfree (argv);
   return LONG2NUM(err);
