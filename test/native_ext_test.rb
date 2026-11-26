@@ -65,4 +65,13 @@ describe "GPGME native extension" do
       assert_raises(ArgumentError) { data.write("ab", 4096) }
     end
   end
+
+  describe "Data#write" do
+    it "writes every byte of a multibyte string" do
+      data = GPGME::Data.new
+      data.write("日本語")
+      data.seek(0)
+      assert_equal "日本語".b, data.read
+    end
+  end
 end
