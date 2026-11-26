@@ -58,4 +58,11 @@ describe "GPGME native extension" do
       end
     end
   end
+
+  describe :gpgme_data_write do
+    it "rejects a length larger than the buffer" do
+      data = GPGME::Data.new
+      assert_raises(ArgumentError) { data.write("ab", 4096) }
+    end
+  end
 end

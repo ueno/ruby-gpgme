@@ -534,9 +534,13 @@ rb_s_gpgme_data_write (VALUE dummy, VALUE vdh, VALUE vbuf, VALUE vlen)
 {
   gpgme_data_t dh;
   ssize_t nwrite;
+  size_t length = NUM2SIZET(vlen);
 
   UNWRAP_GPGME_DATA(vdh, dh);
-  nwrite = gpgme_data_write (dh, StringValuePtr(vbuf), NUM2UINT(vlen));
+  StringValue(vbuf);
+  if (length > (size_t)RSTRING_LEN(vbuf))
+    rb_raise (rb_eArgError, "length is larger than the buffer");
+  nwrite = gpgme_data_write (dh, RSTRING_PTR(vbuf), length);
   if (nwrite < 0)
     rb_sys_fail ("rb_s_gpgme_data_write");
   return LONG2NUM(nwrite);
