@@ -120,6 +120,26 @@ describe "GPGME native extension" do
       output.seek(0)
       assert_match(/Hello, compaction/, output.read)
     end
+
+    it "does not allocate while updating the context table" do
+      skip "GC compaction not supported" unless GC.respond_to?(:compact)
+      # Creating and releasing contexts fills the table with deleted
+      # entries, so the next insert would rebuild it.  Compaction used
+      # to insert into the table and crash with "Cannot malloc during
+      # GC".
+      live = []
+      begin
+        300.times do |i|
+          live << GPGME::Ctx.new
+          live.shift.release if live.size > 5
+          GC.compact if i % 3 == 0
+        end
+      rescue NotImplementedError
+        skip "GC compaction not supported"
+      ensure
+        live.each(&:release)
+      end
+    end
   end
 
   describe "asynchronous operations" do
