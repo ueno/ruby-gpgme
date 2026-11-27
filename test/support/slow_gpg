@@ -1,0 +1,12 @@
+#!/bin/sh
+# A gpg that takes 0.5 s longer for every operation, so a test can tell
+# whether other Ruby threads run while a GPGME call waits for gpg.
+# SLOW_GPG_REAL is the real gpg.  GPGME's engine version check runs at
+# full speed.
+for arg in "$@"; do
+  case "$arg" in
+    --version) exec "$SLOW_GPG_REAL" "$@" ;;
+  esac
+done
+sleep 0.5
+exec "$SLOW_GPG_REAL" "$@"
