@@ -158,6 +158,37 @@ GPGME provides methods to obtain information about the GPG engine in use:
   GPGME::Engine.home_dir = '/tmp'
   ```
 
+### Threads
+
+Blocking calls into libgpgme, such as encrypting, decrypting, signing,
+verifying, importing and listing keys, release Ruby's Global VM Lock
+(GVL) while gpg works. Other Ruby threads keep running in the meantime.
+A fiber scheduler still blocks if a fiber calls GPGME directly, so move
+the work to a thread:
+
+```ruby
+Thread.new { crypto.encrypt(plain, recipients: 'alice@example.com') }.value
+```
+
+Callbacks (passphrase, progress, status, edit and data callbacks) take
+the GVL back to run. An exception raised in a callback stops the
+operation and is raised again from the GPGME call.
+
+A `GPGME::Ctx` or `GPGME::Data` object can only be used by one thread at
+a time. Using it from another thread while an operation runs raises
+`ThreadError`.
+
+`GPGME.thread_safe` is on by default. It runs high-level operations one
+at a time through a global lock, so other threads still run but GPGME
+operations don't overlap. Turn it off to run operations in parallel:
+
+```ruby
+GPGME.thread_safe = false
+```
+
+Parallel operations on one keyring can still wait on each other, since
+gpg locks the keyring files.
+
 ### Round Trip Example Using Keychain Keys
 
 Rather than importing keys, you can specify the recipient directly. Example (for IRB/console):

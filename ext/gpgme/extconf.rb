@@ -219,6 +219,16 @@ End
 end
 
 have_func('gpgme_op_export_keys')
+
+# Blocking calls release the GVL only if callbacks can find the running
+# call through a thread-local variable.
+checking_for('thread-local storage') do
+  keyword = %w[_Thread_local __thread].find do |kw|
+    try_compile("static #{kw} int x; int main(void) { return x; }")
+  end
+  $defs << "-DRUBY_GPGME_THREAD_LOCAL=#{keyword}" if keyword
+  keyword
+end
 have_const('GPGME_ENCRYPT_ALWAYS_TRUST', 'gpgme.h')
 have_const('GPGME_ENCRYPT_NO_ENCRYPT_TO', 'gpgme.h')
 have_const('GPGME_ENCRYPT_PREPARE', 'gpgme.h')

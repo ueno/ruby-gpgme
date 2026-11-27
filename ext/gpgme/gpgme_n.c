@@ -40,8 +40,19 @@
 #ifdef HAVE_RUBY_ENCODING_H
 #include "ruby/encoding.h"
 #endif
+#include "ruby/thread.h"
 #include "gpgme.h"
 #include <errno.h>
+#include <string.h>
+
+/* Blocking libgpgme calls run without the GVL, so other Ruby threads
+   can run while gpg works.  Callbacks find the running call through a
+   thread-local variable, so this needs thread-local storage, which
+   extconf.rb checks for.  Without it, every call keeps the GVL as
+   before.  */
+#ifdef RUBY_GPGME_THREAD_LOCAL
+#define RUBY_GPGME_RELEASE_GVL 1
+#endif
 
 /* Define this if you use GPGME 1.1.2 and earlier.
    https://bugs.g10code.com/gnupg/issue715 */
@@ -272,17 +283,40 @@ static const rb_data_type_t gpgme_trust_item_type = {
 };
 #endif
 
+/* Contexts and data objects in use by a running libgpgme call, mapped
+   to the fiber that runs it.  libgpgme does not allow two threads to
+   use one context or data object at the same time, and the call runs
+   without the GVL, so any other fiber that touches the object raises
+   instead.  The table is only read and written with the GVL held.  */
+static st_table *busy_objects;
+
+static void
+check_not_busy (const void *ptr, const char *what)
+{
+  st_data_t owner;
+
+  if (ptr && st_lookup (busy_objects, (st_data_t)ptr, &owner)
+      && (VALUE)owner != rb_fiber_current ())
+    rb_raise (rb_eThreadError, "%s is in use by another thread", what);
+}
+
 #define WRAP_GPGME_DATA(dh)                                        \
   TypedData_Wrap_Struct(cData, &gpgme_data_type, dh)
 /* `gpgme_data_t' is typedef'ed as `struct gpgme_data *'. */
 #define UNWRAP_GPGME_DATA(vdh, dh)                                \
-  TypedData_Get_Struct(vdh, struct gpgme_data, &gpgme_data_type, dh)
+  do {                                                            \
+    TypedData_Get_Struct(vdh, struct gpgme_data, &gpgme_data_type, dh); \
+    check_not_busy (dh, "GPGME::Data");                           \
+  } while (0)
 
 #define WRAP_GPGME_CTX(ctx)                                        \
   TypedData_Wrap_Struct(cCtx, &gpgme_ctx_type, ctx)
 /* `gpgme_ctx_t' is typedef'ed as `struct gpgme_context *'. */
 #define UNWRAP_GPGME_CTX(vctx, ctx)                                \
-  TypedData_Get_Struct(vctx, struct gpgme_context, &gpgme_ctx_type, ctx)
+  do {                                                            \
+    TypedData_Get_Struct(vctx, struct gpgme_context, &gpgme_ctx_type, ctx); \
+    check_not_busy (ctx, "GPGME::Ctx");                           \
+  } while (0)
 
 #define WRAP_GPGME_KEY(key)                                        \
   TypedData_Wrap_Struct(cKey, &gpgme_key_type, key)
@@ -319,6 +353,351 @@ static VALUE cEngineInfo,
   cEncryptResult,
   cImportStatus,
   cImportResult;
+
+/* A blocking libgpgme call, made without the GVL.
+
+   The caller converts every Ruby argument into this struct first,
+   because nothing may touch a Ruby object without the GVL.  Strings
+   and key arrays are copied or referenced, since another thread could
+   change or free the originals while the call runs.  FN then makes
+   the libgpgme call from the struct.
+
+   Callbacks take the GVL back to run Ruby code.  If one raises, the
+   exception is stored here, libgpgme gets an error, and the exception
+   is raised again once the call returns.
+
+   There is no unblocking function.  Interrupting libgpgme would cancel
+   the operation on every signal, including the SIGCHLD from gpg
+   itself, so Thread#raise and Thread#kill wait for the call to end.  */
+typedef struct gpgme_call gpgme_call_t;
+struct gpgme_call
+{
+  void (*fn) (gpgme_call_t *c);
+  gpgme_ctx_t ctx;
+  void *p[4];                   /* Pointer arguments, mostly data.  */
+  size_t u[2];                  /* Integer arguments.  size_t holds both
+                                   the int flags and the size_t sizes.  */
+  gpgme_key_t key_in;           /* Key argument, referenced.  */
+  gpgme_key_t *keys;            /* Key array argument, referenced.  */
+  char *str;                    /* String argument, copied.  */
+  const char **strv;            /* String array argument, copied.  */
+
+  gpgme_error_t err;            /* Results.  */
+  gpgme_key_t key;              /* Referenced until the caller wraps it.  */
+  size_t size;
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
+  gpgme_trust_item_t item;
+#endif
+
+  /* For an asynchronous operation, the objects to keep alive until it
+     completes.  They are saved only if libgpgme accepted it.  */
+  VALUE op_args;
+  VALUE edit_cb;
+
+  void *busy[6];
+  int nbusy;
+  int marked;
+  int ran;                      /* libgpgme made the call.  */
+  int done;                     /* The caller gets the results.  */
+
+  /* Callback state.  */
+  int state;                    /* Tag of the jump out of a callback.  */
+  VALUE errinfo;
+};
+
+#ifdef RUBY_GPGME_RELEASE_GVL
+/* The call that is running without the GVL on this thread, or NULL.
+   It is set only while no Ruby code runs: callbacks clear it before
+   they run Ruby code and set it again after.  So Ruby code always sees
+   NULL, and a call started from a callback, or from another fiber that
+   a callback switched to, never sees the outer call.  */
+static RUBY_GPGME_THREAD_LOCAL gpgme_call_t *current_call;
+#endif
+
+static void
+gpgme_call_init (gpgme_call_t *c, void (*fn) (gpgme_call_t *),
+                 gpgme_ctx_t ctx)
+{
+  memset (c, 0, sizeof *c);
+  c->fn = fn;
+  c->ctx = ctx;
+  c->op_args = Qnil;
+  c->edit_cb = Qnil;
+  c->errinfo = Qnil;
+  if (ctx)
+    c->busy[c->nbusy++] = ctx;
+}
+
+/* Mark the data object DH busy during the call.  */
+static void
+gpgme_call_use (gpgme_call_t *c, gpgme_data_t dh)
+{
+  if (dh && c->nbusy < (int)(sizeof c->busy / sizeof c->busy[0]))
+    c->busy[c->nbusy++] = dh;
+}
+
+/* Copy the string VSTR for the call.  */
+static void
+gpgme_call_str (gpgme_call_t *c, VALUE vstr)
+{
+  const char *str = StringValueCStr(vstr);
+  size_t len = strlen (str);
+
+  c->str = xmalloc (len + 1);
+  memcpy (c->str, str, len + 1);
+}
+
+/* Copy the strings in VSTRS, which string_array_new returned, into one
+   block that holds a NULL-terminated array and the bytes.  */
+static void
+gpgme_call_strv (gpgme_call_t *c, VALUE vstrs)
+{
+  long i, len = RARRAY_LEN(vstrs);
+  size_t size = (len + 1) * sizeof (char *);
+  char **strv, *p;
+
+  for (i = 0; i < len; i++)
+    size += RSTRING_LEN(RARRAY_AREF(vstrs, i)) + 1;
+  strv = xmalloc (size);
+  p = (char *)(strv + len + 1);
+  for (i = 0; i < len; i++)
+    {
+      VALUE vstr = RARRAY_AREF(vstrs, i);
+      long n = RSTRING_LEN(vstr);
+
+      memcpy (p, RSTRING_PTR(vstr), n);
+      p[n] = '\0';
+      strv[i] = p;
+      p += n + 1;
+    }
+  strv[len] = NULL;
+  c->strv = (const char **)strv;
+}
+
+/* Reference the key in VKEY for the call.  */
+static void
+gpgme_call_key (gpgme_call_t *c, VALUE vkey)
+{
+  gpgme_key_t key;
+
+  TypedData_Get_Struct(vkey, struct _gpgme_key, &gpgme_key_type, key);
+  gpgme_key_ref (key);
+  c->key_in = key;
+}
+
+/* Reference the keys in the array VKEYS for the call.  Every element
+   is checked first, so a bad element raises before anything is
+   allocated.  */
+static void
+gpgme_call_keys (gpgme_call_t *c, VALUE vkeys)
+{
+  long i, len;
+
+  Check_Type (vkeys, T_ARRAY);
+  len = RARRAY_LEN(vkeys);
+  for (i = 0; i < len; i++)
+    rb_check_typeddata (RARRAY_AREF(vkeys, i), &gpgme_key_type);
+  c->keys = ALLOC_N(gpgme_key_t, len + 1);
+  for (i = 0; i < len; i++)
+    {
+      TypedData_Get_Struct(RARRAY_AREF(vkeys, i), struct _gpgme_key,
+                           &gpgme_key_type, c->keys[i]);
+      gpgme_key_ref (c->keys[i]);
+    }
+  c->keys[len] = NULL;
+}
+
+static void
+gpgme_call_free (gpgme_call_t *c)
+{
+  gpgme_key_t *key;
+
+  if (c->key_in)
+    gpgme_key_unref (c->key_in);
+  if (c->keys)
+    {
+      for (key = c->keys; *key; key++)
+        gpgme_key_unref (*key);
+      xfree (c->keys);
+    }
+  if (c->str)
+    xfree (c->str);
+  if (c->strv)
+    xfree ((void *)c->strv);
+}
+
+/* Release the results of a call that won't reach its caller, because
+   an exception ended it.  */
+static void
+gpgme_call_drop_results (gpgme_call_t *c)
+{
+  if (c->key)
+    gpgme_key_unref (c->key);
+  c->key = NULL;
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
+  if (c->item)
+    gpgme_trust_item_unref (c->item);
+  c->item = NULL;
+#endif
+}
+
+static VALUE
+gpgme_call_ensure (VALUE arg)
+{
+  gpgme_call_t *c = (gpgme_call_t *)arg;
+  int i;
+
+  if (c->marked)
+    for (i = 0; i < c->nbusy; i++)
+      {
+        st_data_t key = (st_data_t)c->busy[i];
+
+        st_delete (busy_objects, &key, NULL);
+      }
+  gpgme_call_free (c);
+  /* Thread#raise or Thread#kill can be handled right after the call,
+     before the caller wraps its results.  */
+  if (!c->done)
+    gpgme_call_drop_results (c);
+  /* libgpgme uses these until the asynchronous operation completes.  */
+  if (c->ran && !c->err)
+    {
+      if (!NIL_P(c->op_args))
+        owner_ref_set (c->ctx, CTX_REF_OP_ARGS, c->op_args);
+      if (!NIL_P(c->edit_cb))
+        owner_ref_set (c->ctx, CTX_REF_EDIT_CB, c->edit_cb);
+    }
+  return Qnil;
+}
+
+#ifdef RUBY_GPGME_RELEASE_GVL
+static void *
+gpgme_call_nogvl (void *arg)
+{
+  gpgme_call_t *c = arg;
+
+  current_call = c;
+  c->fn (c);
+  current_call = NULL;
+  c->ran = 1;
+  return NULL;
+}
+#endif
+
+static VALUE
+gpgme_call_body (VALUE arg)
+{
+  gpgme_call_t *c = (gpgme_call_t *)arg;
+
+#ifdef RUBY_GPGME_RELEASE_GVL
+  /* This handles pending interrupts before and after the call, and
+     either can raise.  */
+  rb_thread_call_without_gvl (gpgme_call_nogvl, c, NULL, NULL);
+#else
+  c->fn (c);
+  c->ran = 1;
+#endif
+  c->done = 1;
+  return Qnil;
+}
+
+static int
+is_exception (VALUE obj)
+{
+  return !SPECIAL_CONST_P(obj) && BUILTIN_TYPE(obj) == T_OBJECT
+    && rb_obj_is_kind_of (obj, rb_eException);
+}
+
+/* Make the call C and return its error code.  This raises if an object
+   the call uses is busy, or if a callback raised.  */
+static gpgme_error_t
+gpgme_call_run (gpgme_call_t *c)
+{
+  int i;
+
+  for (i = 0; i < c->nbusy; i++)
+    if (st_lookup (busy_objects, (st_data_t)c->busy[i], NULL))
+      {
+        gpgme_call_free (c);
+        rb_raise (rb_eThreadError, "%s is in use by another thread",
+                  c->busy[i] == c->ctx ? "GPGME::Ctx" : "GPGME::Data");
+      }
+  for (i = 0; i < c->nbusy; i++)
+    st_insert (busy_objects, (st_data_t)c->busy[i],
+               (st_data_t)rb_fiber_current ());
+  c->marked = 1;
+
+  rb_ensure (gpgme_call_body, (VALUE)c, gpgme_call_ensure, (VALUE)c);
+
+  if (c->state)
+    {
+      gpgme_call_drop_results (c);
+      if (is_exception (c->errinfo))
+        rb_exc_raise (c->errinfo);
+      rb_jump_tag (c->state);
+    }
+  return c->err;
+}
+
+struct callback
+{
+  VALUE (*fn) (VALUE);
+  void *arg;
+  gpgme_call_t *call;
+};
+
+#ifdef RUBY_GPGME_RELEASE_GVL
+static void *
+callback_with_gvl (void *arg)
+{
+  struct callback *cb = arg;
+  gpgme_call_t *c = cb->call;
+  int state = 0;
+
+  /* After one callback fails, run no more Ruby code.  libgpgme gets
+     an error from every callback until the operation ends.  */
+  if (c->state)
+    return NULL;
+  rb_protect (cb->fn, (VALUE)cb->arg, &state);
+  if (state)
+    {
+      c->state = state;
+      c->errinfo = rb_errinfo ();
+      /* A throw or a thread kill leaves no exception.  Their state
+         stays in errinfo until rb_jump_tag resumes them.  */
+      if (is_exception (c->errinfo))
+        rb_set_errinfo (Qnil);
+    }
+  return NULL;
+}
+#endif
+
+/* Run FN(ARG), the Ruby side of a callback from libgpgme.  Return 0 on
+   success, or -1 if it raised and libgpgme must get an error.  */
+static int
+callback_run (VALUE (*fn) (VALUE), void *arg)
+{
+#ifdef RUBY_GPGME_RELEASE_GVL
+  gpgme_call_t *c = current_call;
+  struct callback cb;
+
+  if (c)
+    {
+      cb.fn = fn;
+      cb.arg = arg;
+      cb.call = c;
+      current_call = NULL;
+      rb_thread_call_with_gvl (callback_with_gvl, &cb);
+      current_call = c;
+      return c->state ? -1 : 0;
+    }
+#endif
+  /* The GVL is held, because the call came straight from Ruby, such as
+     Data#read or gpgme_wait.  An exception goes straight to the Ruby
+     code that called.  */
+  fn ((VALUE)arg);
+  return 0;
+}
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
 static VALUE
@@ -510,38 +889,70 @@ rb_s_gpgme_data_new_from_fd (VALUE dummy, VALUE rdh, VALUE vfd)
   return LONG2NUM(err);
 }
 
-static ssize_t
-read_cb (void *handle, void *buffer, size_t size)
+/* Arguments and result of a data callback.  The callbacks build Ruby
+   objects, so the Ruby side runs with the GVL through callback_run.  */
+struct data_cb_args
 {
-  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer;
+  VALUE vcb;
+  void *buffer;
+  size_t size;
+  off_t offset;
+  int whence;
+  long ret;
+  int err;
+};
 
-  vcbs = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
+static VALUE
+read_cb_ruby (VALUE arg)
+{
+  struct data_cb_args *a = (struct data_cb_args *)arg;
+  VALUE vcbs, vhook_value, vbuffer;
+
+  vcbs = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
 
   vbuffer = rb_funcall (vcbs, rb_intern ("read"), 2, vhook_value,
-                        LONG2NUM(size));
+                        LONG2NUM(a->size));
   if (NIL_P(vbuffer))
-    return 0;
+    {
+      a->ret = 0;
+      return Qnil;
+    }
   StringValue(vbuffer);
   /* Never copy more than libgpgme asked for. */
-  if ((size_t)RSTRING_LEN(vbuffer) > size)
+  if ((size_t)RSTRING_LEN(vbuffer) > a->size)
     {
-      errno = EINVAL;
-      return -1;
+      a->err = EINVAL;
+      return Qnil;
     }
-  memcpy (buffer, RSTRING_PTR(vbuffer), RSTRING_LEN(vbuffer));
-  return RSTRING_LEN(vbuffer);
+  memcpy (a->buffer, RSTRING_PTR(vbuffer), RSTRING_LEN(vbuffer));
+  a->ret = RSTRING_LEN(vbuffer);
+  return Qnil;
 }
 
 static ssize_t
-write_cb (void *handle, const void *buffer, size_t size)
+read_cb (void *handle, void *buffer, size_t size)
 {
-  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vbuffer, vnwrite;
+  struct data_cb_args a = { (VALUE)handle, buffer, size, 0, 0, -1, EIO };
+
+  if (callback_run (read_cb_ruby, &a) < 0 || a.ret < 0)
+    {
+      errno = a.err;
+      return -1;
+    }
+  return a.ret;
+}
+
+static VALUE
+write_cb_ruby (VALUE arg)
+{
+  struct data_cb_args *a = (struct data_cb_args *)arg;
+  VALUE vcbs, vhook_value, vbuffer, vnwrite;
   rb_encoding *enc;
 
-  vcbs = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
-  vbuffer = rb_str_new (buffer, size);
+  vcbs = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
+  vbuffer = rb_str_new (a->buffer, a->size);
 
   /* Associate encoding with the buffer string.
    * Use default internal encoding if set, otherwise use binary encoding.
@@ -553,27 +964,59 @@ write_cb (void *handle, const void *buffer, size_t size)
   rb_enc_associate (vbuffer, enc);
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
-                        vhook_value, vbuffer, LONG2NUM(size));
-  return NUM2LONG(vnwrite);
+                        vhook_value, vbuffer, LONG2NUM(a->size));
+  a->ret = NUM2LONG(vnwrite);
+  return Qnil;
+}
+
+static ssize_t
+write_cb (void *handle, const void *buffer, size_t size)
+{
+  struct data_cb_args a = { (VALUE)handle, (void *)buffer, size, 0, 0, -1,
+                            EIO };
+
+  if (callback_run (write_cb_ruby, &a) < 0)
+    {
+      errno = a.err;
+      return -1;
+    }
+  return a.ret;
+}
+
+static VALUE
+seek_cb_ruby (VALUE arg)
+{
+  struct data_cb_args *a = (struct data_cb_args *)arg;
+  VALUE vcbs, vhook_value, vpos;
+  ID id_seek = rb_intern ("seek");
+
+  vcbs = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
+
+  if (rb_respond_to (vcbs, id_seek))
+    {
+      vpos = rb_funcall (vcbs, id_seek, 3,
+                         vhook_value, LONG2NUM(a->offset),
+                         INT2FIX(a->whence));
+      a->ret = NUM2LONG(vpos);
+      return Qnil;
+    }
+  a->err = ENOSYS;
+  return Qnil;
 }
 
 static off_t
 seek_cb (void *handle, off_t offset, int whence)
 {
-  VALUE vcb = (VALUE)handle, vcbs, vhook_value, vpos;
-  ID id_seek = rb_intern ("seek");
+  struct data_cb_args a = { (VALUE)handle, NULL, 0, offset, whence, -1,
+                            EIO };
 
-  vcbs = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
-
-  if (rb_respond_to (vcbs, id_seek))
+  if (callback_run (seek_cb_ruby, &a) < 0 || a.ret < 0)
     {
-      vpos = rb_funcall (vcbs, id_seek, 3,
-                         vhook_value, LONG2NUM(offset), INT2FIX(whence));
-      return NUM2LONG(vpos);
+      errno = a.err;
+      return -1;
     }
-  errno = ENOSYS;
-  return -1;
+  return a.ret;
 }
 
 static struct gpgme_data_cbs cbs =
@@ -612,18 +1055,21 @@ rb_s_gpgme_data_read (VALUE dummy, VALUE vdh, VALUE vlength)
 {
   gpgme_data_t dh;
   ssize_t length = NUM2LONG(vlength), nread;
-  void *buffer;
-  VALUE vbuffer = Qnil;
+  VALUE vbuffer;
 
   UNWRAP_GPGME_DATA(vdh, dh);
 
-  buffer = ALLOC_N (char, length);
-  nread = gpgme_data_read (dh, buffer, length);
-  if (nread > 0)
-    vbuffer = rb_str_new (buffer, nread);
-  xfree (buffer);
+  /* Read straight into a string.  A read callback can raise out of
+     gpgme_data_read, and a separate buffer would then leak.  No other
+     code can see the string, and the reference on this stack keeps GC
+     from moving it.  */
+  vbuffer = rb_str_buf_new (length);
+  nread = gpgme_data_read (dh, RSTRING_PTR(vbuffer), length);
   if (nread < 0)
     rb_sys_fail ("rb_s_gpgme_data_read");
+  if (nread == 0)
+    return Qnil;
+  rb_str_set_len (vbuffer, nread);
   return vbuffer;
 }
 
@@ -761,6 +1207,9 @@ rb_s_gpgme_release (VALUE dummy, VALUE vctx)
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
+  /* A callback must not release the context of the running call.  */
+  if (st_lookup (busy_objects, (st_data_t)ctx, NULL))
+    rb_raise (rb_eThreadError, "GPGME::Ctx is in use");
   gpgme_ctx_free (ctx);
   RTYPEDDATA_DATA(vctx) = NULL;
   return Qnil;
@@ -969,21 +1418,47 @@ rb_s_gpgme_get_keylist_mode (VALUE dummy, VALUE vctx)
   return INT2FIX(mode);
 }
 
+/* Arguments of a context callback.  */
+struct ctx_cb_args
+{
+  VALUE vcb;
+  const char *s1;
+  const char *s2;
+  int i1;
+  int i2;
+  int i3;
+};
+
+/* The error a context callback returns when its Ruby code raised.  */
+#define CALLBACK_FAILED gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_CANCELED)
+
+static VALUE
+passphrase_cb_ruby (VALUE arg)
+{
+  struct ctx_cb_args *a = (struct ctx_cb_args *)arg;
+  VALUE vpassfunc, vhook_value;
+
+  vpassfunc = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
+
+  rb_funcall (vpassfunc, rb_intern ("call"), 5,
+              vhook_value,
+              a->s1 ? rb_str_new2 (a->s1) : Qnil,
+              a->s2 ? rb_str_new2 (a->s2) : Qnil,
+              INT2FIX(a->i1),
+              INT2NUM(a->i2));
+  return Qnil;
+}
+
 static gpgme_error_t
 passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info,
                int prev_was_bad, int fd)
 {
-  VALUE vcb = (VALUE)hook, vpassfunc, vhook_value;
+  struct ctx_cb_args a = { (VALUE)hook, uid_hint, passphrase_info,
+                           prev_was_bad, fd, 0 };
 
-  vpassfunc = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
-
-  rb_funcall (vpassfunc, rb_intern ("call"), 5,
-              vhook_value,
-              uid_hint ? rb_str_new2 (uid_hint) : Qnil,
-              passphrase_info ? rb_str_new2 (passphrase_info) : Qnil,
-              INT2FIX(prev_was_bad),
-              INT2NUM(fd));
+  if (callback_run (passphrase_cb_ruby, &a) < 0)
+    return CALLBACK_FAILED;
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
@@ -1021,18 +1496,29 @@ rb_s_gpgme_get_passphrase_cb (VALUE dummy, VALUE vctx, VALUE rpassfunc,
 }
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010600
-static gpgme_error_t
-status_cb (void *hook, const char *keyword, const char *args)
+static VALUE
+status_cb_ruby (VALUE arg)
 {
-  VALUE vcb = (VALUE)hook, vstatusfunc, vhook_value;
+  struct ctx_cb_args *a = (struct ctx_cb_args *)arg;
+  VALUE vstatusfunc, vhook_value;
 
-  vstatusfunc = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
+  vstatusfunc = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
 
   rb_funcall (vstatusfunc, rb_intern ("call"), 3,
               vhook_value,
-              keyword ? rb_str_new2 (keyword) : Qnil,
-              args ? rb_str_new2 (args) : Qnil);
+              a->s1 ? rb_str_new2 (a->s1) : Qnil,
+              a->s2 ? rb_str_new2 (a->s2) : Qnil);
+  return Qnil;
+}
+
+static gpgme_error_t
+status_cb (void *hook, const char *keyword, const char *args)
+{
+  struct ctx_cb_args a = { (VALUE)hook, keyword, args, 0, 0, 0 };
+
+  if (callback_run (status_cb_ruby, &a) < 0)
+    return CALLBACK_FAILED;
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
 
@@ -1070,17 +1556,28 @@ rb_s_gpgme_get_status_cb (VALUE dummy, VALUE vctx, VALUE rstatusfunc,
 }
 #endif
 
+static VALUE
+progress_cb_ruby (VALUE arg)
+{
+  struct ctx_cb_args *a = (struct ctx_cb_args *)arg;
+  VALUE vprogfunc, vhook_value;
+
+  vprogfunc = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
+
+  rb_funcall (vprogfunc, rb_intern ("call"), 5, vhook_value,
+              rb_str_new2 (a->s1), INT2NUM(a->i1), INT2NUM(a->i2),
+              INT2NUM(a->i3));
+  return Qnil;
+}
+
 static void
 progress_cb (void *hook, const char *what, int type, int current, int total)
 {
-  VALUE vcb = (VALUE)hook, vprogfunc, vhook_value;
+  struct ctx_cb_args a = { (VALUE)hook, what, NULL, type, current, total };
 
-  vprogfunc = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
-
-  rb_funcall (vprogfunc, rb_intern ("call"), 5, vhook_value,
-              rb_str_new2 (what), INT2NUM(type), INT2NUM(current),
-              INT2NUM(total));
+  /* libgpgme ignores the result.  A failure is raised after the call. */
+  callback_run (progress_cb_ruby, &a);
 }
 
 static VALUE
@@ -1209,42 +1706,100 @@ string_array_new (VALUE vary)
   return vstrs;
 }
 
-/* Return a NULL-terminated array of pointers into the strings of
-   VSTRS, which string_array_new returned.  Free it with xfree.  The
-   pointers are only valid until the next Ruby allocation, which can
-   compact the heap and move the strings, so pass the array straight to
-   libgpgme.  libgpgme copies the strings when the operation starts.  */
-static const char **
-cstr_array_new (VALUE vstrs)
-{
-  long i, len = RARRAY_LEN(vstrs);
-  const char **cstrs = ALLOC_N(const char *, len + 1);
+/* The libgpgme calls that gpgme_call_run makes without the GVL.  */
+#define GPGME_CALL(name, expr)                                          \
+  static void call_##name (gpgme_call_t *c) { c->err = (expr); }
 
-  for (i = 0; i < len; i++)
-    cstrs[i] = RSTRING_PTR(RARRAY_AREF(vstrs, i));
-  cstrs[len] = NULL;
-  return cstrs;
-}
+GPGME_CALL(op_keylist_start,
+           gpgme_op_keylist_start (c->ctx, c->str, (int)c->u[0]))
+GPGME_CALL(op_keylist_ext_start,
+           gpgme_op_keylist_ext_start (c->ctx, c->strv, (int)c->u[0], 0))
+GPGME_CALL(op_keylist_next, gpgme_op_keylist_next (c->ctx, &c->key))
+GPGME_CALL(op_keylist_end, gpgme_op_keylist_end (c->ctx))
+GPGME_CALL(get_key, gpgme_get_key (c->ctx, c->str, &c->key, (int)c->u[0]))
+GPGME_CALL(op_genkey,
+           gpgme_op_genkey (c->ctx, c->str, c->p[0], c->p[1]))
+GPGME_CALL(op_genkey_start,
+           gpgme_op_genkey_start (c->ctx, c->str, c->p[0], c->p[1]))
+GPGME_CALL(op_export,
+           gpgme_op_export (c->ctx, c->str, (unsigned int)c->u[0], c->p[0]))
+GPGME_CALL(op_export_start,
+           gpgme_op_export_start (c->ctx, c->str, (unsigned int)c->u[0],
+                                  c->p[0]))
+GPGME_CALL(op_export_ext,
+           gpgme_op_export_ext (c->ctx, c->strv, (unsigned int)c->u[0],
+                                c->p[0]))
+GPGME_CALL(op_export_ext_start,
+           gpgme_op_export_ext_start (c->ctx, c->strv, (unsigned int)c->u[0],
+                                      c->p[0]))
+#ifdef HAVE_GPGME_OP_EXPORT_KEYS
+GPGME_CALL(op_export_keys,
+           gpgme_op_export_keys (c->ctx, c->keys, (unsigned int)c->u[0],
+                                 c->p[0]))
+GPGME_CALL(op_export_keys_start,
+           gpgme_op_export_keys_start (c->ctx, c->keys, (unsigned int)c->u[0],
+                                       c->p[0]))
+GPGME_CALL(op_import_keys, gpgme_op_import_keys (c->ctx, c->keys))
+GPGME_CALL(op_import_keys_start,
+           gpgme_op_import_keys_start (c->ctx, c->keys))
+#endif
+GPGME_CALL(op_import, gpgme_op_import (c->ctx, c->p[0]))
+GPGME_CALL(op_import_start, gpgme_op_import_start (c->ctx, c->p[0]))
+GPGME_CALL(op_delete,
+           gpgme_op_delete (c->ctx, c->key_in, (int)c->u[0]))
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010901
+GPGME_CALL(op_delete_ext,
+           gpgme_op_delete_ext (c->ctx, c->key_in, (unsigned int)c->u[0]))
+#endif
+GPGME_CALL(op_delete_start,
+           gpgme_op_delete_start (c->ctx, c->key_in, (int)c->u[0]))
+GPGME_CALL(op_decrypt, gpgme_op_decrypt (c->ctx, c->p[0], c->p[1]))
+GPGME_CALL(op_decrypt_start,
+           gpgme_op_decrypt_start (c->ctx, c->p[0], c->p[1]))
+GPGME_CALL(op_verify, gpgme_op_verify (c->ctx, c->p[0], c->p[1], c->p[2]))
+GPGME_CALL(op_verify_start,
+           gpgme_op_verify_start (c->ctx, c->p[0], c->p[1], c->p[2]))
+GPGME_CALL(op_decrypt_verify,
+           gpgme_op_decrypt_verify (c->ctx, c->p[0], c->p[1]))
+GPGME_CALL(op_decrypt_verify_start,
+           gpgme_op_decrypt_verify_start (c->ctx, c->p[0], c->p[1]))
+GPGME_CALL(op_sign,
+           gpgme_op_sign (c->ctx, c->p[0], c->p[1], (int)c->u[0]))
+GPGME_CALL(op_sign_start,
+           gpgme_op_sign_start (c->ctx, c->p[0], c->p[1], (int)c->u[0]))
+GPGME_CALL(op_encrypt,
+           gpgme_op_encrypt (c->ctx, c->keys, (int)c->u[0], c->p[0],
+                             c->p[1]))
+GPGME_CALL(op_encrypt_start,
+           gpgme_op_encrypt_start (c->ctx, c->keys, (int)c->u[0], c->p[0],
+                                   c->p[1]))
+GPGME_CALL(op_encrypt_sign,
+           gpgme_op_encrypt_sign (c->ctx, c->keys, (int)c->u[0], c->p[0],
+                                  c->p[1]))
+GPGME_CALL(op_encrypt_sign_start,
+           gpgme_op_encrypt_sign_start (c->ctx, c->keys, (int)c->u[0],
+                                        c->p[0], c->p[1]))
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
+GPGME_CALL(op_spawn,
+           gpgme_op_spawn (c->ctx, c->str, c->strv, c->p[0], c->p[1],
+                           c->p[2], (unsigned int)c->u[0]))
+GPGME_CALL(op_spawn_start,
+           gpgme_op_spawn_start (c->ctx, c->str, c->strv, c->p[0], c->p[1],
+                                 c->p[2], (unsigned int)c->u[0]))
+#endif
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x020000
+GPGME_CALL(op_random_bytes,
+           gpgme_op_random_bytes (c->ctx, (int)c->u[0], c->p[0], c->u[1]))
+GPGME_CALL(op_random_value,
+           gpgme_op_random_value (c->ctx, c->u[0], &c->size))
+#endif
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER < 0x020000
+GPGME_CALL(op_trustlist_start,
+           gpgme_op_trustlist_start (c->ctx, c->str, (int)c->u[0]))
+GPGME_CALL(op_trustlist_next, gpgme_op_trustlist_next (c->ctx, &c->item))
+GPGME_CALL(op_trustlist_end, gpgme_op_trustlist_end (c->ctx))
+#endif
 
-/* Return a NULL-terminated array of the keys in VKEYS.  Free it with
-   xfree.  Every element is checked first, so a bad element raises
-   before anything is allocated.  */
-static gpgme_key_t *
-key_array_new (VALUE vkeys)
-{
-  gpgme_key_t *keys;
-  long i, len;
-
-  Check_Type (vkeys, T_ARRAY);
-  len = RARRAY_LEN(vkeys);
-  for (i = 0; i < len; i++)
-    rb_check_typeddata (RARRAY_AREF(vkeys, i), &gpgme_key_type);
-  keys = ALLOC_N(gpgme_key_t, len + 1);
-  for (i = 0; i < len; i++)
-    UNWRAP_GPGME_KEY(RARRAY_AREF(vkeys, i), keys[i]);
-  keys[len] = NULL;
-  return keys;
-}
 
 static VALUE
 rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
@@ -1252,6 +1807,7 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1259,9 +1815,13 @@ rb_s_gpgme_op_keylist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  err = gpgme_op_keylist_start (ctx, NIL_P(vpattern) ? NULL :
-                                StringValueCStr(vpattern),
-                                NUM2INT(vsecret_only));
+  gpgme_call_init (&c, call_op_keylist_start, ctx);
+  if (!NIL_P(vpattern))
+    StringValueCStr(vpattern);
+  c.u[0] = NUM2INT(vsecret_only);
+  if (!NIL_P(vpattern))
+    gpgme_call_str (&c, vpattern);
+  err = gpgme_call_run (&c);
   if (gpgme_err_code (err) == GPG_ERR_NO_ERROR)
     SET_KEYLIST_IN_PROGRESS(vctx);
   return LONG2NUM(err);
@@ -1273,9 +1833,9 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
                                  VALUE vsecret_only)
 {
   gpgme_ctx_t ctx;
-  const char **pattern = NULL;
   VALUE vstrs = Qnil;
-  int secret_only, err;
+  gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1283,18 +1843,17 @@ rb_s_gpgme_op_keylist_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  secret_only = NUM2INT(vsecret_only);
+  gpgme_call_init (&c, call_op_keylist_ext_start, ctx);
+  c.u[0] = NUM2INT(vsecret_only);
   if (!NIL_P(vpattern))
     {
       vstrs = string_array_new (vpattern);
-      pattern = cstr_array_new (vstrs);
+      gpgme_call_strv (&c, vstrs);
     }
 
-  err = gpgme_op_keylist_ext_start (ctx, pattern, secret_only, 0);
+  err = gpgme_call_run (&c);
   if (gpgme_err_code (err) == GPG_ERR_NO_ERROR)
     SET_KEYLIST_IN_PROGRESS(vctx);
-  if (pattern)
-    xfree (pattern);
   RB_GC_GUARD(vstrs);
   return LONG2NUM(err);
 }
@@ -1421,8 +1980,8 @@ static VALUE
 rb_s_gpgme_op_keylist_next (VALUE dummy, VALUE vctx, VALUE rkey)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_IN_PROGRESS(vctx);
 
@@ -1430,11 +1989,12 @@ rb_s_gpgme_op_keylist_next (VALUE dummy, VALUE vctx, VALUE rkey)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  err = gpgme_op_keylist_next (ctx, &key);
+  gpgme_call_init (&c, call_op_keylist_next, ctx);
+  err = gpgme_call_run (&c);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
-      VALUE vkey = WRAP_GPGME_KEY(key);
-      save_gpgme_key_attrs (vkey, key);
+      VALUE vkey = WRAP_GPGME_KEY(c.key);
+      save_gpgme_key_attrs (vkey, c.key);
       rb_ary_store (rkey, 0, vkey);
     }
 
@@ -1448,6 +2008,7 @@ rb_s_gpgme_op_keylist_end (VALUE dummy, VALUE vctx)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_IN_PROGRESS(vctx);
 
@@ -1455,7 +2016,8 @@ rb_s_gpgme_op_keylist_end (VALUE dummy, VALUE vctx)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  err = gpgme_op_keylist_end (ctx);
+  gpgme_call_init (&c, call_op_keylist_end, ctx);
+  err = gpgme_call_run (&c);
   RESET_KEYLIST_IN_PROGRESS(vctx);
   return LONG2NUM(err);
 }
@@ -1466,17 +2028,21 @@ rb_s_gpgme_get_key (VALUE dummy, VALUE vctx, VALUE vfpr, VALUE rkey,
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
-  gpgme_key_t key;
+  gpgme_call_t c;
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  err = gpgme_get_key (ctx, StringValueCStr(vfpr), &key, NUM2INT(vsecret));
+  gpgme_call_init (&c, call_get_key, ctx);
+  StringValueCStr(vfpr);
+  c.u[0] = NUM2INT(vsecret);
+  gpgme_call_str (&c, vfpr);
+  err = gpgme_call_run (&c);
 
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
-      VALUE vkey = WRAP_GPGME_KEY(key);
-      save_gpgme_key_attrs (vkey, key);
+      VALUE vkey = WRAP_GPGME_KEY(c.key);
+      save_gpgme_key_attrs (vkey, c.key);
       rb_ary_store (rkey, 0, vkey);
     }
   return LONG2NUM(err);
@@ -1489,6 +2055,7 @@ rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
   gpgme_ctx_t ctx;
   gpgme_data_t pubkey = NULL, seckey = NULL;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1500,7 +2067,16 @@ rb_s_gpgme_op_genkey (VALUE dummy, VALUE vctx, VALUE vparms, VALUE vpubkey,
   if (!NIL_P(vseckey))
     UNWRAP_GPGME_DATA(vseckey, seckey);
 
-  err = gpgme_op_genkey (ctx, StringValueCStr(vparms), pubkey, seckey);
+  gpgme_call_init (&c, call_op_genkey, ctx);
+  StringValueCStr(vparms);
+  c.p[0] = pubkey;
+  c.p[1] = seckey;
+  gpgme_call_use (&c, pubkey);
+  gpgme_call_use (&c, seckey);
+  gpgme_call_str (&c, vparms);
+  err = gpgme_call_run (&c);
+  RB_GC_GUARD(vpubkey);
+  RB_GC_GUARD(vseckey);
   return LONG2NUM(err);
 }
 
@@ -1511,6 +2087,7 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
   gpgme_ctx_t ctx;
   gpgme_data_t pubkey = NULL, seckey = NULL;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1522,11 +2099,17 @@ rb_s_gpgme_op_genkey_start (VALUE dummy, VALUE vctx, VALUE vparms,
   if (!NIL_P(vseckey))
     UNWRAP_GPGME_DATA(vseckey, seckey);
 
-  err = gpgme_op_genkey_start (ctx, StringValueCStr(vparms), pubkey, seckey);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (2, vpubkey, vseckey));
+  gpgme_call_init (&c, call_op_genkey_start, ctx);
+  StringValueCStr(vparms);
+  c.p[0] = pubkey;
+  c.p[1] = seckey;
+  gpgme_call_use (&c, pubkey);
+  gpgme_call_use (&c, seckey);
+  c.op_args = rb_ary_new_from_args (2, vpubkey, vseckey);
+  gpgme_call_str (&c, vparms);
+  err = gpgme_call_run (&c);
+  RB_GC_GUARD(vpubkey);
+  RB_GC_GUARD(vseckey);
   return LONG2NUM(err);
 }
 
@@ -1537,6 +2120,7 @@ rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1545,8 +2129,14 @@ rb_s_gpgme_op_export (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  err = gpgme_op_export (ctx, StringValueCStr(vpattern), NUM2UINT(vmode),
-                         keydata);
+  gpgme_call_init (&c, call_op_export, ctx);
+  StringValueCStr(vpattern);
+  c.u[0] = NUM2UINT(vmode);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
+  gpgme_call_str (&c, vpattern);
+  err = gpgme_call_run (&c);
+  RB_GC_GUARD(vkeydata);
   return LONG2NUM(err);
 }
 
@@ -1557,6 +2147,7 @@ rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1565,12 +2156,14 @@ rb_s_gpgme_op_export_start (VALUE dummy, VALUE vctx, VALUE vpattern,
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  err = gpgme_op_export_start (ctx, StringValueCStr(vpattern),
-                               NUM2UINT(vmode), keydata);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (1, vkeydata));
+  gpgme_call_init (&c, call_op_export_start, ctx);
+  StringValueCStr(vpattern);
+  c.u[0] = NUM2UINT(vmode);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
+  c.op_args = rb_ary_new_from_args (1, vkeydata);
+  gpgme_call_str (&c, vpattern);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -1581,9 +2174,8 @@ rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
   gpgme_error_t err;
-  const char **pattern;
-  unsigned int mode;
   VALUE vstrs;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1591,13 +2183,16 @@ rb_s_gpgme_op_export_ext (VALUE dummy, VALUE vctx, VALUE vpattern, VALUE vmode,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
-  mode = NUM2UINT(vmode);
+  gpgme_call_init (&c, call_op_export_ext, ctx);
+  c.u[0] = NUM2UINT(vmode);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
   vstrs = string_array_new (vpattern);
-  pattern = cstr_array_new (vstrs);
+  gpgme_call_strv (&c, vstrs);
 
-  err = gpgme_op_export_ext (ctx, pattern, mode, keydata);
-  xfree (pattern);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vstrs);
+  RB_GC_GUARD(vkeydata);
   return LONG2NUM(err);
 }
 
@@ -1608,9 +2203,8 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
   gpgme_error_t err;
-  const char **pattern;
-  unsigned int mode;
   VALUE vstrs;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1618,17 +2212,17 @@ rb_s_gpgme_op_export_ext_start (VALUE dummy, VALUE vctx, VALUE vpattern,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
-  mode = NUM2UINT(vmode);
+  gpgme_call_init (&c, call_op_export_ext_start, ctx);
+  c.u[0] = NUM2UINT(vmode);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
+  c.op_args = rb_ary_new_from_args (1, vkeydata);
   vstrs = string_array_new (vpattern);
-  pattern = cstr_array_new (vstrs);
+  gpgme_call_strv (&c, vstrs);
 
-  err = gpgme_op_export_ext_start (ctx, pattern, mode, keydata);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (1, vkeydata));
-  xfree (pattern);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vstrs);
+  RB_GC_GUARD(vkeydata);
   return LONG2NUM(err);
 }
 
@@ -1638,10 +2232,9 @@ rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
                            VALUE vmode, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *keys;
   gpgme_data_t keydata;
   gpgme_error_t err;
-  unsigned int mode;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1651,11 +2244,14 @@ rb_s_gpgme_op_export_keys (VALUE dummy, VALUE vctx, VALUE vkeys,
 
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  mode = NUM2UINT(vmode);
-  keys = key_array_new (vkeys);
+  gpgme_call_init (&c, call_op_export_keys, ctx);
+  c.u[0] = NUM2UINT(vmode);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
+  gpgme_call_keys (&c, vkeys);
 
-  err = gpgme_op_export_keys (ctx, keys, mode, keydata);
-  xfree (keys);
+  err = gpgme_call_run (&c);
+  RB_GC_GUARD(vkeydata);
   return LONG2NUM(err);
 }
 
@@ -1664,10 +2260,9 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
                                  VALUE vmode, VALUE vkeydata)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *keys;
   gpgme_data_t keydata;
   gpgme_error_t err;
-  unsigned int mode;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1677,15 +2272,15 @@ rb_s_gpgme_op_export_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys,
 
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  mode = NUM2UINT(vmode);
-  keys = key_array_new (vkeys);
+  gpgme_call_init (&c, call_op_export_keys_start, ctx);
+  c.u[0] = NUM2UINT(vmode);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
+  c.op_args = rb_ary_new_from_args (1, vkeydata);
+  gpgme_call_keys (&c, vkeys);
 
-  err = gpgme_op_export_keys_start (ctx, keys, mode, keydata);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (1, vkeydata));
-  xfree (keys);
+  err = gpgme_call_run (&c);
+  RB_GC_GUARD(vkeydata);
   return LONG2NUM(err);
 }
 #endif        /*HAVE_GPGME_OP_EXPORT_KEYS*/
@@ -1696,6 +2291,7 @@ rb_s_gpgme_op_import (VALUE dummy, VALUE vctx, VALUE vkeydata)
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1704,7 +2300,11 @@ rb_s_gpgme_op_import (VALUE dummy, VALUE vctx, VALUE vkeydata)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  err = gpgme_op_import (ctx, keydata);
+  gpgme_call_init (&c, call_op_import, ctx);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
+  err = gpgme_call_run (&c);
+  RB_GC_GUARD(vkeydata);
   return LONG2NUM(err);
 }
 
@@ -1714,6 +2314,7 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
   gpgme_ctx_t ctx;
   gpgme_data_t keydata;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1722,11 +2323,11 @@ rb_s_gpgme_op_import_start (VALUE dummy, VALUE vctx, VALUE vkeydata)
     rb_raise (rb_eArgError, "released ctx");
   UNWRAP_GPGME_DATA(vkeydata, keydata);
 
-  err = gpgme_op_import_start (ctx, keydata);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (1, vkeydata));
+  gpgme_call_init (&c, call_op_import_start, ctx);
+  c.p[0] = keydata;
+  gpgme_call_use (&c, keydata);
+  c.op_args = rb_ary_new_from_args (1, vkeydata);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -1735,8 +2336,8 @@ static VALUE
 rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *keys;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1744,10 +2345,10 @@ rb_s_gpgme_op_import_keys (VALUE dummy, VALUE vctx, VALUE vkeys)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  keys = key_array_new (vkeys);
+  gpgme_call_init (&c, call_op_import_keys, ctx);
+  gpgme_call_keys (&c, vkeys);
 
-  err = gpgme_op_import_keys (ctx, keys);
-  xfree (keys);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -1755,8 +2356,8 @@ static VALUE
 rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *keys;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -1764,10 +2365,10 @@ rb_s_gpgme_op_import_keys_start (VALUE dummy, VALUE vctx, VALUE vkeys)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  keys = key_array_new (vkeys);
+  gpgme_call_init (&c, call_op_import_keys_start, ctx);
+  gpgme_call_keys (&c, vkeys);
 
-  err = gpgme_op_import_keys_start (ctx, keys);
-  xfree (keys);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 #endif        /*HAVE_GPGME_OP_EXPORT_KEYS*/
@@ -1821,17 +2422,20 @@ static VALUE
 rb_s_gpgme_op_delete (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vallow_secret)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
 
-  err = gpgme_op_delete (ctx, key, NUM2INT(vallow_secret));
+  gpgme_call_init (&c, call_op_delete, ctx);
+  c.u[0] = NUM2INT(vallow_secret);
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -1841,17 +2445,20 @@ static VALUE
 rb_s_gpgme_op_delete_ext (VALUE dummy, VALUE vctx, VALUE vkey, VALUE vflags)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
 
-  err = gpgme_op_delete_ext (ctx, key, NUM2INT(vflags));
+  gpgme_call_init (&c, call_op_delete_ext, ctx);
+  c.u[0] = NUM2INT(vflags);
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 #endif
@@ -1861,17 +2468,20 @@ rb_s_gpgme_op_delete_start (VALUE dummy, VALUE vctx, VALUE vkey,
                             VALUE vallow_secret)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
 
-  err = gpgme_op_delete_start (ctx, key, NUM2INT(vallow_secret));
+  gpgme_call_init (&c, call_op_delete_start, ctx);
+  c.u[0] = NUM2INT(vallow_secret);
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2035,38 +2645,54 @@ keyword_to_status_code (const char *keyword)
  * Shim callback that converts keyword strings to status codes
  * for backward compatibility with existing Ruby callbacks.
  */
+static VALUE
+edit_cb_ruby (VALUE arg)
+{
+  struct ctx_cb_args *a = (struct ctx_cb_args *)arg;
+  VALUE veditfunc, vhook_value;
+
+  veditfunc = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
+
+  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(a->i1),
+              rb_str_new2 (a->s1 ? a->s1 : ""), INT2NUM(a->i2));
+  return Qnil;
+}
+
 static gpgme_error_t
 edit_cb_shim (void *hook, const char *keyword, const char *args, int fd)
 {
-  VALUE vcb = (VALUE) hook, veditfunc, vhook_value;
-  gpgme_status_code_t status;
+  struct ctx_cb_args a = { (VALUE)hook, args, NULL,
+                           keyword_to_status_code (keyword), fd, 0 };
 
-  veditfunc = RARRAY_PTR (vcb)[0];
-  vhook_value = RARRAY_PTR (vcb)[1];
-
-  status = keyword_to_status_code (keyword);
-
-  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX (status),
-              args ? rb_str_new2 (args) : rb_str_new2 (""), INT2NUM (fd));
+  if (callback_run (edit_cb_ruby, &a) < 0)
+    return CALLBACK_FAILED;
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
+
+GPGME_CALL(op_interact,
+           gpgme_op_interact (c->ctx, c->key_in, (unsigned int)c->u[0],
+                              edit_cb_shim, c->p[1], c->p[0]))
+GPGME_CALL(op_interact_start,
+           gpgme_op_interact_start (c->ctx, c->key_in, (unsigned int)c->u[0],
+                                    edit_cb_shim, c->p[1], c->p[0]))
 
 static VALUE
 rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
                     VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS (vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2076,9 +2702,19 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@edit_cb", vcb);
 
-  /* Use gpgme_op_interact with flags=0, shim converts keywords to status codes */
-  err = gpgme_op_interact (ctx, key, 0, edit_cb_shim, (void *)vcb, out);
+  /* Pin the callback array, whose address libgpgme gets. */
+  owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+  /* gpgme_op_interact with the shim, which converts keywords to status
+     codes. */
+  gpgme_call_init (&c, call_op_interact, ctx);
+  c.u[0] = 0;
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vcb);
+  RB_GC_GUARD(vout);
   return LONG2NUM(err);
 }
 
@@ -2087,17 +2723,17 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
                           VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2107,14 +2743,17 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@edit_cb", vcb);
 
-  /* Use gpgme_op_interact_start with flags=0, shim converts keywords to status codes */
-  err = gpgme_op_interact_start (ctx, key, 0, edit_cb_shim, (void *)vcb, out);
-  if (!err)
-    {
-      /* libgpgme uses the data objects until the operation completes. */
-      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
-      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
-    }
+  /* gpgme_op_interact_start with the shim, which converts keywords to
+     status codes. */
+  gpgme_call_init (&c, call_op_interact_start, ctx);
+  c.u[0] = 0;
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  c.op_args = rb_ary_new_from_args (1, vout);
+  c.edit_cb = vcb;
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2123,17 +2762,17 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
                     VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2143,9 +2782,19 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@card_edit_cb", vcb);
 
-  /* Use gpgme_op_interact with GPGME_INTERACT_CARD flag */
-  err = gpgme_op_interact (ctx, key, GPGME_INTERACT_CARD, edit_cb_shim, (void *)vcb, out);
+  /* Pin the callback array, whose address libgpgme gets. */
+  owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+  /* gpgme_op_interact with the shim, which converts keywords to status
+     codes. */
+  gpgme_call_init (&c, call_op_interact, ctx);
+  c.u[0] = GPGME_INTERACT_CARD;
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vcb);
+  RB_GC_GUARD(vout);
   return LONG2NUM(err);
 }
 
@@ -2154,17 +2803,17 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
                                VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2174,50 +2823,73 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@card_edit_cb", vcb);
 
-  /* Use gpgme_op_interact_start with GPGME_INTERACT_CARD flag */
-  err = gpgme_op_interact_start (ctx, key, GPGME_INTERACT_CARD, edit_cb_shim, (void *)vcb, out);
-  if (!err)
-    {
-      /* libgpgme uses the data objects until the operation completes. */
-      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
-      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
-    }
+  /* gpgme_op_interact_start with the shim, which converts keywords to
+     status codes. */
+  gpgme_call_init (&c, call_op_interact_start, ctx);
+  c.u[0] = GPGME_INTERACT_CARD;
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  c.op_args = rb_ary_new_from_args (1, vout);
+  c.edit_cb = vcb;
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
 #else
 /* GPGME < 2.0.0: Use the original gpgme_op_edit functions directly */
 
+static VALUE
+edit_cb_ruby (VALUE arg)
+{
+  struct ctx_cb_args *a = (struct ctx_cb_args *)arg;
+  VALUE veditfunc, vhook_value;
+
+  veditfunc = RARRAY_AREF(a->vcb, 0);
+  vhook_value = RARRAY_AREF(a->vcb, 1);
+
+  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(a->i1),
+              rb_str_new2 (a->s1), INT2NUM(a->i2));
+  return Qnil;
+}
+
 static gpgme_error_t
 edit_cb (void *hook, gpgme_status_code_t status, const char *args, int fd)
 {
-  VALUE vcb = (VALUE)hook, veditfunc, vhook_value;
+  struct ctx_cb_args a = { (VALUE)hook, args, NULL, status, fd, 0 };
 
-
-  veditfunc = RARRAY_PTR(vcb)[0];
-  vhook_value = RARRAY_PTR(vcb)[1];
-
-  rb_funcall (veditfunc, rb_intern ("call"), 4, vhook_value, INT2FIX(status),
-              rb_str_new2 (args), INT2NUM(fd));
+  if (callback_run (edit_cb_ruby, &a) < 0)
+    return CALLBACK_FAILED;
   return gpgme_err_make (GPG_ERR_SOURCE_USER_1, GPG_ERR_NO_ERROR);
 }
+
+GPGME_CALL(op_edit,
+           gpgme_op_edit (c->ctx, c->key_in, edit_cb, c->p[1], c->p[0]))
+GPGME_CALL(op_edit_start,
+           gpgme_op_edit_start (c->ctx, c->key_in, edit_cb, c->p[1], c->p[0]))
+GPGME_CALL(op_card_edit,
+           gpgme_op_card_edit (c->ctx, c->key_in, edit_cb, c->p[1], c->p[0]))
+GPGME_CALL(op_card_edit_start,
+           gpgme_op_card_edit_start (c->ctx, c->key_in, edit_cb, c->p[1],
+                                     c->p[0]))
 
 static VALUE
 rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
                     VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2227,8 +2899,16 @@ rb_s_gpgme_op_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@edit_cb", vcb);
 
-  err = gpgme_op_edit (ctx, key, edit_cb, (void *)vcb, out);
+  /* Pin the callback array, whose address libgpgme gets. */
+  owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+  gpgme_call_init (&c, call_op_edit, ctx);
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vcb);
+  RB_GC_GUARD(vout);
   return LONG2NUM(err);
 }
 
@@ -2237,17 +2917,17 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
                           VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2257,13 +2937,14 @@ rb_s_gpgme_op_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@edit_cb", vcb);
 
-  err = gpgme_op_edit_start (ctx, key, edit_cb, (void *)vcb, out);
-  if (!err)
-    {
-      /* libgpgme uses the data objects until the operation completes. */
-      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
-      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
-    }
+  gpgme_call_init (&c, call_op_edit_start, ctx);
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  c.op_args = rb_ary_new_from_args (1, vout);
+  c.edit_cb = vcb;
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2272,17 +2953,17 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
                     VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2292,8 +2973,16 @@ rb_s_gpgme_op_card_edit (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@card_edit_cb", vcb);
 
-  err = gpgme_op_card_edit (ctx, key, edit_cb, (void *)vcb, out);
+  /* Pin the callback array, whose address libgpgme gets. */
+  owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
+  gpgme_call_init (&c, call_op_card_edit, ctx);
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vcb);
+  RB_GC_GUARD(vout);
   return LONG2NUM(err);
 }
 
@@ -2302,17 +2991,17 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
                                VALUE veditfunc, VALUE vhook_value, VALUE vout)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t key;
   gpgme_data_t out = NULL;
   VALUE vcb;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  UNWRAP_GPGME_KEY(vkey, key);
+  rb_check_typeddata (vkey, &gpgme_key_type);
   if (!NIL_P(vout))
     UNWRAP_GPGME_DATA(vout, out);
 
@@ -2322,13 +3011,14 @@ rb_s_gpgme_op_card_edit_start (VALUE dummy, VALUE vctx, VALUE vkey,
   /* Keep a reference to avoid GC. */
   rb_iv_set (vctx, "@card_edit_cb", vcb);
 
-  err = gpgme_op_card_edit_start (ctx, key, edit_cb, (void *)vcb, out);
-  if (!err)
-    {
-      /* libgpgme uses the data objects until the operation completes. */
-      owner_ref_set (ctx, CTX_REF_OP_ARGS, rb_ary_new_from_args (1, vout));
-      owner_ref_set (ctx, CTX_REF_EDIT_CB, vcb);
-    }
+  gpgme_call_init (&c, call_op_card_edit_start, ctx);
+  c.p[0] = out;
+  c.p[1] = (void *)vcb;
+  gpgme_call_use (&c, out);
+  c.op_args = rb_ary_new_from_args (1, vout);
+  c.edit_cb = vcb;
+  gpgme_call_key (&c, vkey);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 #endif /* GPGME_VERSION_NUMBER >= 0x020000 */
@@ -2340,14 +3030,18 @@ rb_s_gpgme_op_trustlist_start (VALUE dummy, VALUE vctx, VALUE vpattern,
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  err = gpgme_op_trustlist_start (ctx, StringValueCStr(vpattern),
-                                  NUM2INT(vmax_level));
+  gpgme_call_init (&c, call_op_trustlist_start, ctx);
+  StringValueCStr(vpattern);
+  c.u[0] = NUM2INT(vmax_level);
+  gpgme_call_str (&c, vpattern);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2358,6 +3052,7 @@ rb_s_gpgme_op_trustlist_next (VALUE dummy, VALUE vctx, VALUE ritem)
   gpgme_trust_item_t item;
   gpgme_error_t err;
   VALUE vitem;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2365,7 +3060,9 @@ rb_s_gpgme_op_trustlist_next (VALUE dummy, VALUE vctx, VALUE ritem)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  err = gpgme_op_trustlist_next (ctx, &item);
+  gpgme_call_init (&c, call_op_trustlist_next, ctx);
+  err = gpgme_call_run (&c);
+  item = c.item;
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
     {
       vitem = WRAP_GPGME_TRUST_ITEM(item);
@@ -2387,6 +3084,7 @@ rb_s_gpgme_op_trustlist_end (VALUE dummy, VALUE vctx)
 {
   gpgme_ctx_t ctx;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2394,7 +3092,8 @@ rb_s_gpgme_op_trustlist_end (VALUE dummy, VALUE vctx)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  err = gpgme_op_trustlist_end (ctx);
+  gpgme_call_init (&c, call_op_trustlist_end, ctx);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 #endif
@@ -2405,6 +3104,7 @@ rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2414,7 +3114,12 @@ rb_s_gpgme_op_decrypt (VALUE dummy, VALUE vctx, VALUE vcipher, VALUE vplain)
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
-  err = gpgme_op_decrypt (ctx, cipher, plain);
+  gpgme_call_init (&c, call_op_decrypt, ctx);
+  c.p[0] = cipher;
+  c.p[1] = plain;
+  gpgme_call_use (&c, cipher);
+  gpgme_call_use (&c, plain);
+  err = gpgme_call_run (&c);
 
   RB_GC_GUARD(vctx);
   RB_GC_GUARD(vcipher);
@@ -2430,6 +3135,7 @@ rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2439,11 +3145,13 @@ rb_s_gpgme_op_decrypt_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
-  err = gpgme_op_decrypt_start (ctx, cipher, plain);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (2, vcipher, vplain));
+  gpgme_call_init (&c, call_op_decrypt_start, ctx);
+  c.p[0] = cipher;
+  c.p[1] = plain;
+  gpgme_call_use (&c, cipher);
+  gpgme_call_use (&c, plain);
+  c.op_args = rb_ary_new_from_args (2, vcipher, vplain);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2490,6 +3198,7 @@ rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
   gpgme_ctx_t ctx;
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2502,7 +3211,14 @@ rb_s_gpgme_op_verify (VALUE dummy, VALUE vctx, VALUE vsig, VALUE vsigned_text,
   if (!NIL_P(vplain))
     UNWRAP_GPGME_DATA(vplain, plain);
 
-  err = gpgme_op_verify (ctx, sig, signed_text, plain);
+  gpgme_call_init (&c, call_op_verify, ctx);
+  c.p[0] = sig;
+  c.p[1] = signed_text;
+  c.p[2] = plain;
+  gpgme_call_use (&c, sig);
+  gpgme_call_use (&c, signed_text);
+  gpgme_call_use (&c, plain);
+  err = gpgme_call_run (&c);
 
   RB_GC_GUARD(vctx);
   RB_GC_GUARD(vsig);
@@ -2519,6 +3235,7 @@ rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig,
   gpgme_ctx_t ctx;
   gpgme_data_t sig, signed_text = NULL, plain = NULL;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2531,11 +3248,15 @@ rb_s_gpgme_op_verify_start (VALUE dummy, VALUE vctx, VALUE vsig,
   if (!NIL_P(vplain))
     UNWRAP_GPGME_DATA(vplain, plain);
 
-  err = gpgme_op_verify_start (ctx, sig, signed_text, plain);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (3, vsig, vsigned_text, vplain));
+  gpgme_call_init (&c, call_op_verify_start, ctx);
+  c.p[0] = sig;
+  c.p[1] = signed_text;
+  c.p[2] = plain;
+  gpgme_call_use (&c, sig);
+  gpgme_call_use (&c, signed_text);
+  gpgme_call_use (&c, plain);
+  c.op_args = rb_ary_new_from_args (3, vsig, vsigned_text, vplain);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2607,6 +3328,7 @@ rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2616,7 +3338,12 @@ rb_s_gpgme_op_decrypt_verify (VALUE dummy, VALUE vctx, VALUE vcipher,
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
-  err = gpgme_op_decrypt_verify (ctx, cipher, plain);
+  gpgme_call_init (&c, call_op_decrypt_verify, ctx);
+  c.p[0] = cipher;
+  c.p[1] = plain;
+  gpgme_call_use (&c, cipher);
+  gpgme_call_use (&c, plain);
+  err = gpgme_call_run (&c);
 
   RB_GC_GUARD(vctx);
   RB_GC_GUARD(vcipher);
@@ -2632,6 +3359,7 @@ rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   gpgme_ctx_t ctx;
   gpgme_data_t cipher, plain;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2641,11 +3369,13 @@ rb_s_gpgme_op_decrypt_verify_start (VALUE dummy, VALUE vctx, VALUE vcipher,
   UNWRAP_GPGME_DATA(vcipher, cipher);
   UNWRAP_GPGME_DATA(vplain, plain);
 
-  err = gpgme_op_decrypt_verify_start (ctx, cipher, plain);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (2, vcipher, vplain));
+  gpgme_call_init (&c, call_op_decrypt_verify_start, ctx);
+  c.p[0] = cipher;
+  c.p[1] = plain;
+  gpgme_call_use (&c, cipher);
+  gpgme_call_use (&c, plain);
+  c.op_args = rb_ary_new_from_args (2, vcipher, vplain);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2700,6 +3430,7 @@ rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   gpgme_ctx_t ctx;
   gpgme_data_t plain, sig;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2709,7 +3440,13 @@ rb_s_gpgme_op_sign (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vsig, sig);
 
-  err = gpgme_op_sign (ctx, plain, sig, NUM2INT(vmode));
+  gpgme_call_init (&c, call_op_sign, ctx);
+  c.u[0] = NUM2INT(vmode);
+  c.p[0] = plain;
+  c.p[1] = sig;
+  gpgme_call_use (&c, plain);
+  gpgme_call_use (&c, sig);
+  err = gpgme_call_run (&c);
 
   RB_GC_GUARD(vctx);
   RB_GC_GUARD(vplain);
@@ -2725,6 +3462,7 @@ rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   gpgme_ctx_t ctx;
   gpgme_data_t plain, sig;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -2734,11 +3472,14 @@ rb_s_gpgme_op_sign_start (VALUE dummy, VALUE vctx, VALUE vplain, VALUE vsig,
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vsig, sig);
 
-  err = gpgme_op_sign_start (ctx, plain, sig, NUM2INT(vmode));
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (2, vplain, vsig));
+  gpgme_call_init (&c, call_op_sign_start, ctx);
+  c.u[0] = NUM2INT(vmode);
+  c.p[0] = plain;
+  c.p[1] = sig;
+  gpgme_call_use (&c, plain);
+  gpgme_call_use (&c, sig);
+  c.op_args = rb_ary_new_from_args (2, vplain, vsig);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2803,31 +3544,29 @@ rb_s_gpgme_op_encrypt (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
                        VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *recp = NULL;
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  /* If RECP is `NULL', symmetric rather than public key encryption is
-     performed. */
-  if (!NIL_P(vrecp))
-    {
-      int i;
-      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
-      for (i = 0; i < RARRAY_LEN(vrecp); i++)
-        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
-      recp[i] = NULL;
-    }
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
-  err = gpgme_op_encrypt (ctx, recp, NUM2INT(vflags), plain, cipher);
-  if (recp)
-    xfree (recp);
+  gpgme_call_init (&c, call_op_encrypt, ctx);
+  c.u[0] = NUM2INT(vflags);
+  c.p[0] = plain;
+  c.p[1] = cipher;
+  gpgme_call_use (&c, plain);
+  gpgme_call_use (&c, cipher);
+  /* If RECP is `NULL', symmetric rather than public key encryption is
+     performed. */
+  if (!NIL_P(vrecp))
+    gpgme_call_keys (&c, vrecp);
+  err = gpgme_call_run (&c);
 
   RB_GC_GUARD(vctx);
   RB_GC_GUARD(vrecp);
@@ -2842,35 +3581,30 @@ rb_s_gpgme_op_encrypt_start (VALUE dummy, VALUE vctx, VALUE vrecp,
                              VALUE vflags, VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *recp = NULL;
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  /* If RECP is `NULL', symmetric rather than public key encryption is
-     performed. */
-  if (!NIL_P(vrecp))
-    {
-      int i;
-      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
-      for (i = 0; i < RARRAY_LEN(vrecp); i++)
-        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
-      recp[i] = NULL;
-    }
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
-  err = gpgme_op_encrypt_start (ctx, recp, NUM2INT(vflags), plain, cipher);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (2, vplain, vcipher));
-  if (recp)
-    xfree (recp);
+  gpgme_call_init (&c, call_op_encrypt_start, ctx);
+  c.u[0] = NUM2INT(vflags);
+  c.p[0] = plain;
+  c.p[1] = cipher;
+  gpgme_call_use (&c, plain);
+  gpgme_call_use (&c, cipher);
+  c.op_args = rb_ary_new_from_args (2, vplain, vcipher);
+  /* If RECP is `NULL', symmetric rather than public key encryption is
+     performed. */
+  if (!NIL_P(vrecp))
+    gpgme_call_keys (&c, vrecp);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2912,31 +3646,29 @@ rb_s_gpgme_op_encrypt_sign (VALUE dummy, VALUE vctx, VALUE vrecp, VALUE vflags,
                             VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *recp = NULL;
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  /* If RECP is `NULL', symmetric rather than public key encryption is
-     performed. */
-  if (!NIL_P(vrecp))
-    {
-      int i;
-      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
-      for (i = 0; i < RARRAY_LEN(vrecp); i++)
-        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
-      recp[i] = NULL;
-    }
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
-  err = gpgme_op_encrypt_sign (ctx, recp, NUM2INT(vflags), plain, cipher);
-  if (recp)
-    xfree (recp);
+  gpgme_call_init (&c, call_op_encrypt_sign, ctx);
+  c.u[0] = NUM2INT(vflags);
+  c.p[0] = plain;
+  c.p[1] = cipher;
+  gpgme_call_use (&c, plain);
+  gpgme_call_use (&c, cipher);
+  /* If RECP is `NULL', symmetric rather than public key encryption is
+     performed. */
+  if (!NIL_P(vrecp))
+    gpgme_call_keys (&c, vrecp);
+  err = gpgme_call_run (&c);
 
   RB_GC_GUARD(vctx);
   RB_GC_GUARD(vrecp);
@@ -2951,36 +3683,30 @@ rb_s_gpgme_op_encrypt_sign_start (VALUE dummy, VALUE vctx, VALUE vrecp,
                                   VALUE vflags, VALUE vplain, VALUE vcipher)
 {
   gpgme_ctx_t ctx;
-  gpgme_key_t *recp = NULL;
   gpgme_data_t plain, cipher;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
   UNWRAP_GPGME_CTX(vctx, ctx);
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
-  /* If RECP is `NULL', symmetric rather than public key encryption is
-     performed. */
-  if (!NIL_P(vrecp))
-    {
-      int i;
-      recp = ALLOC_N(gpgme_key_t, RARRAY_LEN(vrecp) + 1);
-      for (i = 0; i < RARRAY_LEN(vrecp); i++)
-        UNWRAP_GPGME_KEY(RARRAY_PTR(vrecp)[i], recp[i]);
-      recp[i] = NULL;
-    }
   UNWRAP_GPGME_DATA(vplain, plain);
   UNWRAP_GPGME_DATA(vcipher, cipher);
 
-  err = gpgme_op_encrypt_sign_start (ctx, recp, NUM2INT(vflags), plain,
-                                     cipher);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (2, vplain, vcipher));
-  if (recp)
-    xfree (recp);
+  gpgme_call_init (&c, call_op_encrypt_sign_start, ctx);
+  c.u[0] = NUM2INT(vflags);
+  c.p[0] = plain;
+  c.p[1] = cipher;
+  gpgme_call_use (&c, plain);
+  gpgme_call_use (&c, cipher);
+  c.op_args = rb_ary_new_from_args (2, vplain, vcipher);
+  /* If RECP is `NULL', symmetric rather than public key encryption is
+     performed. */
+  if (!NIL_P(vrecp))
+    gpgme_call_keys (&c, vrecp);
+  err = gpgme_call_run (&c);
   return LONG2NUM(err);
 }
 
@@ -2989,17 +3715,34 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
 {
   gpgme_ctx_t ctx = NULL, ret;
   gpgme_error_t status;
+  int hang = NUM2INT(vhang);
 
-  /* The CTX argument can be `NULL'.  In that case, `gpgme_wait' waits
-     for any context to complete its operation. */
+  /* gpgme_wait keeps the GVL.  Even with a CTX, it does the I/O of
+     every context with an asynchronous operation in progress, and those
+     contexts and their data objects can belong to other threads.  With
+     the GVL held, no Ruby code can use them meanwhile.  */
   if (!NIL_P(vctx))
     {
+      st_data_t refs;
+
       UNWRAP_GPGME_CTX(vctx, ctx);
       if (!ctx)
         rb_raise (rb_eArgError, "released ctx");
+      /* A call without the GVL could still be using CTX's data.  */
+      if (st_lookup (owner_refs, (st_data_t)ctx, &refs)
+          && RARRAY_LEN((VALUE)refs) > CTX_REF_OP_ARGS)
+        {
+          VALUE vargs = RARRAY_AREF((VALUE)refs, CTX_REF_OP_ARGS);
+          long i;
+
+          for (i = 0; !NIL_P(vargs) && i < RARRAY_LEN(vargs); i++)
+            if (!NIL_P(RARRAY_AREF(vargs, i)))
+              check_not_busy (RTYPEDDATA_DATA(RARRAY_AREF(vargs, i)),
+                              "GPGME::Data");
+        }
     }
 
-  ret = gpgme_wait (ctx, &status, NUM2INT(vhang));
+  ret = gpgme_wait (ctx, &status, hang);
   if (ret)
     {
       rb_ary_store (rstatus, 0, INT2NUM(status));
@@ -3027,10 +3770,8 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
                            VALUE vdataerr, VALUE vflags)
 {
   gpgme_ctx_t ctx;
-  const char *file;
-  const char **argv = NULL;
   VALUE vstrs = Qnil;
-  int flags;
+  gpgme_call_t c;
   gpgme_data_t datain = NULL;
   gpgme_data_t dataout = NULL;
   gpgme_data_t dataerr = NULL;
@@ -3042,24 +3783,26 @@ rb_s_gpgme_op_spawn_start (VALUE dummy, VALUE vctx, VALUE vfile,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  flags = NUM2INT(vflags);
   UNWRAP_GPGME_DATA(vdatain, datain);
   UNWRAP_GPGME_DATA(vdataout, dataout);
   UNWRAP_GPGME_DATA(vdataerr, dataerr);
+  gpgme_call_init (&c, call_op_spawn_start, ctx);
+  c.u[0] = NUM2INT(vflags);
+  c.p[0] = datain;
+  c.p[1] = dataout;
+  c.p[2] = dataerr;
+  gpgme_call_use (&c, datain);
+  gpgme_call_use (&c, dataout);
+  gpgme_call_use (&c, dataerr);
   if (!NIL_P(vargv))
     vstrs = string_array_new (vargv);
-  file = StringValueCStr(vfile);
+  StringValueCStr(vfile);
+  c.op_args = rb_ary_new_from_args (3, vdatain, vdataout, vdataerr);
+  gpgme_call_str (&c, vfile);
   if (!NIL_P(vargv))
-    argv = cstr_array_new (vstrs);
+    gpgme_call_strv (&c, vstrs);
 
-  err = gpgme_op_spawn_start (ctx, file, argv, datain, dataout, dataerr,
-                              flags);
-  /* libgpgme uses the data objects until the operation completes. */
-  if (!err)
-    owner_ref_set (ctx, CTX_REF_OP_ARGS,
-                   rb_ary_new_from_args (3, vdatain, vdataout, vdataerr));
-  if (argv)
-    xfree (argv);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vstrs);
   RB_GC_GUARD(vfile);
   return LONG2NUM(err);
@@ -3071,10 +3814,8 @@ rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
                      VALUE vdataerr, VALUE vflags)
 {
   gpgme_ctx_t ctx;
-  const char *file;
-  const char **argv = NULL;
   VALUE vstrs = Qnil;
-  int flags;
+  gpgme_call_t c;
   gpgme_data_t datain = NULL;
   gpgme_data_t dataout = NULL;
   gpgme_data_t dataerr = NULL;
@@ -3086,20 +3827,25 @@ rb_s_gpgme_op_spawn (VALUE dummy, VALUE vctx, VALUE vfile,
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
-  flags = NUM2INT(vflags);
   UNWRAP_GPGME_DATA(vdatain, datain);
   UNWRAP_GPGME_DATA(vdataout, dataout);
   UNWRAP_GPGME_DATA(vdataerr, dataerr);
+  gpgme_call_init (&c, call_op_spawn, ctx);
+  c.u[0] = NUM2INT(vflags);
+  c.p[0] = datain;
+  c.p[1] = dataout;
+  c.p[2] = dataerr;
+  gpgme_call_use (&c, datain);
+  gpgme_call_use (&c, dataout);
+  gpgme_call_use (&c, dataerr);
   if (!NIL_P(vargv))
     vstrs = string_array_new (vargv);
-  file = StringValueCStr(vfile);
+  StringValueCStr(vfile);
+  gpgme_call_str (&c, vfile);
   if (!NIL_P(vargv))
-    argv = cstr_array_new (vstrs);
+    gpgme_call_strv (&c, vstrs);
 
-  err = gpgme_op_spawn (ctx, file, argv, datain, dataout, dataerr,
-                        flags);
-  if (argv)
-    xfree (argv);
+  err = gpgme_call_run (&c);
   RB_GC_GUARD(vstrs);
   RB_GC_GUARD(vfile);
   return LONG2NUM(err);
@@ -3113,8 +3859,8 @@ rb_s_gpgme_op_random_bytes (VALUE dummy, VALUE vctx, VALUE vsize, VALUE vmode)
   gpgme_ctx_t ctx;
   gpgme_error_t err;
   size_t size;
-  char *buffer;
   VALUE result;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -3122,17 +3868,19 @@ rb_s_gpgme_op_random_bytes (VALUE dummy, VALUE vctx, VALUE vsize, VALUE vmode)
   if (!ctx)
     rb_raise (rb_eArgError, "released ctx");
 
+  gpgme_call_init (&c, call_op_random_bytes, ctx);
+  c.u[0] = NUM2INT(vmode);
   size = NUM2SIZET(vsize);
-  buffer = ALLOC_N(char, size);
+  c.u[1] = size;
+  /* libgpgme fills the string directly.  No other thread can see it,
+     and the reference on this stack keeps GC from moving it.  */
+  result = rb_str_new (NULL, size);
+  c.p[0] = RSTRING_PTR(result);
 
-  err = gpgme_op_random_bytes (ctx, NUM2INT(vmode), buffer, size);
-  if (err) {
-    xfree(buffer);
+  err = gpgme_call_run (&c);
+  RB_GC_GUARD(result);
+  if (err)
     return LONG2NUM(err);
-  }
-
-  result = rb_str_new(buffer, size);
-  xfree(buffer);
   return result;
 }
 
@@ -3140,8 +3888,9 @@ static VALUE
 rb_s_gpgme_op_random_value (VALUE dummy, VALUE vctx, VALUE vlimit)
 {
   gpgme_ctx_t ctx;
-  size_t limit, result;
+  size_t limit;
   gpgme_error_t err;
+  gpgme_call_t c;
 
   CHECK_KEYLIST_NOT_IN_PROGRESS(vctx);
 
@@ -3150,9 +3899,11 @@ rb_s_gpgme_op_random_value (VALUE dummy, VALUE vctx, VALUE vlimit)
     rb_raise (rb_eArgError, "released ctx");
 
   limit = NUM2SIZET(vlimit);
-  err = gpgme_op_random_value (ctx, limit, &result);
+  gpgme_call_init (&c, call_op_random_value, ctx);
+  c.u[0] = limit;
+  err = gpgme_call_run (&c);
   if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
-    return SIZET2NUM(result);
+    return SIZET2NUM(c.size);
   return LONG2NUM(err);
 }
 #endif
@@ -3166,6 +3917,7 @@ Init_gpgme_n (void)
 
   owner_refs = st_init_numtable ();
   ctx_objects = st_init_numtable ();
+  busy_objects = st_init_numtable ();
 
 #if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x010500
   rb_define_module_function (mGPGME, "gpgme_get_dirinfo",

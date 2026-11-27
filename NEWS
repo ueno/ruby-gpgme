@@ -1,3 +1,14 @@
+Unreleased
+
+- Release the GVL during blocking libgpgme calls, so other Ruby threads
+  keep running while gpg works (#224)
+  * Callbacks take the GVL back, and an exception raised in a callback
+    is raised again from the GPGME call
+  * Using a Ctx or Data object from another thread while an operation
+    runs raises ThreadError
+  * With GPGME.thread_safe = false, operations from several threads run
+    in parallel
+
 2.1.0 November 26, 2026
 
 - Require Ruby 3.1 or later (#221)
