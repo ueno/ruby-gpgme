@@ -149,11 +149,20 @@ owner_refs_delete (void *owner)
   st_delete (owner_refs, &key, NULL);
 }
 
-/* Maps each gpgme_ctx_t to the GPGME::Ctx object that owns it, so that
-   gpgme_wait can return the existing object instead of wrapping the
-   context a second time.  The entries are weak: they are removed when
-   the object is freed and updated when GC.compact moves it.  */
+/* Maps each libgpgme context to the GPGME::Ctx object that owns it, so
+   that gpgme_wait can return the existing object instead of wrapping
+   the context a second time.  The entries are weak: they are removed
+   when the object is freed and updated when GC.compact moves it.  */
 static st_table *ctx_objects;
+
+/* What ctx_objects stores for each libgpgme context.  It is allocated
+   separately, so GC.compact can update OBJECT without changing the
+   table.  Changing the table would allocate, which is not allowed
+   during GC.  */
+struct ctx_entry
+{
+  VALUE object;                 /* The GPGME::Ctx object.  */
+};
 
 static void
 owner_ref_clear (void *owner, long slot)
@@ -191,9 +200,10 @@ gpgme_ctx_free(void *ptr)
 {
   if (ptr)
     {
-      st_data_t key = (st_data_t)ptr;
+      st_data_t key = (st_data_t)ptr, value;
 
-      st_delete (ctx_objects, &key, NULL);
+      if (st_delete (ctx_objects, &key, &value))
+        xfree ((struct ctx_entry *)value);
       owner_refs_delete (ptr);
       gpgme_release((gpgme_ctx_t)ptr);
     }
@@ -202,11 +212,14 @@ gpgme_ctx_free(void *ptr)
 static void
 gpgme_ctx_compact(void *ptr)
 {
-  st_data_t vctx;
+  st_data_t value;
 
-  if (ptr && st_lookup (ctx_objects, (st_data_t)ptr, &vctx))
-    st_insert (ctx_objects, (st_data_t)ptr,
-               (st_data_t)rb_gc_location ((VALUE)vctx));
+  if (ptr && st_lookup (ctx_objects, (st_data_t)ptr, &value))
+    {
+      struct ctx_entry *entry = (struct ctx_entry *)value;
+
+      entry->object = rb_gc_location (entry->object);
+    }
 }
 
 static const rb_data_type_t gpgme_ctx_type = {
@@ -688,18 +701,55 @@ rb_s_gpgme_data_set_file_name (VALUE dummy, VALUE vdh, VALUE vfile_name)
   return LONG2NUM(err);
 }
 
+struct ctx_objects_insert_args
+{
+  gpgme_ctx_t ctx;
+  struct ctx_entry *entry;
+};
+
+static VALUE
+ctx_objects_insert (VALUE arg)
+{
+  struct ctx_objects_insert_args *args = (struct ctx_objects_insert_args *)arg;
+
+  st_insert (ctx_objects, (st_data_t)args->ctx, (st_data_t)args->entry);
+  return Qnil;
+}
+
 static VALUE
 rb_s_gpgme_new (VALUE dummy, VALUE rctx)
 {
+  struct ctx_objects_insert_args args;
   gpgme_ctx_t ctx;
-  gpgme_error_t err = gpgme_new (&ctx);
+  gpgme_error_t err;
+  VALUE vctx;
+  int state;
 
-  if (gpgme_err_code(err) == GPG_ERR_NO_ERROR)
+  /* Allocate the wrapper and the entry before the context exists, so
+     an exception from either leaks nothing.  The wrapper holds NULL
+     until it owns the context.  */
+  vctx = WRAP_GPGME_CTX(NULL);
+  args.entry = ALLOC(struct ctx_entry);
+  err = gpgme_new (&ctx);
+  if (gpgme_err_code(err) != GPG_ERR_NO_ERROR)
     {
-      VALUE vctx = WRAP_GPGME_CTX(ctx);
-      st_insert (ctx_objects, (st_data_t)ctx, (st_data_t)vctx);
-      rb_ary_store (rctx, 0, vctx);
+      xfree (args.entry);
+      return LONG2NUM(err);
     }
+  RTYPEDDATA_DATA(vctx) = ctx;
+  args.entry->object = vctx;
+
+  /* st_insert raises NoMemoryError if it can't grow the table.  The
+     wrapper already owns the context and frees it, but the entry is
+     not in the table yet, so free it here.  */
+  args.ctx = ctx;
+  rb_protect (ctx_objects_insert, (VALUE)&args, &state);
+  if (state)
+    {
+      xfree (args.entry);
+      rb_jump_tag (state);
+    }
+  rb_ary_store (rctx, 0, vctx);
   return LONG2NUM(err);
 }
 
@@ -2957,13 +3007,13 @@ rb_s_gpgme_wait (VALUE dummy, VALUE vctx, VALUE rstatus, VALUE vhang)
       owner_ref_clear (ret, CTX_REF_OP_ARGS);
       if (ret != ctx)
         {
-          st_data_t vret;
+          st_data_t value;
 
           /* Return the object that already owns RET.  Wrapping it again
              would make two objects free the same context.  */
-          if (!st_lookup (ctx_objects, (st_data_t)ret, &vret))
+          if (!st_lookup (ctx_objects, (st_data_t)ret, &value))
             rb_raise (rb_eRuntimeError, "gpgme_wait returned an unknown ctx");
-          vctx = (VALUE)vret;
+          vctx = ((struct ctx_entry *)value)->object;
         }
       return vctx;
     }
